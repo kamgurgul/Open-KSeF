@@ -1,14 +1,9 @@
 package com.kgurgul.openksef.data.local
 
+import com.kgurgul.openksef.data.di.DATA_STORE_PATH_QUALIFIER
+import org.koin.core.qualifier.named
+import org.koin.mp.KoinPlatform
+
 actual fun dataStorePath(): String {
-    // On Android, this will be set by the Koin module using the application context
-    return AndroidDataStorePath.path
-}
-
-object AndroidDataStorePath {
-    lateinit var path: String
-
-    fun init(filesDir: String) {
-        path = "$filesDir/$DATA_STORE_FILE_NAME"
-    }
+    return KoinPlatform.getKoin().get<String>(named(DATA_STORE_PATH_QUALIFIER))
 }

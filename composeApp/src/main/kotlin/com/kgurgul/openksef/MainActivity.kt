@@ -6,10 +6,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
-import com.kgurgul.openksef.data.local.AndroidDataStorePath
+import com.kgurgul.openksef.data.di.androidModule
 import com.kgurgul.openksef.di.appModule
 import org.koin.android.ext.koin.androidContext
-import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 
 class MainActivity : ComponentActivity() {
@@ -17,13 +16,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        AndroidDataStorePath.init(filesDir.absolutePath)
-
-        if (GlobalContext.getOrNull() == null) {
-            startKoin {
-                androidContext(applicationContext)
-                modules(appModule)
-            }
+        startKoin {
+            androidContext(applicationContext)
+            modules(appModule, androidModule)
         }
 
         setContent {
