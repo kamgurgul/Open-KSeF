@@ -16,6 +16,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.kgurgul.openksef.ui.components.InvoiceCard
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.toLocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,6 +33,8 @@ fun InvoiceListScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
+    var showDateFromPicker by remember { mutableStateOf(false) }
+    var showDateToPicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.isSessionActive) {
         if (!uiState.isSessionActive) {
@@ -42,7 +49,6 @@ fun InvoiceListScreen(
         }
     }
 
-    // Load more when reaching end of list
     val shouldLoadMore by remember {
         derivedStateOf {
             val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -53,6 +59,50 @@ fun InvoiceListScreen(
     LaunchedEffect(shouldLoadMore) {
         if (shouldLoadMore) {
             viewModel.loadNextPage()
+        }
+    }
+
+    if (showDateFromPicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = uiState.dateFrom.toEpochMillis()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDateFromPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        viewModel.onDateFromChanged(millis.toLocalDateString())
+                    }
+                    showDateFromPicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDateFromPicker = false }) { Text("Anuluj") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (showDateToPicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = uiState.dateTo.toEpochMillis()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDateToPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        viewModel.onDateToChanged(millis.toLocalDateString())
+                    }
+                    showDateToPicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDateToPicker = false }) { Text("Anuluj") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 
@@ -87,7 +137,6 @@ fun InvoiceListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Date range filter
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -96,31 +145,47 @@ fun InvoiceListScreen(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
-                    Icon(
-                        Icons.Default.DateRange,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Column(modifier = Modifier.weight(1f).padding(horizontal = 8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.DateRange,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Zakres dat",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Text(
-                            text = "${uiState.dateFrom}  —  ${uiState.dateTo}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
                     }
-                    FilledTonalButton(onClick = viewModel::loadInvoices) {
-                        Text("Szukaj")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = { showDateFromPicker = true },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(uiState.dateFrom, style = MaterialTheme.typography.bodySmall)
+                        }
+                        Text(" — ", modifier = Modifier.padding(horizontal = 4.dp))
+                        OutlinedButton(
+                            onClick = { showDateToPicker = true },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(uiState.dateTo, style = MaterialTheme.typography.bodySmall)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        FilledTonalButton(onClick = viewModel::loadInvoices) {
+                            Text("Szukaj")
+                        }
                     }
                 }
             }
@@ -183,3 +248,10 @@ fun InvoiceListScreen(
         }
     }
 }
+
+private fun String.toEpochMillis(): Long? = runCatching {
+    LocalDate.parse(this).atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()
+}.getOrNull()
+
+private fun Long.toLocalDateString(): String =
+    Instant.fromEpochMilliseconds(this).toLocalDateTime(TimeZone.UTC).date.toString()

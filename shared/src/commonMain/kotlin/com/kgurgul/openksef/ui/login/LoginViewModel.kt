@@ -93,6 +93,8 @@ class LoginViewModel(
                         tokenStore.saveNip(nip)
                         tokenStore.saveToken(token)
                         tokenStore.saveEnvironment(state.environment)
+                    } else {
+                        tokenStore.clear()
                     }
                     _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
                 }
