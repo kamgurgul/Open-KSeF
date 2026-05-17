@@ -17,6 +17,7 @@ import com.kgurgul.openksef.ui.sendinvoice.SendInvoiceScreen
 import com.kgurgul.openksef.ui.sendinvoice.SendInvoiceViewModel
 import kotlinx.serialization.Serializable
 import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 // Navigation keys
 @Serializable
@@ -68,10 +69,11 @@ fun AppNavigation() {
             }
 
             entry<InvoiceDetailKey> { key ->
-                val viewModel = koinViewModel<InvoiceDetailViewModel>()
+                val viewModel = koinViewModel<InvoiceDetailViewModel>(
+                    key = key.ksefRef,
+                ) { parametersOf(key.ksefRef) }
                 InvoiceDetailScreen(
                     viewModel = viewModel,
-                    ksefReferenceNumber = key.ksefRef,
                     onNavigateBack = { backStack.removeLastOrNull() }
                 )
             }

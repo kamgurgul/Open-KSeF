@@ -15,41 +15,21 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
 import kotlinx.serialization.json.Json
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class InvoiceListViewModelTest {
-
-    private val testDispatcher = StandardTestDispatcher()
-
-    @BeforeTest
-    fun setup() {
-        Dispatchers.setMain(testDispatcher)
-    }
-
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
 
     @Test
     fun initialState_hasDateRange() = runTest {
         val viewModel = createViewModel(emptyListResponse)
-        testDispatcher.scheduler.advanceUntilIdle()
 
-        val state = viewModel.uiState.value
+        val state = viewModel.uiState.first { it.dateFrom.isNotBlank() }
+
         assertTrue(state.dateFrom.isNotBlank())
         assertTrue(state.dateTo.isNotBlank())
     }
@@ -82,41 +62,90 @@ class InvoiceListViewModelTest {
         }"""
 
         val viewModel = createViewModel(response)
-        testDispatcher.scheduler.advanceUntilIdle()
-        // Allow coroutines to settle
-        testDispatcher.scheduler.advanceUntilIdle()
 
-        val state = viewModel.uiState.value
-        // Verify invoices loaded (isLoading may still be true if coroutine hasn't completed)
-        if (!state.isLoading) {
-            assertEquals(1, state.invoices.size)
-            assertEquals("KSEF-001", state.invoices.first().ksefReferenceNumber)
-        }
+        val state = viewModel.uiState.first { it.invoices.isNotEmpty() }
+
+        assertEquals(1, state.invoices.size)
+        assertEquals("KSEF-001", state.invoices.first().ksefReferenceNumber)
     }
 
     @Test
     fun loadInvoices_emptyList_showsEmpty() = runTest {
         val viewModel = createViewModel(emptyListResponse)
-        testDispatcher.scheduler.advanceUntilIdle()
 
-        val state = viewModel.uiState.value
+        val state = viewModel.uiState.first { it.dateFrom.isNotBlank() && !it.isLoading }
+
         assertTrue(state.invoices.isEmpty())
         assertEquals(0, state.totalCount)
     }
 
     @Test
+    fun onSearchQueryChanged_filtersDisplayedInvoices() = runTest {
+        val response = """{
+            "hasMore": false,
+            "isTruncated": false,
+            "invoices": [
+                ${invoiceJson("KSEF-001", "FV/001", "Alpha", "Beta")},
+                ${invoiceJson("KSEF-002", "FV/002", "Gamma", "Delta")}
+            ]
+        }"""
+
+        val viewModel = createViewModel(response)
+        viewModel.uiState.first { it.invoices.size == 2 }
+
+        viewModel.onSearchQueryChanged("Alpha")
+        val filtered = viewModel.uiState.first { it.searchQuery == "Alpha" }
+
+        assertEquals(2, filtered.invoices.size)
+        assertEquals(1, filtered.displayedInvoices.size)
+        assertEquals("KSEF-001", filtered.displayedInvoices.first().ksefReferenceNumber)
+
+        viewModel.onSearchQueryChanged("")
+        val cleared = viewModel.uiState.first { it.searchQuery.isEmpty() }
+        assertEquals(2, cleared.displayedInvoices.size)
+    }
+
+    @Test
     fun onDateRangeChanged_updatesState() = runTest {
         val viewModel = createViewModel(emptyListResponse)
-        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.uiState.first { it.dateFrom.isNotBlank() }
 
         viewModel.onDateFromChanged("2024-01-01")
         viewModel.onDateToChanged("2024-12-31")
 
-        assertEquals("2024-01-01", viewModel.uiState.value.dateFrom)
-        assertEquals("2024-12-31", viewModel.uiState.value.dateTo)
+        val state =
+            viewModel.uiState.first { it.dateFrom == "2024-01-01" && it.dateTo == "2024-12-31" }
+        assertEquals("2024-01-01", state.dateFrom)
+        assertEquals("2024-12-31", state.dateTo)
     }
 
     private val emptyListResponse = """{"hasMore": false, "isTruncated": false, "invoices": []}"""
+
+    private fun invoiceJson(
+        ksefNumber: String,
+        invoiceNumber: String,
+        sellerName: String,
+        buyerName: String,
+    ): String = """{
+        "ksefNumber": "$ksefNumber",
+        "invoiceNumber": "$invoiceNumber",
+        "issueDate": "2024-01-15",
+        "invoicingDate": "2024-01-15T00:00:00Z",
+        "acquisitionDate": "2024-01-15T00:00:00Z",
+        "permanentStorageDate": "2024-01-15T00:00:00Z",
+        "seller": {"nip": "1111111111", "name": "$sellerName"},
+        "buyer": {"identifier": {"type": "Nip", "value": "2222222222"}, "name": "$buyerName"},
+        "netAmount": 100.0,
+        "grossAmount": 123.0,
+        "vatAmount": 23.0,
+        "currency": "PLN",
+        "invoicingMode": "Online",
+        "invoiceType": "Vat",
+        "formCode": {"systemCode": "FA (2)", "schemaVersion": "1-0E", "value": "FA"},
+        "isSelfInvoicing": false,
+        "hasAttachment": false,
+        "invoiceHash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    }"""
 
     private fun createViewModel(responseBody: String): InvoiceListViewModel {
         val engine = MockEngine { _ ->

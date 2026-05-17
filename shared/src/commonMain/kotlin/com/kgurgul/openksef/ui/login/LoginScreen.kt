@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kgurgul.openksef.domain.model.KsefEnvironment
 import com.kgurgul.openksef.ui.components.LoadingOverlay
 
@@ -20,7 +21,7 @@ fun LoginScreen(
     viewModel: LoginViewModel,
     onLoginSuccess: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState.isLoggedIn) {

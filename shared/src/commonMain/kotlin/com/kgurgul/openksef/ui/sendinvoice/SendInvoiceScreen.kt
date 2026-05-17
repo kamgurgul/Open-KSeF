@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kgurgul.openksef.ui.components.LoadingOverlay
 import com.kgurgul.openksef.ui.components.SectionHeader
 
@@ -24,7 +25,7 @@ fun SendInvoiceScreen(
     viewModel: SendInvoiceViewModel,
     onNavigateBack: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState.error) {

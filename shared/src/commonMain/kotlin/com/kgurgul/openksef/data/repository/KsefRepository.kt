@@ -161,10 +161,11 @@ class KsefRepository(
         dateFrom: String,
         dateTo: String,
         pageSize: Int = 10,
-        pageOffset: Int = 0
+        pageOffset: Int = 0,
+        subjectType: InvoiceSubjectType = InvoiceSubjectType.ISSUED
     ): Result<InvoiceListResult> = runCatching {
         val filters = InvoiceQueryFilters(
-            subjectType = "Subject1",
+            subjectType = subjectType.apiValue,
             dateRange = InvoiceQueryDateRange(
                 dateType = "Invoicing",
                 from = "${dateFrom}T00:00:00Z",

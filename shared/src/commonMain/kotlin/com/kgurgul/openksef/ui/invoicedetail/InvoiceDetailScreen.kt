@@ -13,25 +13,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kgurgul.openksef.common.ObserveAsEvents
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InvoiceDetailScreen(
     viewModel: InvoiceDetailViewModel,
-    ksefReferenceNumber: String,
     onNavigateBack: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(ksefReferenceNumber) {
-        viewModel.loadInvoice(ksefReferenceNumber)
-    }
-
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearError()
+    ObserveAsEvents(viewModel.events) { event ->
+        when (event) {
+            is InvoiceDetailEvent.ShowError -> snackbarHostState.showSnackbar(event.message)
         }
     }
 
@@ -40,7 +36,7 @@ fun InvoiceDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = ksefReferenceNumber,
+                        text = uiState.ksefReferenceNumber,
                         maxLines = 1,
                         style = MaterialTheme.typography.titleSmall
                     )
@@ -110,13 +106,6 @@ fun InvoiceDetailScreen(
                     }
                 }
 
-                uiState.error != null -> {
-                    Text(
-                        text = uiState.error ?: "Nieznany błąd",
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
             }
         }
     }

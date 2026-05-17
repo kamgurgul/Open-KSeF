@@ -7,14 +7,19 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kgurgul.openksef.common.ObserveAsEvents
+import com.kgurgul.openksef.domain.model.InvoiceSubjectType
 import com.kgurgul.openksef.ui.components.InvoiceCard
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -30,22 +35,16 @@ fun InvoiceListScreen(
     onSendInvoiceClick: () -> Unit,
     onLoggedOut: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
     var showDateFromPicker by remember { mutableStateOf(false) }
     var showDateToPicker by remember { mutableStateOf(false) }
 
-    LaunchedEffect(uiState.isSessionActive) {
-        if (!uiState.isSessionActive) {
-            onLoggedOut()
-        }
-    }
-
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearError()
+    ObserveAsEvents(viewModel.events) { event ->
+        when (event) {
+            is InvoiceListEvent.ShowError -> snackbarHostState.showSnackbar(event.message)
+            InvoiceListEvent.SessionEnded -> onLoggedOut()
         }
     }
 
@@ -58,7 +57,7 @@ fun InvoiceListScreen(
 
     LaunchedEffect(shouldLoadMore) {
         if (shouldLoadMore) {
-            viewModel.loadNextPage()
+            viewModel.onLoadNextPage()
         }
     }
 
@@ -111,10 +110,10 @@ fun InvoiceListScreen(
             TopAppBar(
                 title = { Text("Faktury") },
                 actions = {
-                    IconButton(onClick = viewModel::refresh) {
+                    IconButton(onClick = viewModel::onRefreshClicked) {
                         Icon(Icons.Default.Refresh, contentDescription = "Odśwież")
                     }
-                    IconButton(onClick = viewModel::logout) {
+                    IconButton(onClick = viewModel::onLogoutClicked) {
                         Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Wyloguj")
                     }
                 },
@@ -137,6 +136,19 @@ fun InvoiceListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            val selectedTabIndex = if (uiState.subjectType == InvoiceSubjectType.ISSUED) 0 else 1
+            PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
+                Tab(
+                    selected = selectedTabIndex == 0,
+                    onClick = { viewModel.onSubjectTypeChanged(InvoiceSubjectType.ISSUED) },
+                    text = { Text("Wystawione") }
+                )
+                Tab(
+                    selected = selectedTabIndex == 1,
+                    onClick = { viewModel.onSubjectTypeChanged(InvoiceSubjectType.RECEIVED) },
+                    text = { Text("Otrzymane") }
+                )
+            }
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -183,12 +195,30 @@ fun InvoiceListScreen(
                             Text(uiState.dateTo, style = MaterialTheme.typography.bodySmall)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        FilledTonalButton(onClick = viewModel::loadInvoices) {
+                        FilledTonalButton(onClick = viewModel::onSearchClicked) {
                             Text("Szukaj")
                         }
                     }
                 }
             }
+
+            OutlinedTextField(
+                value = uiState.searchQuery,
+                onValueChange = viewModel::onSearchQueryChanged,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                placeholder = { Text("Filtruj faktury") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (uiState.searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Wyczyść filtr")
+                        }
+                    }
+                },
+                singleLine = true,
+            )
 
             if (uiState.isLoading && uiState.invoices.isEmpty()) {
                 Box(
@@ -197,20 +227,25 @@ fun InvoiceListScreen(
                 ) {
                     CircularProgressIndicator()
                 }
-            } else if (uiState.invoices.isEmpty()) {
+            } else if (uiState.displayedInvoices.isEmpty()) {
+                val isFiltered = uiState.searchQuery.isNotBlank() && uiState.invoices.isNotEmpty()
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "Brak faktur",
+                            text = if (isFiltered) "Brak wyników" else "Brak faktur",
                             style = MaterialTheme.typography.headlineSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Nie znaleziono faktur w wybranym zakresie dat",
+                            text = if (isFiltered) {
+                                "Brak faktur pasujących do \"${uiState.searchQuery}\""
+                            } else {
+                                "Nie znaleziono faktur w wybranym zakresie dat"
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
@@ -224,7 +259,7 @@ fun InvoiceListScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(
-                        items = uiState.invoices,
+                        items = uiState.displayedInvoices,
                         key = { it.ksefReferenceNumber }
                     ) { invoice ->
                         InvoiceCard(

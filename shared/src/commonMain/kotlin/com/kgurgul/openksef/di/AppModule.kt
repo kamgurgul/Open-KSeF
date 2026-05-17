@@ -38,6 +38,6 @@ val appModule = module {
     // ViewModels
     viewModelOf(::LoginViewModel)
     viewModelOf(::InvoiceListViewModel)
-    viewModelOf(::InvoiceDetailViewModel)
+    viewModel { params -> InvoiceDetailViewModel(params.get(), get()) }
     viewModelOf(::SendInvoiceViewModel)
 }

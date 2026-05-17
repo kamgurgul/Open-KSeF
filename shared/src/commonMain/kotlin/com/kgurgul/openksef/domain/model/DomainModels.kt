@@ -31,6 +31,11 @@ data class InvoiceListResult(
     val hasMore: Boolean
 )
 
+enum class InvoiceSubjectType(val apiValue: String) {
+    ISSUED("Subject1"),
+    RECEIVED("Subject2")
+}
+
 data class SendInvoiceResult(
     val referenceNumber: String
 )
