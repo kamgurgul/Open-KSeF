@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Open KSeF</string>
+    <string name="app_subtitle">Krajowy System e-Faktur</string>
+
+    <!-- Common actions -->
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">Anuluj</string>
+    <string name="action_back">Wróć</string>
+    <string name="action_search">Szukaj</string>
+    <string name="action_refresh">Odśwież</string>
+    <string name="action_logout">Wyloguj</string>
+    <string name="action_delete">Usuń</string>
+    <string name="action_clear_filter">Wyczyść filtr</string>
+    <string name="action_send_invoice">Wyślij fakturę</string>
+
+    <!-- Login -->
+    <string name="login_nip_label">NIP</string>
+    <string name="login_nip_placeholder">0000000000</string>
+    <string name="login_token_label">Token autoryzacyjny</string>
+    <string name="login_environment_label">Środowisko</string>
+    <string name="login_remember_credentials">Zapamiętaj dane logowania</string>
+    <string name="login_sign_in">Zaloguj się</string>
+
+    <!-- Invoice list -->
+    <string name="invoices_title">Faktury</string>
+    <string name="invoices_tab_issued">Wystawione</string>
+    <string name="invoices_tab_received">Otrzymane</string>
+    <string name="invoices_date_range">Zakres dat</string>
+    <string name="invoices_filter_placeholder">Filtruj faktury</string>
+    <string name="invoices_empty_filtered_title">Brak wyników</string>
+    <string name="invoices_empty_title">Brak faktur</string>
+    <string name="invoices_empty_filtered_description">Brak faktur pasujących do \"%1$s\"</string>
+    <string name="invoices_empty_description">Nie znaleziono faktur w wybranym zakresie dat</string>
+
+    <!-- Invoice detail -->
+    <string name="invoice_detail_xml_title">Treść faktury (XML)</string>
+
+    <!-- Send invoice -->
+    <string name="send_invoice_title">Wyślij fakturę</string>
+    <string name="send_invoice_sent_title">Faktura wysłana</string>
+    <string name="send_invoice_sent_message">Faktura została wysłana do KSeF.</string>
+    <string name="send_invoice_reference_number_label">Nr referencyjny:</string>
+    <string name="send_invoice_seller">Sprzedawca</string>
+    <string name="send_invoice_buyer">Nabywca</string>
+    <string name="send_invoice_details">Dane faktury</string>
+    <string name="send_invoice_name">Nazwa</string>
+    <string name="send_invoice_address">Adres</string>
+    <string name="send_invoice_number">Numer faktury</string>
+    <string name="send_invoice_issue_date">Data wystawienia (RRRR-MM-DD)</string>
+    <string name="send_invoice_items">Pozycje faktury</string>
+    <string name="send_invoice_add_item">Dodaj pozycję</string>
+    <string name="send_invoice_item_index">Pozycja %1$d</string>
+    <string name="send_invoice_description">Opis</string>
+    <string name="send_invoice_quantity">Ilość</string>
+    <string name="send_invoice_unit_price">Cena jedn.</string>
+    <string name="send_invoice_vat">VAT</string>
+    <string name="send_invoice_net_value">Netto: %1$s PLN</string>
+    <string name="send_invoice_gross_value">Brutto: %1$s PLN</string>
+    <string name="send_invoice_summary">Podsumowanie</string>
+    <string name="send_invoice_total_net">Netto:</string>
+    <string name="send_invoice_total_vat">VAT:</string>
+    <string name="send_invoice_total_gross">Brutto:</string>
+    <string name="send_invoice_send">Wyślij do KSeF</string>
+
+    <!-- Invoice card -->
+    <string name="invoice_card_seller">Sprzedawca: %1$s</string>
+    <string name="invoice_card_buyer">Nabywca: %1$s</string>
+    <string name="invoice_card_net">Netto</string>
+    <string name="invoice_card_vat">VAT</string>
+    <string name="invoice_card_gross">Brutto</string>
+    <string name="amount_pln">%1$s PLN</string>
+
+    <!-- Errors -->
+    <string name="error_nip_invalid">NIP musi mieć 10 cyfr</string>
+    <string name="error_token_required">Token jest wymagany</string>
+    <string name="error_login_failed">Błąd logowania</string>
+    <string name="error_load_invoices">Błąd pobierania faktur</string>
+    <string name="error_load_invoice">Błąd pobierania faktury</string>
+    <string name="error_required">Wymagane</string>
+    <string name="error_items_required">Dodaj min. 1 pozycję</string>
+    <string name="error_send_invoice">Błąd wysyłania faktury</string>
+</resources>

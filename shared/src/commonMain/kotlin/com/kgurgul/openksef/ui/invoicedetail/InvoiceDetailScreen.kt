@@ -15,6 +15,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kgurgul.openksef.common.ObserveAsEvents
+import com.kgurgul.openksef.common.UiText
+import com.kgurgul.openksef.common.asString
+import openksef.shared.generated.resources.Res
+import openksef.shared.generated.resources.action_back
+import openksef.shared.generated.resources.invoice_detail_xml_title
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,9 +31,17 @@ fun InvoiceDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    var pendingError by remember { mutableStateOf<UiText?>(null) }
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
-            is InvoiceDetailEvent.ShowError -> snackbarHostState.showSnackbar(event.message)
+            is InvoiceDetailEvent.ShowError -> pendingError = event.message
+        }
+    }
+    val errorMessage = pendingError?.asString()
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            pendingError = null
         }
     }
 
@@ -45,7 +59,7 @@ fun InvoiceDetailScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Wróć"
+                            contentDescription = stringResource(Res.string.action_back)
                         )
                     }
                 },
@@ -77,7 +91,7 @@ fun InvoiceDetailScreen(
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = "Treść faktury (XML)",
+                            text = stringResource(Res.string.invoice_detail_xml_title),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.primary
                         )

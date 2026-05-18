@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kgurgul.openksef.common.ObserveAsEvents
+import com.kgurgul.openksef.common.asString
 import com.kgurgul.openksef.domain.model.InvoiceSubjectType
 import com.kgurgul.openksef.ui.components.InvoiceCard
 import kotlinx.datetime.Instant
@@ -26,6 +27,24 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
+import openksef.shared.generated.resources.Res
+import openksef.shared.generated.resources.action_cancel
+import openksef.shared.generated.resources.action_clear_filter
+import openksef.shared.generated.resources.action_logout
+import openksef.shared.generated.resources.action_ok
+import openksef.shared.generated.resources.action_refresh
+import openksef.shared.generated.resources.action_search
+import openksef.shared.generated.resources.action_send_invoice
+import openksef.shared.generated.resources.invoices_date_range
+import openksef.shared.generated.resources.invoices_empty_description
+import openksef.shared.generated.resources.invoices_empty_filtered_description
+import openksef.shared.generated.resources.invoices_empty_filtered_title
+import openksef.shared.generated.resources.invoices_empty_title
+import openksef.shared.generated.resources.invoices_filter_placeholder
+import openksef.shared.generated.resources.invoices_tab_issued
+import openksef.shared.generated.resources.invoices_tab_received
+import openksef.shared.generated.resources.invoices_title
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,10 +60,18 @@ fun InvoiceListScreen(
     var showDateFromPicker by remember { mutableStateOf(false) }
     var showDateToPicker by remember { mutableStateOf(false) }
 
+    var pendingError by remember { mutableStateOf<com.kgurgul.openksef.common.UiText?>(null) }
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
-            is InvoiceListEvent.ShowError -> snackbarHostState.showSnackbar(event.message)
+            is InvoiceListEvent.ShowError -> pendingError = event.message
             InvoiceListEvent.SessionEnded -> onLoggedOut()
+        }
+    }
+    val errorMessage = pendingError?.asString()
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            pendingError = null
         }
     }
 
@@ -73,10 +100,12 @@ fun InvoiceListScreen(
                         viewModel.onDateFromChanged(millis.toLocalDateString())
                     }
                     showDateFromPicker = false
-                }) { Text("OK") }
+                }) { Text(stringResource(Res.string.action_ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDateFromPicker = false }) { Text("Anuluj") }
+                TextButton(onClick = { showDateFromPicker = false }) {
+                    Text(stringResource(Res.string.action_cancel))
+                }
             }
         ) {
             DatePicker(state = datePickerState)
@@ -95,10 +124,12 @@ fun InvoiceListScreen(
                         viewModel.onDateToChanged(millis.toLocalDateString())
                     }
                     showDateToPicker = false
-                }) { Text("OK") }
+                }) { Text(stringResource(Res.string.action_ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDateToPicker = false }) { Text("Anuluj") }
+                TextButton(onClick = { showDateToPicker = false }) {
+                    Text(stringResource(Res.string.action_cancel))
+                }
             }
         ) {
             DatePicker(state = datePickerState)
@@ -108,13 +139,19 @@ fun InvoiceListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Faktury") },
+                title = { Text(stringResource(Res.string.invoices_title)) },
                 actions = {
                     IconButton(onClick = viewModel::onRefreshClicked) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Odśwież")
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = stringResource(Res.string.action_refresh)
+                        )
                     }
                     IconButton(onClick = viewModel::onLogoutClicked) {
-                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Wyloguj")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ExitToApp,
+                            contentDescription = stringResource(Res.string.action_logout)
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -126,7 +163,10 @@ fun InvoiceListScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onSendInvoiceClick) {
-                Icon(Icons.Default.Add, contentDescription = "Wyślij fakturę")
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = stringResource(Res.string.action_send_invoice)
+                )
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -141,12 +181,12 @@ fun InvoiceListScreen(
                 Tab(
                     selected = selectedTabIndex == 0,
                     onClick = { viewModel.onSubjectTypeChanged(InvoiceSubjectType.ISSUED) },
-                    text = { Text("Wystawione") }
+                    text = { Text(stringResource(Res.string.invoices_tab_issued)) }
                 )
                 Tab(
                     selected = selectedTabIndex == 1,
                     onClick = { viewModel.onSubjectTypeChanged(InvoiceSubjectType.RECEIVED) },
-                    text = { Text("Otrzymane") }
+                    text = { Text(stringResource(Res.string.invoices_tab_received)) }
                 )
             }
             Card(
@@ -170,7 +210,7 @@ fun InvoiceListScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Zakres dat",
+                            text = stringResource(Res.string.invoices_date_range),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -196,7 +236,7 @@ fun InvoiceListScreen(
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         FilledTonalButton(onClick = viewModel::onSearchClicked) {
-                            Text("Szukaj")
+                            Text(stringResource(Res.string.action_search))
                         }
                     }
                 }
@@ -208,12 +248,15 @@ fun InvoiceListScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp),
-                placeholder = { Text("Filtruj faktury") },
+                placeholder = { Text(stringResource(Res.string.invoices_filter_placeholder)) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 trailingIcon = {
                     if (uiState.searchQuery.isNotEmpty()) {
                         IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Wyczyść filtr")
+                            Icon(
+                                Icons.Default.Clear,
+                                contentDescription = stringResource(Res.string.action_clear_filter)
+                            )
                         }
                     }
                 },
@@ -235,16 +278,23 @@ fun InvoiceListScreen(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = if (isFiltered) "Brak wyników" else "Brak faktur",
+                            text = if (isFiltered) {
+                                stringResource(Res.string.invoices_empty_filtered_title)
+                            } else {
+                                stringResource(Res.string.invoices_empty_title)
+                            },
                             style = MaterialTheme.typography.headlineSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = if (isFiltered) {
-                                "Brak faktur pasujących do \"${uiState.searchQuery}\""
+                                stringResource(
+                                    Res.string.invoices_empty_filtered_description,
+                                    uiState.searchQuery,
+                                )
                             } else {
-                                "Nie znaleziono faktur w wybranym zakresie dat"
+                                stringResource(Res.string.invoices_empty_description)
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,

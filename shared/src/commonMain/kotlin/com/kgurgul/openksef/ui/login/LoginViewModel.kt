@@ -3,6 +3,7 @@ package com.kgurgul.openksef.ui.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kgurgul.openksef.common.KsefLogger
+import com.kgurgul.openksef.common.UiText
 import com.kgurgul.openksef.data.local.TokenStore
 import com.kgurgul.openksef.data.repository.KsefRepository
 import com.kgurgul.openksef.domain.model.KsefEnvironment
@@ -12,6 +13,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import openksef.shared.generated.resources.Res
+import openksef.shared.generated.resources.error_login_failed
+import openksef.shared.generated.resources.error_nip_invalid
+import openksef.shared.generated.resources.error_token_required
 
 data class LoginUiState(
     val nip: String = "",
@@ -20,7 +25,7 @@ data class LoginUiState(
     val rememberCredentials: Boolean = false,
     val isLoading: Boolean = false,
     val isLoggedIn: Boolean = false,
-    val error: String? = null
+    val error: UiText? = null
 )
 
 class LoginViewModel(
@@ -75,11 +80,11 @@ class LoginViewModel(
         val token = state.token.trim()
 
         if (nip.length != 10 || !nip.all { it.isDigit() }) {
-            _uiState.update { it.copy(error = "NIP musi mieć 10 cyfr") }
+            _uiState.update { it.copy(error = UiText.Resource(Res.string.error_nip_invalid)) }
             return
         }
         if (token.isBlank()) {
-            _uiState.update { it.copy(error = "Token jest wymagany") }
+            _uiState.update { it.copy(error = UiText.Resource(Res.string.error_token_required)) }
             return
         }
 
@@ -103,7 +108,8 @@ class LoginViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = e.message ?: "Błąd logowania"
+                            error = e.message?.let { msg -> UiText.Raw(msg) }
+                                ?: UiText.Resource(Res.string.error_login_failed)
                         )
                     }
                 }

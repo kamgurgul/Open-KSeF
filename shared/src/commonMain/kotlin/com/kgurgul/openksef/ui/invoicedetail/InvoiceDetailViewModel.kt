@@ -2,6 +2,7 @@ package com.kgurgul.openksef.ui.invoicedetail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kgurgul.openksef.common.UiText
 import com.kgurgul.openksef.data.repository.KsefRepository
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -10,6 +11,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
+import openksef.shared.generated.resources.Res
+import openksef.shared.generated.resources.error_load_invoice
 
 data class InvoiceDetailUiState(
     val ksefReferenceNumber: String = "",
@@ -18,7 +21,7 @@ data class InvoiceDetailUiState(
 )
 
 sealed interface InvoiceDetailEvent {
-    data class ShowError(val message: String) : InvoiceDetailEvent
+    data class ShowError(val message: UiText) : InvoiceDetailEvent
 }
 
 class InvoiceDetailViewModel(
@@ -44,7 +47,10 @@ class InvoiceDetailViewModel(
             .onFailure { e ->
                 emit(loadingState.copy(isLoading = false))
                 eventChannel.send(
-                    InvoiceDetailEvent.ShowError(e.message ?: GENERIC_LOAD_ERROR)
+                    InvoiceDetailEvent.ShowError(
+                        e.message?.let { UiText.Raw(it) }
+                            ?: UiText.Resource(Res.string.error_load_invoice)
+                    )
                 )
             }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), loadingState)
@@ -54,8 +60,4 @@ class InvoiceDetailViewModel(
             ksefReferenceNumber = ksefReferenceNumber,
             isLoading = true,
         )
-
-    companion object {
-        private const val GENERIC_LOAD_ERROR = "Błąd pobierania faktury"
-    }
 }

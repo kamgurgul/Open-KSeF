@@ -12,6 +12,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kgurgul.openksef.domain.model.InvoiceSummary
+import openksef.shared.generated.resources.Res
+import openksef.shared.generated.resources.amount_pln
+import openksef.shared.generated.resources.invoice_card_buyer
+import openksef.shared.generated.resources.invoice_card_gross
+import openksef.shared.generated.resources.invoice_card_net
+import openksef.shared.generated.resources.invoice_card_seller
+import openksef.shared.generated.resources.invoice_card_vat
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun LoadingOverlay(isLoading: Boolean) {
@@ -74,13 +82,19 @@ fun InvoiceCard(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "Sprzedawca: ${invoice.sellerName.ifBlank { invoice.sellerNip }}",
+                text = stringResource(
+                    Res.string.invoice_card_seller,
+                    invoice.sellerName.ifBlank { invoice.sellerNip },
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = "Nabywca: ${invoice.buyerName.ifBlank { invoice.buyerNip }}",
+                text = stringResource(
+                    Res.string.invoice_card_buyer,
+                    invoice.buyerName.ifBlank { invoice.buyerNip },
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -94,34 +108,34 @@ fun InvoiceCard(
             ) {
                 Column {
                     Text(
-                        text = "Netto",
+                        text = stringResource(Res.string.invoice_card_net),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "${invoice.net} PLN",
+                        text = stringResource(Res.string.amount_pln, invoice.net),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
                 Column {
                     Text(
-                        text = "VAT",
+                        text = stringResource(Res.string.invoice_card_vat),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "${invoice.vat} PLN",
+                        text = stringResource(Res.string.amount_pln, invoice.vat),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
                 Column {
                     Text(
-                        text = "Brutto",
+                        text = stringResource(Res.string.invoice_card_gross),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "${invoice.gross} PLN",
+                        text = stringResource(Res.string.amount_pln, invoice.gross),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold
                     )

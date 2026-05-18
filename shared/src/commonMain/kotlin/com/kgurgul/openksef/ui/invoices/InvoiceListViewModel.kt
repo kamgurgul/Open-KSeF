@@ -2,6 +2,7 @@ package com.kgurgul.openksef.ui.invoices
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kgurgul.openksef.common.UiText
 import com.kgurgul.openksef.data.repository.KsefRepository
 import com.kgurgul.openksef.domain.model.InvoiceSubjectType
 import com.kgurgul.openksef.domain.model.InvoiceSummary
@@ -20,6 +21,8 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlin.time.Clock
 import kotlinx.datetime.todayIn
+import openksef.shared.generated.resources.Res
+import openksef.shared.generated.resources.error_load_invoices
 
 data class InvoiceListUiState(
     val invoices: List<InvoiceSummary> = emptyList(),
@@ -36,7 +39,7 @@ data class InvoiceListUiState(
 )
 
 sealed interface InvoiceListEvent {
-    data class ShowError(val message: String) : InvoiceListEvent
+    data class ShowError(val message: UiText) : InvoiceListEvent
     data object SessionEnded : InvoiceListEvent
 }
 
@@ -98,7 +101,7 @@ class InvoiceListViewModel(
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isLoading = false) }
-                    eventChannel.send(InvoiceListEvent.ShowError(e.message ?: GENERIC_LOAD_ERROR))
+                    eventChannel.send(InvoiceListEvent.ShowError(e.toUiText()))
                 }
         }
     }
@@ -156,10 +159,13 @@ class InvoiceListViewModel(
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isLoading = false, isRefreshing = false) }
-                    eventChannel.send(InvoiceListEvent.ShowError(e.message ?: GENERIC_LOAD_ERROR))
+                    eventChannel.send(InvoiceListEvent.ShowError(e.toUiText()))
                 }
         }
     }
+
+    private fun Throwable.toUiText(): UiText = message?.let { UiText.Raw(it) }
+        ?: UiText.Resource(Res.string.error_load_invoices)
 
     private fun initialState(): InvoiceListUiState {
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
@@ -172,7 +178,6 @@ class InvoiceListViewModel(
 
     companion object {
         private const val PAGE_SIZE = 10
-        private const val GENERIC_LOAD_ERROR = "Błąd pobierania faktur"
 
         internal fun filterInvoices(
             invoices: List<InvoiceSummary>,

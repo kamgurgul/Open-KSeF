@@ -1,11 +1,15 @@
 package com.kgurgul.openksef.ui.login
 
+import com.kgurgul.openksef.common.UiText
 import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.local.TokenStore
 import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefCrypto
 import com.kgurgul.openksef.data.repository.KsefRepository
 import com.kgurgul.openksef.domain.model.KsefEnvironment
+import openksef.shared.generated.resources.Res
+import openksef.shared.generated.resources.error_nip_invalid
+import openksef.shared.generated.resources.error_token_required
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -80,7 +84,7 @@ class LoginViewModelTest {
         viewModel.login()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals("NIP musi mieć 10 cyfr", viewModel.uiState.value.error)
+        assertEquals(UiText.Resource(Res.string.error_nip_invalid), viewModel.uiState.value.error)
         assertFalse(viewModel.uiState.value.isLoading)
     }
 
@@ -94,7 +98,10 @@ class LoginViewModelTest {
         viewModel.login()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals("Token jest wymagany", viewModel.uiState.value.error)
+        assertEquals(
+            UiText.Resource(Res.string.error_token_required),
+            viewModel.uiState.value.error
+        )
     }
 
     @Test

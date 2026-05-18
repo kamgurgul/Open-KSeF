@@ -2,6 +2,7 @@ package com.kgurgul.openksef.ui.sendinvoice
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kgurgul.openksef.common.UiText
 import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.repository.KsefRepository
 import com.kgurgul.openksef.domain.invoice.InvoiceBuilder
@@ -15,6 +16,11 @@ import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
+import openksef.shared.generated.resources.Res
+import openksef.shared.generated.resources.error_items_required
+import openksef.shared.generated.resources.error_nip_invalid
+import openksef.shared.generated.resources.error_required
+import openksef.shared.generated.resources.error_send_invoice
 
 data class InvoiceLineItemUi(
     val description: String = "",
@@ -39,8 +45,8 @@ data class SendInvoiceUiState(
     val isLoading: Boolean = false,
     val isSent: Boolean = false,
     val sentReferenceNumber: String = "",
-    val error: String? = null,
-    val validationErrors: Map<String, String> = emptyMap()
+    val error: UiText? = null,
+    val validationErrors: Map<String, UiText> = emptyMap()
 )
 
 class SendInvoiceViewModel(
@@ -65,7 +71,7 @@ class SendInvoiceViewModel(
         _uiState.update {
             it.copy(
                 sellerName = name,
-                validationErrors = it.validationErrors - "sellerName"
+                validationErrors = it.validationErrors - FIELD_SELLER_NAME
             )
         }
     }
@@ -78,7 +84,7 @@ class SendInvoiceViewModel(
         _uiState.update {
             it.copy(
                 buyerNip = nip,
-                validationErrors = it.validationErrors - "buyerNip"
+                validationErrors = it.validationErrors - FIELD_BUYER_NIP
             )
         }
     }
@@ -87,7 +93,7 @@ class SendInvoiceViewModel(
         _uiState.update {
             it.copy(
                 buyerName = name,
-                validationErrors = it.validationErrors - "buyerName"
+                validationErrors = it.validationErrors - FIELD_BUYER_NAME
             )
         }
     }
@@ -100,7 +106,7 @@ class SendInvoiceViewModel(
         _uiState.update {
             it.copy(
                 invoiceNumber = number,
-                validationErrors = it.validationErrors - "invoiceNumber"
+                validationErrors = it.validationErrors - FIELD_INVOICE_NUMBER
             )
         }
     }
@@ -135,22 +141,30 @@ class SendInvoiceViewModel(
         _uiState.update { state ->
             state.copy(
                 items = state.items.toMutableList().apply { set(index, updated) },
-                validationErrors = state.validationErrors - "items"
+                validationErrors = state.validationErrors - FIELD_ITEMS
             )
         }
     }
 
     fun send() {
         val state = _uiState.value
-        val errors = mutableMapOf<String, String>()
+        val errors = mutableMapOf<String, UiText>()
 
-        if (state.sellerName.isBlank()) errors["sellerName"] = "Wymagane"
-        if (state.buyerNip.length != 10 || !state.buyerNip.all { it.isDigit() }) {
-            errors["buyerNip"] = "NIP musi mieć 10 cyfr"
+        if (state.sellerName.isBlank()) {
+            errors[FIELD_SELLER_NAME] = UiText.Resource(Res.string.error_required)
         }
-        if (state.buyerName.isBlank()) errors["buyerName"] = "Wymagane"
-        if (state.invoiceNumber.isBlank()) errors["invoiceNumber"] = "Wymagane"
-        if (state.items.all { it.description.isBlank() }) errors["items"] = "Dodaj min. 1 pozycję"
+        if (state.buyerNip.length != 10 || !state.buyerNip.all { it.isDigit() }) {
+            errors[FIELD_BUYER_NIP] = UiText.Resource(Res.string.error_nip_invalid)
+        }
+        if (state.buyerName.isBlank()) {
+            errors[FIELD_BUYER_NAME] = UiText.Resource(Res.string.error_required)
+        }
+        if (state.invoiceNumber.isBlank()) {
+            errors[FIELD_INVOICE_NUMBER] = UiText.Resource(Res.string.error_required)
+        }
+        if (state.items.all { it.description.isBlank() }) {
+            errors[FIELD_ITEMS] = UiText.Resource(Res.string.error_items_required)
+        }
 
         if (errors.isNotEmpty()) {
             _uiState.update { it.copy(validationErrors = errors) }
@@ -199,7 +213,8 @@ class SendInvoiceViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = e.message ?: "Błąd wysyłania faktury"
+                            error = e.message?.let { msg -> UiText.Raw(msg) }
+                                ?: UiText.Resource(Res.string.error_send_invoice)
                         )
                     }
                 }
@@ -223,5 +238,13 @@ class SendInvoiceViewModel(
                 else -> str
             }
         }
+    }
+
+    companion object {
+        const val FIELD_SELLER_NAME = "sellerName"
+        const val FIELD_BUYER_NIP = "buyerNip"
+        const val FIELD_BUYER_NAME = "buyerName"
+        const val FIELD_INVOICE_NUMBER = "invoiceNumber"
+        const val FIELD_ITEMS = "items"
     }
 }

@@ -13,8 +13,19 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kgurgul.openksef.common.asString
 import com.kgurgul.openksef.domain.model.KsefEnvironment
 import com.kgurgul.openksef.ui.components.LoadingOverlay
+import openksef.shared.generated.resources.Res
+import openksef.shared.generated.resources.app_name
+import openksef.shared.generated.resources.app_subtitle
+import openksef.shared.generated.resources.login_environment_label
+import openksef.shared.generated.resources.login_nip_label
+import openksef.shared.generated.resources.login_nip_placeholder
+import openksef.shared.generated.resources.login_remember_credentials
+import openksef.shared.generated.resources.login_sign_in
+import openksef.shared.generated.resources.login_token_label
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun LoginScreen(
@@ -30,8 +41,9 @@ fun LoginScreen(
         }
     }
 
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
+    val errorMessage = uiState.error?.asString()
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearError()
         }
@@ -53,14 +65,14 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(48.dp))
 
                 Text(
-                    text = "Open KSeF",
+                    text = stringResource(Res.string.app_name),
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
 
                 Text(
-                    text = "Krajowy System e-Faktur",
+                    text = stringResource(Res.string.app_subtitle),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -73,8 +85,8 @@ fun LoginScreen(
                         val trimmed = it.filter { char -> char.isDigit() }
                         if (trimmed.length <= 10) viewModel.onNipChanged(it)
                     },
-                    label = { Text("NIP") },
-                    placeholder = { Text("0000000000") },
+                    label = { Text(stringResource(Res.string.login_nip_label)) },
+                    placeholder = { Text(stringResource(Res.string.login_nip_placeholder)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
@@ -85,7 +97,7 @@ fun LoginScreen(
                 OutlinedTextField(
                     value = uiState.token,
                     onValueChange = viewModel::onTokenChanged,
-                    label = { Text("Token autoryzacyjny") },
+                    label = { Text(stringResource(Res.string.login_token_label)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth()
@@ -94,7 +106,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Środowisko",
+                    text = stringResource(Res.string.login_environment_label),
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.align(Alignment.Start)
                 )
@@ -127,7 +139,7 @@ fun LoginScreen(
                         onCheckedChange = viewModel::onRememberChanged
                     )
                     Text(
-                        text = "Zapamiętaj dane logowania",
+                        text = stringResource(Res.string.login_remember_credentials),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -147,7 +159,7 @@ fun LoginScreen(
                             color = MaterialTheme.colorScheme.onPrimary
                         )
                     } else {
-                        Text("Zaloguj się")
+                        Text(stringResource(Res.string.login_sign_in))
                     }
                 }
 
