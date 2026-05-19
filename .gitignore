@@ -19,4 +19,5 @@ captures
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
 shared/build
-composeApp/build
+androidApp/build
+desktopApp/build

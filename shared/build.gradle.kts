@@ -1,11 +1,8 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidKotlinMultiplatformLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    alias(libs.plugins.composeHotReload)
     alias(libs.plugins.kotlinSerialization)
 }
 
@@ -80,9 +77,8 @@ kotlin {
             implementation(libs.kotlinx.datetime)
         }
         jvmMain.dependencies {
-            implementation(compose.desktop.currentOs)
-            implementation(libs.kotlinx.coroutinesSwing)
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.kotlinx.coroutinesSwing)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
@@ -90,14 +86,3 @@ kotlin {
     }
 }
 
-compose.desktop {
-    application {
-        mainClass = "com.kgurgul.openksef.MainKt"
-
-        nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.kgurgul.openksef"
-            packageVersion = "1.0.0"
-        }
-    }
-}
