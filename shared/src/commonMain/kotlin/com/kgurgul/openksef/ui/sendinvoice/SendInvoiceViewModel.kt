@@ -1,3 +1,19 @@
+/*
+ * Copyright KG Soft
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.kgurgul.openksef.ui.sendinvoice
 
 import androidx.lifecycle.ViewModel
@@ -8,12 +24,12 @@ import com.kgurgul.openksef.data.repository.KsefRepository
 import com.kgurgul.openksef.domain.invoice.InvoiceBuilder
 import com.kgurgul.openksef.domain.invoice.InvoiceData
 import com.kgurgul.openksef.domain.invoice.InvoiceLineItem
+import kotlin.time.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import openksef.shared.generated.resources.Res
@@ -28,7 +44,7 @@ data class InvoiceLineItemUi(
     val unitPrice: String = "",
     val vatRate: Int = 23,
     val netValue: String = "0.00",
-    val grossValue: String = "0.00"
+    val grossValue: String = "0.00",
 )
 
 data class SendInvoiceUiState(
@@ -46,12 +62,12 @@ data class SendInvoiceUiState(
     val isSent: Boolean = false,
     val sentReferenceNumber: String = "",
     val error: UiText? = null,
-    val validationErrors: Map<String, UiText> = emptyMap()
+    val validationErrors: Map<String, UiText> = emptyMap(),
 )
 
 class SendInvoiceViewModel(
     private val repository: KsefRepository,
-    private val sessionHolder: SessionHolder
+    private val sessionHolder: SessionHolder,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SendInvoiceUiState())
@@ -60,19 +76,13 @@ class SendInvoiceViewModel(
     init {
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
         _uiState.update {
-            it.copy(
-                sellerNip = sessionHolder.nip ?: "",
-                issueDate = today.toString()
-            )
+            it.copy(sellerNip = sessionHolder.nip ?: "", issueDate = today.toString())
         }
     }
 
     fun onSellerNameChanged(name: String) {
         _uiState.update {
-            it.copy(
-                sellerName = name,
-                validationErrors = it.validationErrors - FIELD_SELLER_NAME
-            )
+            it.copy(sellerName = name, validationErrors = it.validationErrors - FIELD_SELLER_NAME)
         }
     }
 
@@ -82,19 +92,13 @@ class SendInvoiceViewModel(
 
     fun onBuyerNipChanged(nip: String) {
         _uiState.update {
-            it.copy(
-                buyerNip = nip,
-                validationErrors = it.validationErrors - FIELD_BUYER_NIP
-            )
+            it.copy(buyerNip = nip, validationErrors = it.validationErrors - FIELD_BUYER_NIP)
         }
     }
 
     fun onBuyerNameChanged(name: String) {
         _uiState.update {
-            it.copy(
-                buyerName = name,
-                validationErrors = it.validationErrors - FIELD_BUYER_NAME
-            )
+            it.copy(buyerName = name, validationErrors = it.validationErrors - FIELD_BUYER_NAME)
         }
     }
 
@@ -106,7 +110,7 @@ class SendInvoiceViewModel(
         _uiState.update {
             it.copy(
                 invoiceNumber = number,
-                validationErrors = it.validationErrors - FIELD_INVOICE_NUMBER
+                validationErrors = it.validationErrors - FIELD_INVOICE_NUMBER,
             )
         }
     }
@@ -133,15 +137,12 @@ class SendInvoiceViewModel(
         val net = qty * price
         val gross = net * (1 + item.vatRate / 100.0)
 
-        val updated = item.copy(
-            netValue = formatAmount(net),
-            grossValue = formatAmount(gross)
-        )
+        val updated = item.copy(netValue = formatAmount(net), grossValue = formatAmount(gross))
 
         _uiState.update { state ->
             state.copy(
                 items = state.items.toMutableList().apply { set(index, updated) },
-                validationErrors = state.validationErrors - FIELD_ITEMS
+                validationErrors = state.validationErrors - FIELD_ITEMS,
             )
         }
     }
@@ -174,38 +175,41 @@ class SendInvoiceViewModel(
         _uiState.update { it.copy(isLoading = true, error = null) }
 
         viewModelScope.launch {
-            val invoiceData = InvoiceData(
-                invoiceNumber = state.invoiceNumber,
-                issueDate = state.issueDate,
-                sellerNip = state.sellerNip,
-                sellerName = state.sellerName,
-                sellerAddress = state.sellerAddress,
-                buyerNip = state.buyerNip,
-                buyerName = state.buyerName,
-                buyerAddress = state.buyerAddress,
-                currency = state.currency,
-                items = state.items
-                    .filter { it.description.isNotBlank() }
-                    .map { item ->
-                        InvoiceLineItem(
-                            description = item.description,
-                            quantity = item.quantity.toDoubleOrNull() ?: 0.0,
-                            unitPrice = item.unitPrice.toDoubleOrNull() ?: 0.0,
-                            vatRate = item.vatRate,
-                            netValue = item.netValue.toDoubleOrNull() ?: 0.0,
-                            grossValue = item.grossValue.toDoubleOrNull() ?: 0.0
-                        )
-                    }
-            )
+            val invoiceData =
+                InvoiceData(
+                    invoiceNumber = state.invoiceNumber,
+                    issueDate = state.issueDate,
+                    sellerNip = state.sellerNip,
+                    sellerName = state.sellerName,
+                    sellerAddress = state.sellerAddress,
+                    buyerNip = state.buyerNip,
+                    buyerName = state.buyerName,
+                    buyerAddress = state.buyerAddress,
+                    currency = state.currency,
+                    items =
+                        state.items
+                            .filter { it.description.isNotBlank() }
+                            .map { item ->
+                                InvoiceLineItem(
+                                    description = item.description,
+                                    quantity = item.quantity.toDoubleOrNull() ?: 0.0,
+                                    unitPrice = item.unitPrice.toDoubleOrNull() ?: 0.0,
+                                    vatRate = item.vatRate,
+                                    netValue = item.netValue.toDoubleOrNull() ?: 0.0,
+                                    grossValue = item.grossValue.toDoubleOrNull() ?: 0.0,
+                                )
+                            },
+                )
 
             val xml = InvoiceBuilder.buildXml(invoiceData)
-            repository.sendInvoice(xml)
+            repository
+                .sendInvoice(xml)
                 .onSuccess { result ->
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             isSent = true,
-                            sentReferenceNumber = result.referenceNumber
+                            sentReferenceNumber = result.referenceNumber,
                         )
                     }
                 }
@@ -213,8 +217,9 @@ class SendInvoiceViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = e.message?.let { msg -> UiText.Raw(msg) }
-                                ?: UiText.Resource(Res.string.error_send_invoice)
+                            error =
+                                e.message?.let { msg -> UiText.Raw(msg) }
+                                    ?: UiText.Resource(Res.string.error_send_invoice),
                         )
                     }
                 }

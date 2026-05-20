@@ -1,3 +1,19 @@
+/*
+ * Copyright KG Soft
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.kgurgul.openksef.data.remote.model
 
 import kotlinx.serialization.Serializable
@@ -9,7 +25,7 @@ data class PublicKeyCertificate(
     val certificate: String,
     val validFrom: String,
     val validTo: String,
-    val usage: List<String> = emptyList()
+    val usage: List<String> = emptyList(),
 )
 
 // ---------- Authentication: challenge ----------
@@ -19,40 +35,30 @@ data class AuthChallengeResponse(
     val challenge: String,
     val timestamp: String,
     val timestampMs: Long,
-    val clientIp: String? = null
+    val clientIp: String? = null,
 )
 
 // ---------- Authentication: ksef-token ----------
 
 @Serializable
-data class AuthenticationContextIdentifier(
-    val type: String = "Nip",
-    val value: String
-)
+data class AuthenticationContextIdentifier(val type: String = "Nip", val value: String)
 
 @Serializable
 data class InitTokenAuthenticationRequest(
     val challenge: String,
     val contextIdentifier: AuthenticationContextIdentifier,
     val encryptedToken: String,
-    val authorizationPolicy: AuthorizationPolicy? = null
+    val authorizationPolicy: AuthorizationPolicy? = null,
 )
 
-@Serializable
-data class AuthorizationPolicy(
-    val allowedIps: List<String>? = null
-)
+@Serializable data class AuthorizationPolicy(val allowedIps: List<String>? = null)
 
-@Serializable
-data class TokenInfo(
-    val token: String,
-    val validUntil: String
-)
+@Serializable data class TokenInfo(val token: String, val validUntil: String)
 
 @Serializable
 data class AuthenticationInitResponse(
     val referenceNumber: String,
-    val authenticationToken: TokenInfo
+    val authenticationToken: TokenInfo,
 )
 
 @Serializable
@@ -61,55 +67,32 @@ data class AuthenticationOperationStatusResponse(
     val authenticationMethod: String? = null,
     val status: StatusInfo,
     val isTokenRedeemed: Boolean? = null,
-    val refreshTokenValidUntil: String? = null
+    val refreshTokenValidUntil: String? = null,
 )
 
 @Serializable
-data class StatusInfo(
-    val code: Int,
-    val description: String,
-    val details: List<String>? = null
-)
+data class StatusInfo(val code: Int, val description: String, val details: List<String>? = null)
 
 // ---------- Authentication: redeem / refresh ----------
 
 @Serializable
-data class AuthenticationTokensResponse(
-    val accessToken: TokenInfo,
-    val refreshToken: TokenInfo
-)
+data class AuthenticationTokensResponse(val accessToken: TokenInfo, val refreshToken: TokenInfo)
 
-@Serializable
-data class AuthenticationTokenRefreshResponse(
-    val accessToken: TokenInfo
-)
+@Serializable data class AuthenticationTokenRefreshResponse(val accessToken: TokenInfo)
 
 // ---------- Online session ----------
 
 @Serializable
-data class FormCode(
-    val systemCode: String,
-    val schemaVersion: String,
-    val value: String
-)
+data class FormCode(val systemCode: String, val schemaVersion: String, val value: String)
 
 @Serializable
-data class EncryptionInfo(
-    val encryptedSymmetricKey: String,
-    val initializationVector: String
-)
+data class EncryptionInfo(val encryptedSymmetricKey: String, val initializationVector: String)
 
 @Serializable
-data class OpenOnlineSessionRequest(
-    val formCode: FormCode,
-    val encryption: EncryptionInfo
-)
+data class OpenOnlineSessionRequest(val formCode: FormCode, val encryption: EncryptionInfo)
 
 @Serializable
-data class OpenOnlineSessionResponse(
-    val referenceNumber: String,
-    val validUntil: String
-)
+data class OpenOnlineSessionResponse(val referenceNumber: String, val validUntil: String)
 
 // ---------- Send invoice ----------
 
@@ -121,13 +104,10 @@ data class SendInvoiceRequest(
     val encryptedInvoiceSize: Long,
     val encryptedInvoiceContent: String,
     val offlineMode: Boolean = false,
-    val hashOfCorrectedInvoice: String? = null
+    val hashOfCorrectedInvoice: String? = null,
 )
 
-@Serializable
-data class SendInvoiceResponse(
-    val referenceNumber: String
-)
+@Serializable data class SendInvoiceResponse(val referenceNumber: String)
 
 // ---------- Session status ----------
 
@@ -139,7 +119,7 @@ data class SessionStatusResponse(
     val validUntil: String? = null,
     val invoiceCount: Int? = null,
     val successfulInvoiceCount: Int? = null,
-    val failedInvoiceCount: Int? = null
+    val failedInvoiceCount: Int? = null,
 )
 
 // ---------- Invoice query / metadata ----------
@@ -149,21 +129,13 @@ data class InvoiceQueryDateRange(
     val dateType: String = "Invoicing",
     val from: String,
     val to: String? = null,
-    val restrictToPermanentStorageHwmDate: Boolean? = null
+    val restrictToPermanentStorageHwmDate: Boolean? = null,
 )
 
 @Serializable
-data class InvoiceQueryAmount(
-    val type: String,
-    val from: Double? = null,
-    val to: Double? = null
-)
+data class InvoiceQueryAmount(val type: String, val from: Double? = null, val to: Double? = null)
 
-@Serializable
-data class InvoiceQueryBuyerIdentifier(
-    val type: String,
-    val value: String? = null
-)
+@Serializable data class InvoiceQueryBuyerIdentifier(val type: String, val value: String? = null)
 
 @Serializable
 data class InvoiceQueryFilters(
@@ -179,20 +151,16 @@ data class InvoiceQueryFilters(
     val isSelfInvoicing: Boolean? = null,
     val formType: String? = null,
     val invoiceTypes: List<String>? = null,
-    val hasAttachment: Boolean? = null
+    val hasAttachment: Boolean? = null,
 )
 
-@Serializable
-data class InvoiceMetadataIdentifier(
-    val type: String,
-    val value: String? = null
-)
+@Serializable data class InvoiceMetadataIdentifier(val type: String, val value: String? = null)
 
 @Serializable
 data class InvoiceMetadataParty(
     val nip: String? = null,
     val identifier: InvoiceMetadataIdentifier? = null,
-    val name: String? = null
+    val name: String? = null,
 )
 
 @Serializable
@@ -215,7 +183,7 @@ data class InvoiceMetadata(
     val isSelfInvoicing: Boolean,
     val hasAttachment: Boolean,
     val invoiceHash: String,
-    val hashOfCorrectedInvoice: String? = null
+    val hashOfCorrectedInvoice: String? = null,
 )
 
 @Serializable
@@ -223,5 +191,5 @@ data class QueryInvoicesMetadataResponse(
     val hasMore: Boolean = false,
     val isTruncated: Boolean = false,
     val permanentStorageHwmDate: String? = null,
-    val invoices: List<InvoiceMetadata> = emptyList()
+    val invoices: List<InvoiceMetadata> = emptyList(),
 )

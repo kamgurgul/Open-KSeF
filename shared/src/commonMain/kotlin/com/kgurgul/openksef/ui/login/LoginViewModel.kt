@@ -1,3 +1,19 @@
+/*
+ * Copyright KG Soft
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.kgurgul.openksef.ui.login
 
 import androidx.lifecycle.ViewModel
@@ -25,13 +41,11 @@ data class LoginUiState(
     val rememberCredentials: Boolean = false,
     val isLoading: Boolean = false,
     val isLoggedIn: Boolean = false,
-    val error: UiText? = null
+    val error: UiText? = null,
 )
 
-class LoginViewModel(
-    private val repository: KsefRepository,
-    private val tokenStore: TokenStore
-) : ViewModel() {
+class LoginViewModel(private val repository: KsefRepository, private val tokenStore: TokenStore) :
+    ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
@@ -51,7 +65,7 @@ class LoginViewModel(
                     nip = savedNip ?: "",
                     token = savedToken ?: "",
                     environment = savedEnv,
-                    rememberCredentials = savedNip != null
+                    rememberCredentials = savedNip != null,
                 )
             }
         }
@@ -92,7 +106,8 @@ class LoginViewModel(
 
         viewModelScope.launch {
             repository.setEnvironmentBaseUrl(state.environment.baseUrl)
-            repository.initSession(nip, token)
+            repository
+                .initSession(nip, token)
                 .onSuccess {
                     if (state.rememberCredentials) {
                         tokenStore.saveNip(nip)
@@ -108,8 +123,9 @@ class LoginViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = e.message?.let { msg -> UiText.Raw(msg) }
-                                ?: UiText.Resource(Res.string.error_login_failed)
+                            error =
+                                e.message?.let { msg -> UiText.Raw(msg) }
+                                    ?: UiText.Resource(Res.string.error_login_failed),
                         )
                     }
                 }

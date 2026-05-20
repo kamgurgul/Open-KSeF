@@ -1,3 +1,19 @@
+/*
+ * Copyright KG Soft
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.kgurgul.openksef.ui.sendinvoice
 
 import com.kgurgul.openksef.data.SessionHolder
@@ -15,6 +31,12 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -22,12 +44,6 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.serialization.json.Json
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SendInvoiceViewModelTest {
@@ -108,12 +124,8 @@ class SendInvoiceViewModelTest {
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        val item = InvoiceLineItemUi(
-            description = "Test",
-            quantity = "2",
-            unitPrice = "100",
-            vatRate = 23
-        )
+        val item =
+            InvoiceLineItemUi(description = "Test", quantity = "2", unitPrice = "100", vatRate = 23)
         viewModel.updateItem(0, item)
 
         val updated = viewModel.uiState.value.items[0]
@@ -126,28 +138,34 @@ class SendInvoiceViewModelTest {
             respond(
                 content = """{"referenceNumber":"R-001"}""",
                 status = HttpStatusCode.Accepted,
-                headers = headersOf(
-                    HttpHeaders.ContentType,
-                    ContentType.Application.Json.toString()
-                )
+                headers =
+                    headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
             )
         }
-        val mockClient = HttpClient(engine) {
-            install(ContentNegotiation) {
-                json(Json { ignoreUnknownKeys = true; isLenient = true; encodeDefaults = true })
+        val mockClient =
+            HttpClient(engine) {
+                install(ContentNegotiation) {
+                    json(
+                        Json {
+                            ignoreUnknownKeys = true
+                            isLenient = true
+                            encodeDefaults = true
+                        }
+                    )
+                }
+                defaultRequest { contentType(ContentType.Application.Json) }
+                expectSuccess = false
             }
-            defaultRequest { contentType(ContentType.Application.Json) }
-            expectSuccess = false
-        }
 
         val sessionHolder = SessionHolder()
         sessionHolder.accessToken = "test-token"
         sessionHolder.onlineSessionReferenceNumber = "session-ref"
         sessionHolder.nip = "9999999999"
         val api = KsefApi(mockClient)
-        val crypto = object : KsefCrypto {
-            override fun rsaOaepSha256Encrypt(data: ByteArray, certificateDer: ByteArray) = data
-        }
+        val crypto =
+            object : KsefCrypto {
+                override fun rsaOaepSha256Encrypt(data: ByteArray, certificateDer: ByteArray) = data
+            }
         val repository = KsefRepository(api, sessionHolder, crypto)
 
         return SendInvoiceViewModel(repository, sessionHolder)

@@ -1,3 +1,19 @@
+/*
+ * Copyright KG Soft
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.kgurgul.openksef.data.remote
 
 import com.kgurgul.openksef.data.remote.model.*
@@ -13,12 +29,13 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 
-class KsefApi(
-    private val client: HttpClient
-) {
+class KsefApi(private val client: HttpClient) {
     var baseUrl: String = KsefEnvironment.TEST.baseUrl
 
-    /** GET /security/public-key-certificates — returns the certificates used to encrypt KSeF tokens and AES keys. */
+    /**
+     * GET /security/public-key-certificates — returns the certificates used to encrypt KSeF tokens
+     * and AES keys.
+     */
     suspend fun getPublicKeyCertificates(): List<PublicKeyCertificate> =
         client.get("$baseUrl/security/public-key-certificates").body()
 
@@ -35,30 +52,33 @@ class KsefApi(
     suspend fun initTokenAuthentication(
         request: InitTokenAuthenticationRequest
     ): AuthenticationInitResponse =
-        client.post("$baseUrl/auth/ksef-token") {
-            setBody(request)
-        }.body()
+        client.post("$baseUrl/auth/ksef-token") { setBody(request) }.body()
 
     /** GET /auth/{referenceNumber} — poll the authentication status. */
     suspend fun getAuthenticationStatus(
         referenceNumber: String
-    ): AuthenticationOperationStatusResponse =
-        client.get("$baseUrl/auth/$referenceNumber").body()
+    ): AuthenticationOperationStatusResponse = client.get("$baseUrl/auth/$referenceNumber").body()
 
     /**
      * POST /auth/token/redeem — exchange the authentication token (sent as Bearer) for the
      * permanent access + refresh token pair.
      */
     suspend fun redeemAccessToken(authenticationToken: String): AuthenticationTokensResponse =
-        client.post("$baseUrl/auth/token/redeem") {
-            header(HttpHeaders.Authorization, "Bearer $authenticationToken")
-        }.body()
+        client
+            .post("$baseUrl/auth/token/redeem") {
+                header(HttpHeaders.Authorization, "Bearer $authenticationToken")
+            }
+            .body()
 
-    /** POST /auth/token/refresh — refreshes a soon-to-expire access token using the refresh token. */
+    /**
+     * POST /auth/token/refresh — refreshes a soon-to-expire access token using the refresh token.
+     */
     suspend fun refreshAccessToken(refreshToken: String): AuthenticationTokenRefreshResponse =
-        client.post("$baseUrl/auth/token/refresh") {
-            header(HttpHeaders.Authorization, "Bearer $refreshToken")
-        }.body()
+        client
+            .post("$baseUrl/auth/token/refresh") {
+                header(HttpHeaders.Authorization, "Bearer $refreshToken")
+            }
+            .body()
 
     /** DELETE /auth/sessions/current — invalidates the current authentication session. */
     suspend fun logoutCurrentSession() {
@@ -67,18 +87,19 @@ class KsefApi(
 
     /** POST /sessions/online — opens an interactive (online) invoice-sending session. */
     suspend fun openOnlineSession(request: OpenOnlineSessionRequest): OpenOnlineSessionResponse =
-        client.post("$baseUrl/sessions/online") {
-            setBody(request)
-        }.body()
+        client.post("$baseUrl/sessions/online") { setBody(request) }.body()
 
-    /** POST /sessions/online/{referenceNumber}/invoices — send a single invoice in an online session. */
+    /**
+     * POST /sessions/online/{referenceNumber}/invoices — send a single invoice in an online
+     * session.
+     */
     suspend fun sendInvoice(
         sessionReferenceNumber: String,
-        request: SendInvoiceRequest
+        request: SendInvoiceRequest,
     ): SendInvoiceResponse =
-        client.post("$baseUrl/sessions/online/$sessionReferenceNumber/invoices") {
-            setBody(request)
-        }.body()
+        client
+            .post("$baseUrl/sessions/online/$sessionReferenceNumber/invoices") { setBody(request) }
+            .body()
 
     /** POST /sessions/online/{referenceNumber}/close — closes an online session. Returns 204. */
     suspend fun closeOnlineSession(sessionReferenceNumber: String) {
@@ -98,12 +119,14 @@ class KsefApi(
         filters: InvoiceQueryFilters,
         pageOffset: Int = 0,
         pageSize: Int = 10,
-        sortOrder: String = "Desc"
+        sortOrder: String = "Desc",
     ): QueryInvoicesMetadataResponse =
-        client.post("$baseUrl/invoices/query/metadata") {
-            parameter("pageOffset", pageOffset)
-            parameter("pageSize", pageSize)
-            parameter("sortOrder", sortOrder)
-            setBody(filters)
-        }.body()
+        client
+            .post("$baseUrl/invoices/query/metadata") {
+                parameter("pageOffset", pageOffset)
+                parameter("pageSize", pageSize)
+                parameter("sortOrder", sortOrder)
+                setBody(filters)
+            }
+            .body()
 }

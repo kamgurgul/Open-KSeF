@@ -1,3 +1,19 @@
+/*
+ * Copyright KG Soft
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.kgurgul.openksef.data.remote
 
 import kotlinx.cinterop.BetaInteropApi
@@ -28,30 +44,36 @@ class IosKsefCrypto : KsefCrypto {
         @Suppress("UNCHECKED_CAST")
         val certCfData = CFBridgingRetain(certificateDer.toNSData()) as CFDataRef
         try {
-            val certificate = SecCertificateCreateWithData(null, certCfData)
-                ?: error("Invalid X.509 certificate provided to KsefCrypto")
+            val certificate =
+                SecCertificateCreateWithData(null, certCfData)
+                    ?: error("Invalid X.509 certificate provided to KsefCrypto")
             try {
-                val publicKey = SecCertificateCopyKey(certificate)
-                    ?: error("Could not extract public key from certificate")
+                val publicKey =
+                    SecCertificateCopyKey(certificate)
+                        ?: error("Could not extract public key from certificate")
                 try {
                     @Suppress("UNCHECKED_CAST")
                     val plainCfData = CFBridgingRetain(data.toNSData()) as CFDataRef
                     try {
                         return memScoped {
                             val errorVar = alloc<CFErrorRefVar>()
-                            val cipherCfData = SecKeyCreateEncryptedData(
-                                publicKey,
-                                kSecKeyAlgorithmRSAEncryptionOAEPSHA256,
-                                plainCfData,
-                                errorVar.ptr
-                            ) ?: run {
-                                val nsError =
-                                    errorVar.value?.let { CFBridgingRelease(it) as? NSError }
-                                error(
-                                    "RSA-OAEP-SHA256 encryption failed: " +
-                                            (nsError?.localizedDescription ?: "unknown error")
+                            val cipherCfData =
+                                SecKeyCreateEncryptedData(
+                                    publicKey,
+                                    kSecKeyAlgorithmRSAEncryptionOAEPSHA256,
+                                    plainCfData,
+                                    errorVar.ptr,
                                 )
-                            }
+                                    ?: run {
+                                        val nsError =
+                                            errorVar.value?.let {
+                                                CFBridgingRelease(it) as? NSError
+                                            }
+                                        error(
+                                            "RSA-OAEP-SHA256 encryption failed: " +
+                                                (nsError?.localizedDescription ?: "unknown error")
+                                        )
+                                    }
 
                             @Suppress("UNCHECKED_CAST")
                             val cipherNs = CFBridgingRelease(cipherCfData) as NSData
@@ -87,8 +109,6 @@ private fun NSData.toByteArray(): ByteArray {
     val size = length.toInt()
     if (size == 0) return ByteArray(0)
     return ByteArray(size).also { out ->
-        out.usePinned { pinned ->
-            memcpy(pinned.addressOf(0), bytes, length)
-        }
+        out.usePinned { pinned -> memcpy(pinned.addressOf(0), bytes, length) }
     }
 }

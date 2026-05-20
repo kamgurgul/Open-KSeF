@@ -1,5 +1,22 @@
+/*
+ * Copyright KG Soft
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.kgurgul.openksef.ui.login
 
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.kgurgul.openksef.common.UiText
 import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.local.TokenStore
@@ -7,9 +24,6 @@ import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefCrypto
 import com.kgurgul.openksef.data.repository.KsefRepository
 import com.kgurgul.openksef.domain.model.KsefEnvironment
-import openksef.shared.generated.resources.Res
-import openksef.shared.generated.resources.error_nip_invalid
-import openksef.shared.generated.resources.error_token_required
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -21,6 +35,12 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
+import kotlin.random.Random
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -28,15 +48,10 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.serialization.json.Json
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import okio.FileSystem
-import okio.Path.Companion.toPath
-import kotlin.random.Random
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
+import openksef.shared.generated.resources.Res
+import openksef.shared.generated.resources.error_nip_invalid
+import openksef.shared.generated.resources.error_token_required
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginViewModelTest {
@@ -100,7 +115,7 @@ class LoginViewModelTest {
 
         assertEquals(
             UiText.Resource(Res.string.error_token_required),
-            viewModel.uiState.value.error
+            viewModel.uiState.value.error,
         )
     }
 
@@ -118,72 +133,92 @@ class LoginViewModelTest {
         val engine = MockEngine { request ->
             val path = request.url.encodedPath
             when {
-                path.endsWith("/auth/challenge") -> respond(
-                    content = """{"challenge":"test-challenge","timestamp":"2024-01-01T00:00:00Z","timestampMs":1704067200000,"clientIp":"127.0.0.1"}""",
-                    status = HttpStatusCode.OK,
-                    headers = headersOf(
-                        HttpHeaders.ContentType,
-                        ContentType.Application.Json.toString()
+                path.endsWith("/auth/challenge") ->
+                    respond(
+                        content =
+                            """{"challenge":"test-challenge","timestamp":"2024-01-01T00:00:00Z","timestampMs":1704067200000,"clientIp":"127.0.0.1"}""",
+                        status = HttpStatusCode.OK,
+                        headers =
+                            headersOf(
+                                HttpHeaders.ContentType,
+                                ContentType.Application.Json.toString(),
+                            ),
                     )
-                )
 
-                path.endsWith("/auth/ksef-token") -> respond(
-                    content = """{"referenceNumber":"ref-123","authenticationToken":{"token":"auth-token","validUntil":"2024-01-01T01:00:00Z"}}""",
-                    status = HttpStatusCode.Accepted,
-                    headers = headersOf(
-                        HttpHeaders.ContentType,
-                        ContentType.Application.Json.toString()
+                path.endsWith("/auth/ksef-token") ->
+                    respond(
+                        content =
+                            """{"referenceNumber":"ref-123","authenticationToken":{"token":"auth-token","validUntil":"2024-01-01T01:00:00Z"}}""",
+                        status = HttpStatusCode.Accepted,
+                        headers =
+                            headersOf(
+                                HttpHeaders.ContentType,
+                                ContentType.Application.Json.toString(),
+                            ),
                     )
-                )
 
-                path.endsWith("/auth/ref-123") -> respond(
-                    content = """{"startDate":"2024-01-01T00:00:00Z","authenticationMethodInfo":{"category":"Token","code":"Token","displayName":"Token"},"status":{"code":200,"description":"OK"}}""",
-                    status = HttpStatusCode.OK,
-                    headers = headersOf(
-                        HttpHeaders.ContentType,
-                        ContentType.Application.Json.toString()
+                path.endsWith("/auth/ref-123") ->
+                    respond(
+                        content =
+                            """{"startDate":"2024-01-01T00:00:00Z","authenticationMethodInfo":{"category":"Token","code":"Token","displayName":"Token"},"status":{"code":200,"description":"OK"}}""",
+                        status = HttpStatusCode.OK,
+                        headers =
+                            headersOf(
+                                HttpHeaders.ContentType,
+                                ContentType.Application.Json.toString(),
+                            ),
                     )
-                )
 
-                path.endsWith("/auth/token/redeem") -> respond(
-                    content = """{"accessToken":{"token":"access-token","validUntil":"2024-01-01T02:00:00Z"},"refreshToken":{"token":"refresh-token","validUntil":"2024-01-08T00:00:00Z"}}""",
-                    status = HttpStatusCode.OK,
-                    headers = headersOf(
-                        HttpHeaders.ContentType,
-                        ContentType.Application.Json.toString()
+                path.endsWith("/auth/token/redeem") ->
+                    respond(
+                        content =
+                            """{"accessToken":{"token":"access-token","validUntil":"2024-01-01T02:00:00Z"},"refreshToken":{"token":"refresh-token","validUntil":"2024-01-08T00:00:00Z"}}""",
+                        status = HttpStatusCode.OK,
+                        headers =
+                            headersOf(
+                                HttpHeaders.ContentType,
+                                ContentType.Application.Json.toString(),
+                            ),
                     )
-                )
 
-                else -> respond(
-                    content = "{}",
-                    status = HttpStatusCode.NotFound,
-                    headers = headersOf(
-                        HttpHeaders.ContentType,
-                        ContentType.Application.Json.toString()
+                else ->
+                    respond(
+                        content = "{}",
+                        status = HttpStatusCode.NotFound,
+                        headers =
+                            headersOf(
+                                HttpHeaders.ContentType,
+                                ContentType.Application.Json.toString(),
+                            ),
                     )
-                )
             }
         }
-        val mockClient = HttpClient(engine) {
-            install(ContentNegotiation) {
-                json(Json { ignoreUnknownKeys = true; isLenient = true; encodeDefaults = true })
+        val mockClient =
+            HttpClient(engine) {
+                install(ContentNegotiation) {
+                    json(
+                        Json {
+                            ignoreUnknownKeys = true
+                            isLenient = true
+                            encodeDefaults = true
+                        }
+                    )
+                }
+                defaultRequest { contentType(ContentType.Application.Json) }
+                expectSuccess = false
             }
-            defaultRequest { contentType(ContentType.Application.Json) }
-            expectSuccess = false
-        }
 
         val sessionHolder = SessionHolder()
         val api = KsefApi(mockClient)
-        val crypto = object : KsefCrypto {
-            override fun rsaOaepSha256Encrypt(data: ByteArray, certificateDer: ByteArray) = data
-        }
+        val crypto =
+            object : KsefCrypto {
+                override fun rsaOaepSha256Encrypt(data: ByteArray, certificateDer: ByteArray) = data
+            }
         val repository = KsefRepository(api, sessionHolder, crypto)
 
         val tmpDir = FileSystem.SYSTEM_TEMPORARY_DIRECTORY
         val tmpPath = tmpDir / "test_prefs_${Random.nextInt()}.preferences_pb"
-        val dataStore = PreferenceDataStoreFactory.createWithPath(
-            produceFile = { tmpPath }
-        )
+        val dataStore = PreferenceDataStoreFactory.createWithPath(produceFile = { tmpPath })
         val tokenStore = TokenStore(dataStore)
 
         return LoginViewModel(repository, tokenStore)

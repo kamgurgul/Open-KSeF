@@ -1,3 +1,19 @@
+/*
+ * Copyright KG Soft
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.kgurgul.openksef.ui.invoices
 
 import androidx.lifecycle.ViewModel
@@ -6,6 +22,7 @@ import com.kgurgul.openksef.common.UiText
 import com.kgurgul.openksef.data.repository.KsefRepository
 import com.kgurgul.openksef.domain.model.InvoiceSubjectType
 import com.kgurgul.openksef.domain.model.InvoiceSummary
+import kotlin.time.Clock
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +36,6 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
-import kotlin.time.Clock
 import kotlinx.datetime.todayIn
 import openksef.shared.generated.resources.Res
 import openksef.shared.generated.resources.error_load_invoices
@@ -40,22 +56,23 @@ data class InvoiceListUiState(
 
 sealed interface InvoiceListEvent {
     data class ShowError(val message: UiText) : InvoiceListEvent
+
     data object SessionEnded : InvoiceListEvent
 }
 
-class InvoiceListViewModel(
-    private val repository: KsefRepository,
-) : ViewModel() {
+class InvoiceListViewModel(private val repository: KsefRepository) : ViewModel() {
 
     private val _uiState = MutableStateFlow(initialState())
     private val _searchQuery = MutableStateFlow("")
 
-    val uiState: StateFlow<InvoiceListUiState> = combine(_uiState, _searchQuery) { state, query ->
-        state.copy(
-            searchQuery = query,
-            displayedInvoices = filterInvoices(state.invoices, query),
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InvoiceListUiState())
+    val uiState: StateFlow<InvoiceListUiState> =
+        combine(_uiState, _searchQuery) { state, query ->
+                state.copy(
+                    searchQuery = query,
+                    displayedInvoices = filterInvoices(state.invoices, query),
+                )
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InvoiceListUiState())
 
     private val eventChannel = Channel<InvoiceListEvent>(Channel.BUFFERED)
     val events: Flow<InvoiceListEvent> = eventChannel.receiveAsFlow()
@@ -81,13 +98,14 @@ class InvoiceListViewModel(
         _uiState.update { it.copy(isLoading = true) }
 
         viewModelScope.launch {
-            repository.getInvoices(
-                dateFrom = state.dateFrom,
-                dateTo = state.dateTo,
-                pageSize = PAGE_SIZE,
-                pageOffset = nextPage * PAGE_SIZE,
-                subjectType = state.subjectType,
-            )
+            repository
+                .getInvoices(
+                    dateFrom = state.dateFrom,
+                    dateTo = state.dateTo,
+                    pageSize = PAGE_SIZE,
+                    pageOffset = nextPage * PAGE_SIZE,
+                    subjectType = state.subjectType,
+                )
                 .onSuccess { result ->
                     _uiState.update {
                         it.copy(
@@ -132,19 +150,18 @@ class InvoiceListViewModel(
     }
 
     private fun load() {
-        _uiState.update {
-            it.copy(isLoading = true, currentPage = 0, invoices = emptyList())
-        }
+        _uiState.update { it.copy(isLoading = true, currentPage = 0, invoices = emptyList()) }
 
         viewModelScope.launch {
             val state = _uiState.value
-            repository.getInvoices(
-                dateFrom = state.dateFrom,
-                dateTo = state.dateTo,
-                pageSize = PAGE_SIZE,
-                pageOffset = 0,
-                subjectType = state.subjectType,
-            )
+            repository
+                .getInvoices(
+                    dateFrom = state.dateFrom,
+                    dateTo = state.dateTo,
+                    pageSize = PAGE_SIZE,
+                    pageOffset = 0,
+                    subjectType = state.subjectType,
+                )
                 .onSuccess { result ->
                     _uiState.update {
                         it.copy(
@@ -164,16 +181,13 @@ class InvoiceListViewModel(
         }
     }
 
-    private fun Throwable.toUiText(): UiText = message?.let { UiText.Raw(it) }
-        ?: UiText.Resource(Res.string.error_load_invoices)
+    private fun Throwable.toUiText(): UiText =
+        message?.let { UiText.Raw(it) } ?: UiText.Resource(Res.string.error_load_invoices)
 
     private fun initialState(): InvoiceListUiState {
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
         val thirtyDaysAgo = today.minus(30, DateTimeUnit.DAY)
-        return InvoiceListUiState(
-            dateFrom = thirtyDaysAgo.toString(),
-            dateTo = today.toString(),
-        )
+        return InvoiceListUiState(dateFrom = thirtyDaysAgo.toString(), dateTo = today.toString())
     }
 
     companion object {
@@ -185,23 +199,22 @@ class InvoiceListViewModel(
         ): List<InvoiceSummary> {
             val trimmed = query.trim()
             if (trimmed.isEmpty()) return invoices
-            return invoices.filter { invoice ->
-                invoice.matches(trimmed)
-            }
+            return invoices.filter { invoice -> invoice.matches(trimmed) }
         }
 
         private fun InvoiceSummary.matches(query: String): Boolean {
-            val fields = listOf(
-                invoiceNumber,
-                invoicingDate,
-                sellerNip,
-                sellerName,
-                buyerNip,
-                buyerName,
-                net,
-                vat,
-                gross,
-            )
+            val fields =
+                listOf(
+                    invoiceNumber,
+                    invoicingDate,
+                    sellerNip,
+                    sellerName,
+                    buyerNip,
+                    buyerName,
+                    net,
+                    vat,
+                    gross,
+                )
             return fields.any { it.contains(query, ignoreCase = true) }
         }
     }

@@ -26,6 +26,8 @@ lifecycle-viewmodel-nav3 = "2.10.0"
 datastore = "1.2.1"
 turbine = "1.2.1"
 kotlincrypto-sha2 = "0.8.0"
+ktfmt = "0.62"
+spotless = "8.4.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -81,6 +83,9 @@ turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 # Crypto
 kotlincrypto-sha2 = { module = "org.kotlincrypto.hash:sha2", version.ref = "kotlincrypto-sha2" }
 
+# Spotless
+ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
+
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidLibrary = { id = "com.android.library", version.ref = "agp" }
@@ -90,3 +95,4 @@ composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMul
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

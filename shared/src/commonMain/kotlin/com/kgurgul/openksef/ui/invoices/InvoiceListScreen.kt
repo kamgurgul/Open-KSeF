@@ -1,3 +1,19 @@
+/*
+ * Copyright KG Soft
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.kgurgul.openksef.ui.invoices
 
 import androidx.compose.foundation.layout.*
@@ -52,7 +68,7 @@ fun InvoiceListScreen(
     viewModel: InvoiceListViewModel,
     onInvoiceClick: (String) -> Unit,
     onSendInvoiceClick: () -> Unit,
-    onLoggedOut: () -> Unit
+    onLoggedOut: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -78,7 +94,8 @@ fun InvoiceListScreen(
     val shouldLoadMore by remember {
         derivedStateOf {
             val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisibleItem >= uiState.invoices.size - 3 && uiState.invoices.size < uiState.totalCount
+            lastVisibleItem >= uiState.invoices.size - 3 &&
+                uiState.invoices.size < uiState.totalCount
         }
     }
 
@@ -89,48 +106,54 @@ fun InvoiceListScreen(
     }
 
     if (showDateFromPicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = uiState.dateFrom.toEpochMillis()
-        )
+        val datePickerState =
+            rememberDatePickerState(initialSelectedDateMillis = uiState.dateFrom.toEpochMillis())
         DatePickerDialog(
             onDismissRequest = { showDateFromPicker = false },
             confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        viewModel.onDateFromChanged(millis.toLocalDateString())
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            viewModel.onDateFromChanged(millis.toLocalDateString())
+                        }
+                        showDateFromPicker = false
                     }
-                    showDateFromPicker = false
-                }) { Text(stringResource(Res.string.action_ok)) }
+                ) {
+                    Text(stringResource(Res.string.action_ok))
+                }
             },
             dismissButton = {
                 TextButton(onClick = { showDateFromPicker = false }) {
                     Text(stringResource(Res.string.action_cancel))
                 }
-            }
+            },
         ) {
             DatePicker(state = datePickerState)
         }
     }
 
     if (showDateToPicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = uiState.dateTo.toEpochMillis()
-        )
+        val datePickerState =
+            rememberDatePickerState(initialSelectedDateMillis = uiState.dateTo.toEpochMillis())
         DatePickerDialog(
             onDismissRequest = { showDateToPicker = false },
             confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        viewModel.onDateToChanged(millis.toLocalDateString())
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            viewModel.onDateToChanged(millis.toLocalDateString())
+                        }
+                        showDateToPicker = false
                     }
-                    showDateToPicker = false
-                }) { Text(stringResource(Res.string.action_ok)) }
+                ) {
+                    Text(stringResource(Res.string.action_ok))
+                }
             },
             dismissButton = {
                 TextButton(onClick = { showDateToPicker = false }) {
                     Text(stringResource(Res.string.action_cancel))
                 }
-            }
+            },
         ) {
             DatePicker(state = datePickerState)
         }
@@ -144,93 +167,87 @@ fun InvoiceListScreen(
                     IconButton(onClick = viewModel::onRefreshClicked) {
                         Icon(
                             Icons.Default.Refresh,
-                            contentDescription = stringResource(Res.string.action_refresh)
+                            contentDescription = stringResource(Res.string.action_refresh),
                         )
                     }
                     IconButton(onClick = viewModel::onLogoutClicked) {
                         Icon(
                             Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = stringResource(Res.string.action_logout)
+                            contentDescription = stringResource(Res.string.action_logout),
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onSendInvoiceClick) {
                 Icon(
                     Icons.Default.Add,
-                    contentDescription = stringResource(Res.string.action_send_invoice)
+                    contentDescription = stringResource(Res.string.action_send_invoice),
                 )
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             val selectedTabIndex = if (uiState.subjectType == InvoiceSubjectType.ISSUED) 0 else 1
             PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
                 Tab(
                     selected = selectedTabIndex == 0,
                     onClick = { viewModel.onSubjectTypeChanged(InvoiceSubjectType.ISSUED) },
-                    text = { Text(stringResource(Res.string.invoices_tab_issued)) }
+                    text = { Text(stringResource(Res.string.invoices_tab_issued)) },
                 )
                 Tab(
                     selected = selectedTabIndex == 1,
                     onClick = { viewModel.onSubjectTypeChanged(InvoiceSubjectType.RECEIVED) },
-                    text = { Text(stringResource(Res.string.invoices_tab_received)) }
+                    text = { Text(stringResource(Res.string.invoices_tab_received)) },
                 )
             }
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             Icons.Default.DateRange,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = stringResource(Res.string.invoices_date_range),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         OutlinedButton(
                             onClick = { showDateFromPicker = true },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
                         ) {
                             Text(uiState.dateFrom, style = MaterialTheme.typography.bodySmall)
                         }
                         Text(" — ", modifier = Modifier.padding(horizontal = 4.dp))
                         OutlinedButton(
                             onClick = { showDateToPicker = true },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
                         ) {
                             Text(uiState.dateTo, style = MaterialTheme.typography.bodySmall)
                         }
@@ -245,9 +262,7 @@ fun InvoiceListScreen(
             OutlinedTextField(
                 value = uiState.searchQuery,
                 onValueChange = viewModel::onSearchQueryChanged,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                 placeholder = { Text(stringResource(Res.string.invoices_filter_placeholder)) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 trailingIcon = {
@@ -255,7 +270,7 @@ fun InvoiceListScreen(
                         IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
                             Icon(
                                 Icons.Default.Clear,
-                                contentDescription = stringResource(Res.string.action_clear_filter)
+                                contentDescription = stringResource(Res.string.action_clear_filter),
                             )
                         }
                     }
@@ -264,41 +279,37 @@ fun InvoiceListScreen(
             )
 
             if (uiState.isLoading && uiState.invoices.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             } else if (uiState.displayedInvoices.isEmpty()) {
                 val isFiltered = uiState.searchQuery.isNotBlank() && uiState.invoices.isNotEmpty()
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = if (isFiltered) {
-                                stringResource(Res.string.invoices_empty_filtered_title)
-                            } else {
-                                stringResource(Res.string.invoices_empty_title)
-                            },
+                            text =
+                                if (isFiltered) {
+                                    stringResource(Res.string.invoices_empty_filtered_title)
+                                } else {
+                                    stringResource(Res.string.invoices_empty_title)
+                                },
                             style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = if (isFiltered) {
-                                stringResource(
-                                    Res.string.invoices_empty_filtered_description,
-                                    uiState.searchQuery,
-                                )
-                            } else {
-                                stringResource(Res.string.invoices_empty_description)
-                            },
+                            text =
+                                if (isFiltered) {
+                                    stringResource(
+                                        Res.string.invoices_empty_filtered_description,
+                                        uiState.searchQuery,
+                                    )
+                                } else {
+                                    stringResource(Res.string.invoices_empty_description)
+                                },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
+                            textAlign = TextAlign.Center,
                         )
                     }
                 }
@@ -306,15 +317,13 @@ fun InvoiceListScreen(
                 LazyColumn(
                     state = listState,
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(
-                        items = uiState.displayedInvoices,
-                        key = { it.ksefReferenceNumber }
-                    ) { invoice ->
+                    items(items = uiState.displayedInvoices, key = { it.ksefReferenceNumber }) {
+                        invoice ->
                         InvoiceCard(
                             invoice = invoice,
-                            onClick = { onInvoiceClick(invoice.ksefReferenceNumber) }
+                            onClick = { onInvoiceClick(invoice.ksefReferenceNumber) },
                         )
                     }
 
@@ -322,7 +331,7 @@ fun InvoiceListScreen(
                         item {
                             Box(
                                 modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                contentAlignment = Alignment.Center
+                                contentAlignment = Alignment.Center,
                             ) {
                                 CircularProgressIndicator(modifier = Modifier.size(32.dp))
                             }
@@ -334,9 +343,9 @@ fun InvoiceListScreen(
     }
 }
 
-private fun String.toEpochMillis(): Long? = runCatching {
-    LocalDate.parse(this).atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()
-}.getOrNull()
+private fun String.toEpochMillis(): Long? =
+    runCatching { LocalDate.parse(this).atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds() }
+        .getOrNull()
 
 private fun Long.toLocalDateString(): String =
     Instant.fromEpochMilliseconds(this).toLocalDateTime(TimeZone.UTC).date.toString()

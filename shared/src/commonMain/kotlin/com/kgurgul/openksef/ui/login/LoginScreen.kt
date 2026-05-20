@@ -1,3 +1,19 @@
+/*
+ * Copyright KG Soft
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.kgurgul.openksef.ui.login
 
 import androidx.compose.foundation.layout.*
@@ -28,10 +44,7 @@ import openksef.shared.generated.resources.login_token_label
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun LoginScreen(
-    viewModel: LoginViewModel,
-    onLoginSuccess: () -> Unit
-) {
+fun LoginScreen(viewModel: LoginViewModel, onLoginSuccess: () -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -49,18 +62,16 @@ fun LoginScreen(
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { padding ->
+    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 24.dp)
-                    .verticalScroll(rememberScrollState()),
+                modifier =
+                    Modifier.fillMaxSize()
+                        .padding(padding)
+                        .padding(horizontal = 24.dp)
+                        .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Center,
             ) {
                 Spacer(modifier = Modifier.height(48.dp))
 
@@ -68,13 +79,13 @@ fun LoginScreen(
                     text = stringResource(Res.string.app_name),
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
                 )
 
                 Text(
                     text = stringResource(Res.string.app_subtitle),
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
                 Spacer(modifier = Modifier.height(48.dp))
@@ -89,7 +100,7 @@ fun LoginScreen(
                     placeholder = { Text(stringResource(Res.string.login_nip_placeholder)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -100,7 +111,7 @@ fun LoginScreen(
                     label = { Text(stringResource(Res.string.login_token_label)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -108,7 +119,7 @@ fun LoginScreen(
                 Text(
                     text = stringResource(Res.string.login_environment_label),
                     style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.align(Alignment.Start)
+                    modifier = Modifier.align(Alignment.Start),
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -116,12 +127,13 @@ fun LoginScreen(
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     KsefEnvironment.entries.forEachIndexed { index, env ->
                         SegmentedButton(
-                            shape = SegmentedButtonDefaults.itemShape(
-                                index = index,
-                                count = KsefEnvironment.entries.size
-                            ),
+                            shape =
+                                SegmentedButtonDefaults.itemShape(
+                                    index = index,
+                                    count = KsefEnvironment.entries.size,
+                                ),
                             onClick = { viewModel.onEnvironmentChanged(env) },
-                            selected = uiState.environment == env
+                            selected = uiState.environment == env,
                         ) {
                             Text(env.name)
                         }
@@ -132,15 +144,15 @@ fun LoginScreen(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Checkbox(
                         checked = uiState.rememberCredentials,
-                        onCheckedChange = viewModel::onRememberChanged
+                        onCheckedChange = viewModel::onRememberChanged,
                     )
                     Text(
                         text = stringResource(Res.string.login_remember_credentials),
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
 
@@ -149,14 +161,12 @@ fun LoginScreen(
                 Button(
                     onClick = viewModel::login,
                     enabled = !uiState.isLoading,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
                 ) {
                     if (uiState.isLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.onPrimary
+                            color = MaterialTheme.colorScheme.onPrimary,
                         )
                     } else {
                         Text(stringResource(Res.string.login_sign_in))

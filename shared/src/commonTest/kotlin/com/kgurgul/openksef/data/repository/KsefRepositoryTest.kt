@@ -1,3 +1,19 @@
+/*
+ * Copyright KG Soft
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.kgurgul.openksef.data.repository
 
 import com.kgurgul.openksef.data.SessionHolder
@@ -14,12 +30,12 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
-import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
 
 class KsefRepositoryTest {
 
@@ -41,48 +57,56 @@ class KsefRepositoryTest {
         val engine = MockEngine { request ->
             val path = request.url.encodedPath
             when {
-                path.endsWith("/security/public-key-certificates") -> respond(
-                    content = """[{"certificate":"AAAA","validFrom":"2024-01-01T00:00:00Z","validTo":"2099-01-01T00:00:00Z","usage":["KsefTokenEncryption"]}]""",
-                    status = HttpStatusCode.OK,
-                    headers = jsonHeaders
-                )
+                path.endsWith("/security/public-key-certificates") ->
+                    respond(
+                        content =
+                            """[{"certificate":"AAAA","validFrom":"2024-01-01T00:00:00Z","validTo":"2099-01-01T00:00:00Z","usage":["KsefTokenEncryption"]}]""",
+                        status = HttpStatusCode.OK,
+                        headers = jsonHeaders,
+                    )
 
-                path.endsWith("/auth/challenge") -> respond(
-                    content = """{"challenge":"abc123","timestamp":"2024-01-01T00:00:00Z","timestampMs":1704067200000,"clientIp":"127.0.0.1"}""",
-                    status = HttpStatusCode.OK,
-                    headers = jsonHeaders
-                )
+                path.endsWith("/auth/challenge") ->
+                    respond(
+                        content =
+                            """{"challenge":"abc123","timestamp":"2024-01-01T00:00:00Z","timestampMs":1704067200000,"clientIp":"127.0.0.1"}""",
+                        status = HttpStatusCode.OK,
+                        headers = jsonHeaders,
+                    )
 
-                path.endsWith("/auth/ksef-token") -> respond(
-                    content = """{"referenceNumber":"ref-123","authenticationToken":{"token":"auth-token-xyz","validUntil":"2024-01-01T01:00:00Z"}}""",
-                    status = HttpStatusCode.Accepted,
-                    headers = jsonHeaders
-                )
+                path.endsWith("/auth/ksef-token") ->
+                    respond(
+                        content =
+                            """{"referenceNumber":"ref-123","authenticationToken":{"token":"auth-token-xyz","validUntil":"2024-01-01T01:00:00Z"}}""",
+                        status = HttpStatusCode.Accepted,
+                        headers = jsonHeaders,
+                    )
 
-                path.endsWith("/auth/ref-123") -> respond(
-                    content = """{"startDate":"2024-01-01T00:00:00Z","authenticationMethodInfo":{"category":"Token","code":"Token","displayName":"Token"},"status":{"code":200,"description":"OK"}}""",
-                    status = HttpStatusCode.OK,
-                    headers = jsonHeaders
-                )
+                path.endsWith("/auth/ref-123") ->
+                    respond(
+                        content =
+                            """{"startDate":"2024-01-01T00:00:00Z","authenticationMethodInfo":{"category":"Token","code":"Token","displayName":"Token"},"status":{"code":200,"description":"OK"}}""",
+                        status = HttpStatusCode.OK,
+                        headers = jsonHeaders,
+                    )
 
-                path.endsWith("/auth/token/redeem") -> respond(
-                    content = """{"accessToken":{"token":"access-token-abc","validUntil":"2024-01-01T02:00:00Z"},"refreshToken":{"token":"refresh-token-def","validUntil":"2024-01-08T00:00:00Z"}}""",
-                    status = HttpStatusCode.OK,
-                    headers = jsonHeaders
-                )
+                path.endsWith("/auth/token/redeem") ->
+                    respond(
+                        content =
+                            """{"accessToken":{"token":"access-token-abc","validUntil":"2024-01-01T02:00:00Z"},"refreshToken":{"token":"refresh-token-def","validUntil":"2024-01-08T00:00:00Z"}}""",
+                        status = HttpStatusCode.OK,
+                        headers = jsonHeaders,
+                    )
 
-                else -> respond(
-                    content = "{}",
-                    status = HttpStatusCode.NotFound,
-                    headers = jsonHeaders
-                )
+                else ->
+                    respond(content = "{}", status = HttpStatusCode.NotFound, headers = jsonHeaders)
             }
         }
-        val client = HttpClient(engine) {
-            install(ContentNegotiation) { json(json) }
-            defaultRequest { contentType(ContentType.Application.Json) }
-            expectSuccess = false
-        }
+        val client =
+            HttpClient(engine) {
+                install(ContentNegotiation) { json(json) }
+                defaultRequest { contentType(ContentType.Application.Json) }
+                expectSuccess = false
+            }
 
         val sessionHolder = SessionHolder()
         val api = KsefApi(client)
@@ -92,7 +116,7 @@ class KsefRepositoryTest {
 
         assertTrue(
             result.isSuccess,
-            "Expected success but got: ${result.exceptionOrNull()?.message}"
+            "Expected success but got: ${result.exceptionOrNull()?.message}",
         )
         val session = result.getOrNull()
         assertNotNull(session)
@@ -109,13 +133,14 @@ class KsefRepositoryTest {
             respond(
                 content = "Server Error",
                 status = HttpStatusCode.InternalServerError,
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Text.Plain.toString())
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Text.Plain.toString()),
             )
         }
-        val client = HttpClient(engine) {
-            install(ContentNegotiation) { json(json) }
-            defaultRequest { contentType(ContentType.Application.Json) }
-        }
+        val client =
+            HttpClient(engine) {
+                install(ContentNegotiation) { json(json) }
+                defaultRequest { contentType(ContentType.Application.Json) }
+            }
 
         val sessionHolder = SessionHolder()
         val api = KsefApi(client)
@@ -128,7 +153,8 @@ class KsefRepositoryTest {
 
     @Test
     fun getInvoices_mapsResponseCorrectly() = runTest {
-        val responseBody = """{
+        val responseBody =
+            """{
             "hasMore": false,
             "isTruncated": false,
             "invoices": [{
@@ -156,11 +182,12 @@ class KsefRepositoryTest {
         val engine = MockEngine { _ ->
             respond(content = responseBody, status = HttpStatusCode.OK, headers = jsonHeaders)
         }
-        val client = HttpClient(engine) {
-            install(ContentNegotiation) { json(json) }
-            defaultRequest { contentType(ContentType.Application.Json) }
-            expectSuccess = false
-        }
+        val client =
+            HttpClient(engine) {
+                install(ContentNegotiation) { json(json) }
+                defaultRequest { contentType(ContentType.Application.Json) }
+                expectSuccess = false
+            }
 
         val sessionHolder = SessionHolder()
         sessionHolder.accessToken = "active-token"
@@ -171,7 +198,7 @@ class KsefRepositoryTest {
 
         assertTrue(
             result.isSuccess,
-            "Expected success but got: ${result.exceptionOrNull()?.message}"
+            "Expected success but got: ${result.exceptionOrNull()?.message}",
         )
         val invoiceList = result.getOrNull()
         assertNotNull(invoiceList)
@@ -194,14 +221,15 @@ class KsefRepositoryTest {
             respond(
                 content = """{"referenceNumber":"INV-REF-001"}""",
                 status = HttpStatusCode.Accepted,
-                headers = jsonHeaders
+                headers = jsonHeaders,
             )
         }
-        val client = HttpClient(engine) {
-            install(ContentNegotiation) { json(json) }
-            defaultRequest { contentType(ContentType.Application.Json) }
-            expectSuccess = false
-        }
+        val client =
+            HttpClient(engine) {
+                install(ContentNegotiation) { json(json) }
+                defaultRequest { contentType(ContentType.Application.Json) }
+                expectSuccess = false
+            }
 
         val sessionHolder = SessionHolder()
         sessionHolder.accessToken = "active-token"
@@ -213,7 +241,7 @@ class KsefRepositoryTest {
 
         assertTrue(
             result.isSuccess,
-            "Expected success but got: ${result.exceptionOrNull()?.message}"
+            "Expected success but got: ${result.exceptionOrNull()?.message}",
         )
         val sendResult = result.getOrNull()
         assertNotNull(sendResult)

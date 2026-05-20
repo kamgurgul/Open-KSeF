@@ -1,3 +1,19 @@
+/*
+ * Copyright KG Soft
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.kgurgul.openksef.ui.sendinvoice
 
 import androidx.compose.foundation.layout.*
@@ -21,9 +37,10 @@ import com.kgurgul.openksef.ui.components.LoadingOverlay
 import com.kgurgul.openksef.ui.components.SectionHeader
 import openksef.shared.generated.resources.Res
 import openksef.shared.generated.resources.action_back
-import openksef.shared.generated.resources.amount_pln
 import openksef.shared.generated.resources.action_delete
 import openksef.shared.generated.resources.action_ok
+import openksef.shared.generated.resources.amount_pln
+import openksef.shared.generated.resources.login_nip_label
 import openksef.shared.generated.resources.send_invoice_add_item
 import openksef.shared.generated.resources.send_invoice_address
 import openksef.shared.generated.resources.send_invoice_buyer
@@ -49,15 +66,11 @@ import openksef.shared.generated.resources.send_invoice_total_net
 import openksef.shared.generated.resources.send_invoice_total_vat
 import openksef.shared.generated.resources.send_invoice_unit_price
 import openksef.shared.generated.resources.send_invoice_vat
-import openksef.shared.generated.resources.login_nip_label
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SendInvoiceScreen(
-    viewModel: SendInvoiceViewModel,
-    onNavigateBack: () -> Unit
-) {
+fun SendInvoiceScreen(viewModel: SendInvoiceViewModel, onNavigateBack: () -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -79,20 +92,18 @@ fun SendInvoiceScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = stringResource(Res.string.send_invoice_reference_number_label),
-                        style = MaterialTheme.typography.labelMedium
+                        style = MaterialTheme.typography.labelMedium,
                     )
                     Text(
                         text = uiState.sentReferenceNumber,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             },
             confirmButton = {
-                TextButton(onClick = onNavigateBack) {
-                    Text(stringResource(Res.string.action_ok))
-                }
-            }
+                TextButton(onClick = onNavigateBack) { Text(stringResource(Res.string.action_ok)) }
+            },
         )
     }
 
@@ -104,26 +115,27 @@ fun SendInvoiceScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(Res.string.action_back)
+                            contentDescription = stringResource(Res.string.action_back),
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 16.dp)
-                    .verticalScroll(rememberScrollState())
+                modifier =
+                    Modifier.fillMaxSize()
+                        .padding(padding)
+                        .padding(horizontal = 16.dp)
+                        .verticalScroll(rememberScrollState())
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -134,24 +146,29 @@ fun SendInvoiceScreen(
                     onValueChange = {},
                     label = { Text(stringResource(Res.string.login_nip_label)) },
                     readOnly = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = uiState.sellerName,
                     onValueChange = viewModel::onSellerNameChanged,
                     label = { Text(stringResource(Res.string.send_invoice_name)) },
-                    isError = uiState.validationErrors.containsKey(SendInvoiceViewModel.FIELD_SELLER_NAME),
-                    supportingText = uiState.validationErrors[SendInvoiceViewModel.FIELD_SELLER_NAME]
-                        ?.let { { Text(it.asString()) } },
-                    modifier = Modifier.fillMaxWidth()
+                    isError =
+                        uiState.validationErrors.containsKey(
+                            SendInvoiceViewModel.FIELD_SELLER_NAME
+                        ),
+                    supportingText =
+                        uiState.validationErrors[SendInvoiceViewModel.FIELD_SELLER_NAME]?.let {
+                            { Text(it.asString()) }
+                        },
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = uiState.sellerAddress,
                     onValueChange = viewModel::onSellerAddressChanged,
                     label = { Text(stringResource(Res.string.send_invoice_address)) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -163,27 +180,33 @@ fun SendInvoiceScreen(
                     onValueChange = viewModel::onBuyerNipChanged,
                     label = { Text(stringResource(Res.string.login_nip_label)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    isError = uiState.validationErrors.containsKey(SendInvoiceViewModel.FIELD_BUYER_NIP),
-                    supportingText = uiState.validationErrors[SendInvoiceViewModel.FIELD_BUYER_NIP]
-                        ?.let { { Text(it.asString()) } },
-                    modifier = Modifier.fillMaxWidth()
+                    isError =
+                        uiState.validationErrors.containsKey(SendInvoiceViewModel.FIELD_BUYER_NIP),
+                    supportingText =
+                        uiState.validationErrors[SendInvoiceViewModel.FIELD_BUYER_NIP]?.let {
+                            { Text(it.asString()) }
+                        },
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = uiState.buyerName,
                     onValueChange = viewModel::onBuyerNameChanged,
                     label = { Text(stringResource(Res.string.send_invoice_name)) },
-                    isError = uiState.validationErrors.containsKey(SendInvoiceViewModel.FIELD_BUYER_NAME),
-                    supportingText = uiState.validationErrors[SendInvoiceViewModel.FIELD_BUYER_NAME]
-                        ?.let { { Text(it.asString()) } },
-                    modifier = Modifier.fillMaxWidth()
+                    isError =
+                        uiState.validationErrors.containsKey(SendInvoiceViewModel.FIELD_BUYER_NAME),
+                    supportingText =
+                        uiState.validationErrors[SendInvoiceViewModel.FIELD_BUYER_NAME]?.let {
+                            { Text(it.asString()) }
+                        },
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = uiState.buyerAddress,
                     onValueChange = viewModel::onBuyerAddressChanged,
                     label = { Text(stringResource(Res.string.send_invoice_address)) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -194,17 +217,22 @@ fun SendInvoiceScreen(
                     value = uiState.invoiceNumber,
                     onValueChange = viewModel::onInvoiceNumberChanged,
                     label = { Text(stringResource(Res.string.send_invoice_number)) },
-                    isError = uiState.validationErrors.containsKey(SendInvoiceViewModel.FIELD_INVOICE_NUMBER),
-                    supportingText = uiState.validationErrors[SendInvoiceViewModel.FIELD_INVOICE_NUMBER]
-                        ?.let { { Text(it.asString()) } },
-                    modifier = Modifier.fillMaxWidth()
+                    isError =
+                        uiState.validationErrors.containsKey(
+                            SendInvoiceViewModel.FIELD_INVOICE_NUMBER
+                        ),
+                    supportingText =
+                        uiState.validationErrors[SendInvoiceViewModel.FIELD_INVOICE_NUMBER]?.let {
+                            { Text(it.asString()) }
+                        },
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = uiState.issueDate,
                     onValueChange = viewModel::onIssueDateChanged,
                     label = { Text(stringResource(Res.string.send_invoice_issue_date)) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -216,7 +244,7 @@ fun SendInvoiceScreen(
                     Text(
                         text = itemsError.asString(),
                         color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 }
 
@@ -226,15 +254,12 @@ fun SendInvoiceScreen(
                         item = item,
                         canRemove = uiState.items.size > 1,
                         onUpdate = { viewModel.updateItem(index, it) },
-                        onRemove = { viewModel.removeItem(index) }
+                        onRemove = { viewModel.removeItem(index) },
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                OutlinedButton(
-                    onClick = viewModel::addItem,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                OutlinedButton(onClick = viewModel::addItem, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(stringResource(Res.string.send_invoice_add_item))
@@ -250,14 +275,12 @@ fun SendInvoiceScreen(
                 Button(
                     onClick = viewModel::send,
                     enabled = !uiState.isLoading,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
                 ) {
                     if (uiState.isLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.onPrimary
+                            color = MaterialTheme.colorScheme.onPrimary,
                         )
                     } else {
                         Text(stringResource(Res.string.send_invoice_send))
@@ -278,29 +301,29 @@ private fun LineItemCard(
     item: InvoiceLineItemUi,
     canRemove: Boolean,
     onUpdate: (InvoiceLineItemUi) -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = stringResource(Res.string.send_invoice_item_index, index + 1),
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
                 if (canRemove) {
                     IconButton(onClick = onRemove) {
                         Icon(
                             Icons.Default.Delete,
                             contentDescription = stringResource(Res.string.action_delete),
-                            tint = MaterialTheme.colorScheme.error
+                            tint = MaterialTheme.colorScheme.error,
                         )
                     }
                 }
@@ -311,13 +334,13 @@ private fun LineItemCard(
                 onValueChange = { onUpdate(item.copy(description = it)) },
                 label = { Text(stringResource(Res.string.send_invoice_description)) },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
             )
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OutlinedTextField(
                     value = item.quantity,
@@ -325,7 +348,7 @@ private fun LineItemCard(
                     label = { Text(stringResource(Res.string.send_invoice_quantity)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.weight(1f),
-                    singleLine = true
+                    singleLine = true,
                 )
                 OutlinedTextField(
                     value = item.unitPrice,
@@ -333,29 +356,29 @@ private fun LineItemCard(
                     label = { Text(stringResource(Res.string.send_invoice_unit_price)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.weight(1f),
-                    singleLine = true
+                    singleLine = true,
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 VatRateSelector(
                     selectedRate = item.vatRate,
                     onRateSelected = { onUpdate(item.copy(vatRate = it)) },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(Res.string.send_invoice_net_value, item.netValue),
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
                     )
                     Text(
                         text = stringResource(Res.string.send_invoice_gross_value, item.grossValue),
                         style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             }
@@ -368,7 +391,7 @@ private fun LineItemCard(
 private fun VatRateSelector(
     selectedRate: Int,
     onRateSelected: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val rates = listOf(23, 8, 5, 0)
@@ -376,7 +399,7 @@ private fun VatRateSelector(
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { expanded = it },
-        modifier = modifier
+        modifier = modifier,
     ) {
         OutlinedTextField(
             value = "$selectedRate%",
@@ -384,21 +407,19 @@ private fun VatRateSelector(
             readOnly = true,
             label = { Text(stringResource(Res.string.send_invoice_vat)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                .fillMaxWidth(),
-            singleLine = true
+            modifier =
+                Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                    .fillMaxWidth(),
+            singleLine = true,
         )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             rates.forEach { rate ->
                 DropdownMenuItem(
                     text = { Text("$rate%") },
                     onClick = {
                         onRateSelected(rate)
                         expanded = false
-                    }
+                    },
                 )
             }
         }
@@ -413,43 +434,38 @@ private fun TotalsCard(items: List<InvoiceLineItemUi>) {
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
+        colors =
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = stringResource(Res.string.send_invoice_summary),
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(stringResource(Res.string.send_invoice_total_net))
-                Text(
-                    stringResource(Res.string.amount_pln, formatDisplay(totalNet))
-                )
+                Text(stringResource(Res.string.amount_pln, formatDisplay(totalNet)))
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(stringResource(Res.string.send_invoice_total_vat))
-                Text(
-                    stringResource(Res.string.amount_pln, formatDisplay(totalVat))
-                )
+                Text(stringResource(Res.string.amount_pln, formatDisplay(totalVat)))
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
                     stringResource(Res.string.send_invoice_total_gross),
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = stringResource(Res.string.amount_pln, formatDisplay(totalGross)),
