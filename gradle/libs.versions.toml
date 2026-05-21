@@ -26,6 +26,7 @@ lifecycle-viewmodel-nav3 = "2.10.0"
 datastore = "1.2.1"
 turbine = "1.2.1"
 kotlincrypto-sha2 = "0.8.0"
+ksef-fop = "1.2.24"
 ktfmt = "0.62"
 spotless = "8.4.0"
 
@@ -82,6 +83,9 @@ turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 
 # Crypto
 kotlincrypto-sha2 = { module = "org.kotlincrypto.hash:sha2", version.ref = "kotlincrypto-sha2" }
+
+# PDF (desktop only - Apache FOP based)
+ksef-fop = { module = "io.alapierre.ksef:ksef-fop", version.ref = "ksef-fop" }
 
 # Spotless
 ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }

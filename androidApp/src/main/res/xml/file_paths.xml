@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Exported invoice PDFs live in <filesDir>/invoices and are shared via FileProvider. -->
+    <files-path
+        name="invoices"
+        path="invoices/" />
+</paths>

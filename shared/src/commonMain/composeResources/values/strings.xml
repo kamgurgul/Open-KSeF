@@ -35,6 +35,8 @@
 
     <!-- Invoice detail -->
     <string name="invoice_detail_xml_title">Invoice content (XML)</string>
+    <string name="action_export_pdf">Export PDF</string>
+    <string name="pdf_export_success">Invoice PDF exported</string>
 
     <!-- Send invoice -->
     <string name="send_invoice_title">Send invoice</string>
@@ -80,4 +82,5 @@
     <string name="error_required">Required</string>
     <string name="error_items_required">Add at least 1 item</string>
     <string name="error_send_invoice">Failed to send invoice</string>
+    <string name="error_export_pdf">Failed to export PDF</string>
 </resources>

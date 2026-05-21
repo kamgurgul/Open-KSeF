@@ -35,6 +35,8 @@
 
     <!-- Invoice detail -->
     <string name="invoice_detail_xml_title">Treść faktury (XML)</string>
+    <string name="action_export_pdf">Eksportuj PDF</string>
+    <string name="pdf_export_success">Faktura PDF wyeksportowana</string>
 
     <!-- Send invoice -->
     <string name="send_invoice_title">Wyślij fakturę</string>
@@ -80,4 +82,5 @@
     <string name="error_required">Wymagane</string>
     <string name="error_items_required">Dodaj min. 1 pozycję</string>
     <string name="error_send_invoice">Błąd wysyłania faktury</string>
+    <string name="error_export_pdf">Nie udało się wyeksportować PDF</string>
 </resources>

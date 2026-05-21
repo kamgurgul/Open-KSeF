@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,7 +36,9 @@ import com.kgurgul.openksef.common.UiText
 import com.kgurgul.openksef.common.asString
 import openksef.shared.generated.resources.Res
 import openksef.shared.generated.resources.action_back
+import openksef.shared.generated.resources.action_export_pdf
 import openksef.shared.generated.resources.invoice_detail_xml_title
+import openksef.shared.generated.resources.pdf_export_success
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,17 +47,19 @@ fun InvoiceDetailScreen(viewModel: InvoiceDetailViewModel, onNavigateBack: () ->
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var pendingError by remember { mutableStateOf<UiText?>(null) }
+    var pendingMessage by remember { mutableStateOf<UiText?>(null) }
     ObserveAsEvents(viewModel.events) { event ->
-        when (event) {
-            is InvoiceDetailEvent.ShowError -> pendingError = event.message
-        }
+        pendingMessage =
+            when (event) {
+                is InvoiceDetailEvent.ShowError -> event.message
+                InvoiceDetailEvent.PdfExported -> UiText.Resource(Res.string.pdf_export_success)
+            }
     }
-    val errorMessage = pendingError?.asString()
-    LaunchedEffect(errorMessage) {
-        errorMessage?.let {
+    val message = pendingMessage?.asString()
+    LaunchedEffect(message) {
+        message?.let {
             snackbarHostState.showSnackbar(it)
-            pendingError = null
+            pendingMessage = null
         }
     }
 
@@ -76,11 +81,36 @@ fun InvoiceDetailScreen(viewModel: InvoiceDetailViewModel, onNavigateBack: () ->
                         )
                     }
                 },
+                actions = {
+                    if (uiState.canExportPdf && uiState.invoiceXml != null) {
+                        if (uiState.isExportingPdf) {
+                            Box(
+                                modifier = Modifier.size(48.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(22.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                )
+                            }
+                        } else {
+                            IconButton(onClick = viewModel::onExportPdfClick) {
+                                Icon(
+                                    Icons.Default.PictureAsPdf,
+                                    contentDescription =
+                                        stringResource(Res.string.action_export_pdf),
+                                )
+                            }
+                        }
+                    }
+                },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         titleContentColor = MaterialTheme.colorScheme.onPrimary,
                         navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
                     ),
             )
         },

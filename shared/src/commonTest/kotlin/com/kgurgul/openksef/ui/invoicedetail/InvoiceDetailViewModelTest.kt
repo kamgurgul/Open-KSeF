@@ -20,6 +20,8 @@ import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefCrypto
 import com.kgurgul.openksef.data.repository.KsefRepository
+import com.kgurgul.openksef.domain.pdf.InvoicePdfExporter
+import com.kgurgul.openksef.domain.pdf.PdfExportResult
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -92,10 +94,75 @@ class InvoiceDetailViewModelTest {
         assertEquals("KSEF-FAIL-001", state.ksefReferenceNumber)
     }
 
+    @Test
+    fun uiState_canExportPdf_reflectsSupportedExporter() = runTest {
+        val viewModel =
+            createViewModel(
+                ksefRef = "KSEF-1",
+                responseStatus = HttpStatusCode.OK,
+                responseBody = "<Faktura/>",
+                exporter = FakeInvoicePdfExporter(isSupported = true),
+            )
+
+        val state = viewModel.uiState.first { !it.isLoading }
+
+        assertEquals(true, state.canExportPdf)
+    }
+
+    @Test
+    fun uiState_canExportPdf_falseForUnsupportedExporter() = runTest {
+        val viewModel =
+            createViewModel(
+                ksefRef = "KSEF-1",
+                responseStatus = HttpStatusCode.OK,
+                responseBody = "<Faktura/>",
+                exporter = FakeInvoicePdfExporter(isSupported = false),
+            )
+
+        val state = viewModel.uiState.first { !it.isLoading }
+
+        assertEquals(false, state.canExportPdf)
+    }
+
+    @Test
+    fun onExportPdfClick_success_emitsPdfExportedEvent() = runTest {
+        val viewModel =
+            createViewModel(
+                ksefRef = "KSEF-OK",
+                responseStatus = HttpStatusCode.OK,
+                responseBody = "<Faktura/>",
+                exporter = FakeInvoicePdfExporter(result = PdfExportResult.Success("invoice.pdf")),
+            )
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.uiState.first { it.invoiceXml != null }
+
+        viewModel.onExportPdfClick()
+
+        assertEquals(InvoiceDetailEvent.PdfExported, viewModel.events.first())
+    }
+
+    @Test
+    fun onExportPdfClick_failure_emitsShowErrorEvent() = runTest {
+        val viewModel =
+            createViewModel(
+                ksefRef = "KSEF-ERR",
+                responseStatus = HttpStatusCode.OK,
+                responseBody = "<Faktura/>",
+                exporter = FakeInvoicePdfExporter(result = PdfExportResult.Failure("disk full")),
+            )
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.uiState.first { it.invoiceXml != null }
+
+        viewModel.onExportPdfClick()
+
+        assertEquals(true, viewModel.events.first() is InvoiceDetailEvent.ShowError)
+    }
+
     private fun createViewModel(
         ksefRef: String,
         responseStatus: HttpStatusCode,
         responseBody: String,
+        exporter: InvoicePdfExporter = FakeInvoicePdfExporter(),
     ): InvoiceDetailViewModel {
         val engine = MockEngine { _ ->
             respond(
@@ -124,6 +191,16 @@ class InvoiceDetailViewModelTest {
                 override fun rsaOaepSha256Encrypt(data: ByteArray, certificateDer: ByteArray) = data
             }
         val repository = KsefRepository(api, sessionHolder, crypto)
-        return InvoiceDetailViewModel(ksefRef, repository)
+        return InvoiceDetailViewModel(ksefRef, repository, exporter)
+    }
+
+    private class FakeInvoicePdfExporter(
+        override val isSupported: Boolean = true,
+        private val result: PdfExportResult = PdfExportResult.Success("invoice.pdf"),
+    ) : InvoicePdfExporter {
+        override suspend fun export(
+            invoiceXml: String,
+            ksefReferenceNumber: String,
+        ): PdfExportResult = result
     }
 }

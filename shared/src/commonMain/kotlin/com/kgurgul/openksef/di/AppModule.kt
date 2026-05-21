@@ -23,6 +23,8 @@ import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefApiClient
 import com.kgurgul.openksef.data.remote.defaultKsefCrypto
 import com.kgurgul.openksef.data.repository.KsefRepository
+import com.kgurgul.openksef.domain.pdf.InvoicePdfExporter
+import com.kgurgul.openksef.domain.pdf.defaultInvoicePdfExporter
 import com.kgurgul.openksef.ui.invoicedetail.InvoiceDetailViewModel
 import com.kgurgul.openksef.ui.invoices.InvoiceListViewModel
 import com.kgurgul.openksef.ui.login.LoginViewModel
@@ -51,9 +53,12 @@ val appModule = module {
     single { defaultKsefCrypto() }
     singleOf(::KsefRepository)
 
+    // Domain
+    single<InvoicePdfExporter> { defaultInvoicePdfExporter() }
+
     // ViewModels
     viewModelOf(::LoginViewModel)
     viewModelOf(::InvoiceListViewModel)
-    viewModel { params -> InvoiceDetailViewModel(params.get(), get()) }
+    viewModel { params -> InvoiceDetailViewModel(params.get(), get(), get()) }
     viewModelOf(::SendInvoiceViewModel)
 }
