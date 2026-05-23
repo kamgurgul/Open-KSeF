@@ -55,6 +55,11 @@ object InvoiceXmlParser {
             totalNet = formatCents(totalNetCents),
             totalVat = formatCents(totalVatCents),
             totalGross = formatCents(totalGrossCents),
+            payment = parsePayment(fa?.child("Platnosc")),
+            annotations = parseAnnotations(fa?.child("Adnotacje")),
+            additionalDescriptions =
+                fa?.children("DodatkowyOpis")?.mapNotNull(::parseKeyValue).orEmpty(),
+            footerLines = parseFooter(root.child("Stopka")),
         )
     }
 
@@ -117,6 +122,111 @@ object InvoiceXmlParser {
             found = true
         }
         return if (found) total else null
+    }
+
+    /** Parses a `DodatkowyOpis` key/value entry, or null when it carries no text. */
+    private fun parseKeyValue(node: XmlNode): InvoiceKeyValue? {
+        val rawKey = node.childText("Klucz").orEmpty()
+        val value = node.childText("Wartosc").orEmpty()
+        if (rawKey.isEmpty() && value.isEmpty()) return null
+        val lineRef = node.childText("NrWiersza")
+        val key =
+            when {
+                lineRef == null -> rawKey
+                rawKey.isEmpty() -> "Poz. $lineRef"
+                else -> "Poz. $lineRef · $rawKey"
+            }
+        return InvoiceKeyValue(key = key, value = value)
+    }
+
+    /** Parses the `Platnosc` element, or null when it carries nothing worth showing. */
+    private fun parsePayment(node: XmlNode?): InvoicePaymentInfo? {
+        if (node == null) return null
+        val isPaid = node.childText("Zaplacono") == "1"
+        val paymentDate = node.childText("DataZaplaty").orEmpty()
+        val dueDate = node.child("TerminPlatnosci")?.childText("Termin").orEmpty()
+        val method = paymentMethodLabel(node.childText("FormaPlatnosci"))
+        val account = node.child("RachunekBankowy")
+        val bankAccount = account?.childText("NrRB").orEmpty()
+        val bankName = account?.childText("NazwaBanku").orEmpty()
+        val hasContent =
+            isPaid ||
+                    paymentDate.isNotEmpty() ||
+                    dueDate.isNotEmpty() ||
+                    method.isNotEmpty() ||
+                    bankAccount.isNotEmpty() ||
+                    bankName.isNotEmpty()
+        return if (hasContent) {
+            InvoicePaymentInfo(
+                isPaid = isPaid,
+                paymentDate = paymentDate,
+                dueDate = dueDate,
+                method = method,
+                bankAccount = bankAccount,
+                bankName = bankName,
+            )
+        } else {
+            null
+        }
+    }
+
+    /** Maps a `FormaPlatnosci` code to a human-readable Polish label. */
+    private fun paymentMethodLabel(code: String?): String =
+        when (code) {
+            null -> ""
+            "1" -> "Gotówka"
+            "2" -> "Karta"
+            "3" -> "Bon"
+            "4" -> "Czek"
+            "5" -> "Kredyt"
+            "6" -> "Przelew"
+            "7" -> "Płatność mobilna"
+            else -> code
+        }
+
+    /** Collects the active boolean flags of the `Adnotacje` element as readable labels. */
+    private fun parseAnnotations(node: XmlNode?): List<String> {
+        if (node == null) return emptyList()
+        val labels = mutableListOf<String>()
+        fun flag(child: String, label: String) {
+            if (node.childText(child) == "1") labels += label
+        }
+        flag("P_16", "Metoda kasowa")
+        flag("P_17", "Samofakturowanie")
+        flag("P_18", "Odwrotne obciążenie")
+        flag("P_18A", "Mechanizm podzielonej płatności (MPP)")
+        if (node.child("Zwolnienie")?.childText("P_19") == "1") {
+            labels += "Zwolnienie z VAT"
+        }
+        if (node.child("NoweSrodkiTransportu")?.childText("P_22") == "1") {
+            labels += "Nowe środki transportu"
+        }
+        flag("P_23", "Procedura uproszczona (trójstronna)")
+        val pMarzy = node.child("PMarzy")
+        if (pMarzy != null && pMarzy.childText("P_PMarzyN") != "1") {
+            labels += "Procedura marży"
+        }
+        return labels
+    }
+
+    /** Extracts free-text lines and registry data from the invoice `Stopka` element. */
+    private fun parseFooter(node: XmlNode?): List<String> {
+        if (node == null) return emptyList()
+        val lines = mutableListOf<String>()
+        node.children("Informacje").forEach { info ->
+            info.childText("StopkaFaktury")?.let { lines += it }
+        }
+        node.children("Rejestry").forEach { registry ->
+            val parts =
+                listOfNotNull(
+                    registry.childText("PelnaNazwa"),
+                    registry.childText("KRS")?.let { "KRS: $it" },
+                    registry.childText("REGON")?.let { "REGON: $it" },
+                    registry.childText("BDO")?.let { "BDO: $it" },
+                )
+            if (parts.isNotEmpty()) lines += parts.joinToString("  ·  ")
+        }
+        return lines
     }
 }
 

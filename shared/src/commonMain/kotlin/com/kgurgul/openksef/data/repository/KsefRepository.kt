@@ -62,13 +62,20 @@ class KsefRepository(
                 )
             )
 
-        sessionHolder.authReferenceNumber = initResponse.referenceNumber
-        sessionHolder.accessToken = initResponse.authenticationToken.token
+        sessionHolder.update(
+            authReferenceNumber = initResponse.referenceNumber,
+            accessToken = initResponse.authenticationToken.token,
+        )
 
         val tokens = waitForRedeem(initResponse.referenceNumber)
-        sessionHolder.accessToken = tokens.accessToken.token
-        sessionHolder.refreshToken = tokens.refreshToken.token
-        sessionHolder.nip = nip
+        sessionHolder.update(
+            accessToken = tokens.accessToken.token,
+            refreshToken = tokens.refreshToken.token,
+            nip = nip,
+        )
+        // The Auth plugin cached the temporary authentication token while polling auth status;
+        // drop it so the permanent access token is sent on subsequent requests.
+        api.clearTokenCache()
 
         SessionInfo(
             accessToken = tokens.accessToken.token,
@@ -124,6 +131,7 @@ class KsefRepository(
         }
         runCatching { api.logoutCurrentSession() }
         sessionHolder.clear()
+        api.clearTokenCache()
     }
 
     @OptIn(ExperimentalEncodingApi::class)
@@ -167,7 +175,7 @@ class KsefRepository(
                 api.openOnlineSession(
                     OpenOnlineSessionRequest(formCode = formCode, encryption = encryption)
                 )
-            sessionHolder.onlineSessionReferenceNumber = response.referenceNumber
+            sessionHolder.update(onlineSessionReferenceNumber = response.referenceNumber)
             response.referenceNumber
         }
 
@@ -210,6 +218,7 @@ class KsefRepository(
 
     fun setEnvironmentBaseUrl(baseUrl: String) {
         api.baseUrl = baseUrl
+        sessionHolder.update(baseUrl = baseUrl)
     }
 
     @OptIn(ExperimentalEncodingApi::class)

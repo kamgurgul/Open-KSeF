@@ -41,10 +41,27 @@ data class InvoiceDocument(
     val totalNet: String,
     val totalVat: String,
     val totalGross: String,
+    val payment: InvoicePaymentInfo? = null,
+    val annotations: List<String> = emptyList(),
+    val additionalDescriptions: List<InvoiceKeyValue> = emptyList(),
+    val footerLines: List<String> = emptyList(),
 )
 
 /** Identification and address data of an invoice party (`Podmiot1`/`Podmiot2`). */
 data class InvoiceDocumentParty(val name: String, val taxId: String, val address: String)
+
+/** A free-form key/value pair, e.g. an entry of a `DodatkowyOpis` element. */
+data class InvoiceKeyValue(val key: String, val value: String)
+
+/** Payment summary parsed from the `Platnosc` element. */
+data class InvoicePaymentInfo(
+    val isPaid: Boolean,
+    val paymentDate: String,
+    val dueDate: String,
+    val method: String,
+    val bankAccount: String,
+    val bankName: String,
+)
 
 /** A single invoice row (`FaWiersz`). All monetary values are kept as already-formatted strings. */
 data class InvoiceDocumentLine(

@@ -22,7 +22,7 @@ package com.kgurgul.openksef.domain.pdf
  * The implementation is platform specific:
  * - desktop uses the `ksef-fop` library (Apache FOP) to reproduce the official KSeF visualization,
  * - Android draws the parsed [InvoiceDocument] onto a native `PdfDocument` canvas,
- * - iOS is currently unsupported ([isSupported] is `false`).
+ * - iOS renders the parsed [InvoiceDocument] as HTML and converts it with `UIPrintPageRenderer`.
  */
 interface InvoicePdfExporter {
 
@@ -31,8 +31,8 @@ interface InvoicePdfExporter {
 
     /**
      * Generates a PDF for the given invoice and hands it to the platform (a save dialog on desktop,
-     * a viewer intent on Android). Must be called off the main thread by the caller's dispatcher;
-     * implementations switch dispatchers internally where needed.
+     * a viewer intent on Android, a share sheet on iOS). Implementations switch dispatchers
+     * internally where needed.
      */
     suspend fun export(invoiceXml: String, ksefReferenceNumber: String): PdfExportResult
 }

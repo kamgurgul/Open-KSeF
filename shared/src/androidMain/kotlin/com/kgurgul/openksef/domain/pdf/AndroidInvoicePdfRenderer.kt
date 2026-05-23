@@ -63,6 +63,10 @@ internal class AndroidInvoicePdfRenderer {
         drawParties(document)
         drawItemsTable(document)
         drawTotals(document)
+        drawPaymentSection(document.payment)
+        drawAnnotationsSection(document.annotations)
+        drawKeyValueSection("Dodatkowy opis", document.additionalDescriptions)
+        drawFooterSection(document.footerLines)
         finishPage()
 
         return ByteArrayOutputStream().use { out ->
@@ -214,6 +218,106 @@ internal class AndroidInvoicePdfRenderer {
 
     // endregion
 
+    // region Extended sections
+
+    private fun drawPaymentSection(payment: InvoicePaymentInfo?) {
+        if (payment == null) return
+        drawSectionHeader("Płatność")
+        if (payment.method.isNotBlank()) drawDetailRow("Forma płatności", payment.method)
+        if (payment.dueDate.isNotBlank()) drawDetailRow("Termin płatności", payment.dueDate)
+        drawDetailRow("Zapłacono", if (payment.isPaid) "Tak" else "Nie")
+        if (payment.paymentDate.isNotBlank()) drawDetailRow("Data zapłaty", payment.paymentDate)
+        if (payment.bankName.isNotBlank()) drawDetailRow("Bank", payment.bankName)
+        if (payment.bankAccount.isNotBlank()) drawDetailRow("Rachunek bankowy", payment.bankAccount)
+    }
+
+    private fun drawAnnotationsSection(annotations: List<String>) {
+        if (annotations.isEmpty()) return
+        drawSectionHeader("Adnotacje")
+        annotations.forEach(::drawBulletLine)
+    }
+
+    private fun drawKeyValueSection(title: String, entries: List<InvoiceKeyValue>) {
+        if (entries.isEmpty()) return
+        drawSectionHeader(title)
+        entries.forEach { drawDetailRow(it.key.ifBlank { "—" }, it.value.ifBlank { "—" }) }
+    }
+
+    private fun drawFooterSection(lines: List<String>) {
+        if (lines.isEmpty()) return
+        drawSectionHeader("Stopka faktury")
+        lines.forEach(::drawParagraph)
+    }
+
+    private fun drawSectionHeader(title: String) {
+        cursorY += SECTION_GAP
+        ensureSpace(SECTION_HEADER_HEIGHT + ROW_HEIGHT)
+        fillPaint.color = ACCENT
+        canvas.drawRect(
+            MARGIN,
+            cursorY,
+            MARGIN + CONTENT_WIDTH,
+            cursorY + SECTION_HEADER_HEIGHT,
+            fillPaint,
+        )
+        canvas.drawText(
+            title,
+            MARGIN + BOX_PADDING,
+            cursorY + SECTION_HEADER_HEIGHT - 5f,
+            sectionPaint,
+        )
+        cursorY += SECTION_HEADER_HEIGHT
+    }
+
+    /** Draws a label/value pair, wrapping the value within the content column. */
+    private fun drawDetailRow(label: String, value: String) {
+        val valueWidth = CONTENT_WIDTH - DETAIL_LABEL_WIDTH - 2 * BOX_PADDING
+        val valueLines = wrap(value, valuePaint, valueWidth, maxLines = 6).ifEmpty { listOf("—") }
+        val rowHeight = valueLines.size * LINE_HEIGHT + 6f
+        if (cursorY + rowHeight > PAGE_HEIGHT - MARGIN - FOOTER_RESERVE) newPage()
+        val baseline = cursorY + 11f
+        canvas.drawText(label, MARGIN + BOX_PADDING, baseline, labelPaint)
+        var y = baseline
+        valueLines.forEach { line ->
+            canvas.drawText(line, MARGIN + BOX_PADDING + DETAIL_LABEL_WIDTH, y, valuePaint)
+            y += LINE_HEIGHT
+        }
+        cursorY += rowHeight
+    }
+
+    /** Draws a single bulleted, wrapped line of text. */
+    private fun drawBulletLine(text: String) {
+        val textWidth = CONTENT_WIDTH - 2 * BOX_PADDING - BULLET_INDENT
+        val lines = wrap(text, valuePaint, textWidth, maxLines = 4).ifEmpty { listOf("—") }
+        val rowHeight = lines.size * LINE_HEIGHT + 4f
+        if (cursorY + rowHeight > PAGE_HEIGHT - MARGIN - FOOTER_RESERVE) newPage()
+        var y = cursorY + 11f
+        canvas.drawText("•", MARGIN + BOX_PADDING, y, valuePaint)
+        lines.forEach { line ->
+            canvas.drawText(line, MARGIN + BOX_PADDING + BULLET_INDENT, y, valuePaint)
+            y += LINE_HEIGHT
+        }
+        cursorY += rowHeight
+    }
+
+    /** Draws a full-width, wrapped paragraph of text. */
+    private fun drawParagraph(text: String) {
+        val lines =
+            wrap(text, valuePaint, CONTENT_WIDTH - 2 * BOX_PADDING, maxLines = 12).ifEmpty {
+                listOf("—")
+            }
+        val rowHeight = lines.size * LINE_HEIGHT + 4f
+        if (cursorY + rowHeight > PAGE_HEIGHT - MARGIN - FOOTER_RESERVE) newPage()
+        var y = cursorY + 11f
+        lines.forEach { line ->
+            canvas.drawText(line, MARGIN + BOX_PADDING, y, valuePaint)
+            y += LINE_HEIGHT
+        }
+        cursorY += rowHeight
+    }
+
+    // endregion
+
     // region Parties helpers
 
     private fun partyBoxHeight(party: InvoiceDocumentParty, width: Float): Float {
@@ -345,7 +449,12 @@ internal class AndroidInvoicePdfRenderer {
         paint.textAlign = Paint.Align.LEFT
     }
 
-    private fun wrap(text: String, paint: Paint, maxWidth: Float): List<String> {
+    private fun wrap(
+        text: String,
+        paint: Paint,
+        maxWidth: Float,
+        maxLines: Int = MAX_NAME_LINES,
+    ): List<String> {
         if (text.isBlank()) return emptyList()
         val words = text.trim().split(Regex("\\s+"))
         val lines = ArrayList<String>()
@@ -360,11 +469,11 @@ internal class AndroidInvoicePdfRenderer {
             }
         }
         if (current.isNotEmpty()) lines.add(current.toString())
-        return if (lines.size <= MAX_NAME_LINES) {
+        return if (lines.size <= maxLines) {
             lines
         } else {
-            lines.take(MAX_NAME_LINES).toMutableList().also {
-                it[MAX_NAME_LINES - 1] = it[MAX_NAME_LINES - 1].take(40).trimEnd() + "…"
+            lines.take(maxLines).toMutableList().also {
+                it[maxLines - 1] = it[maxLines - 1].take(40).trimEnd() + "…"
             }
         }
     }
@@ -409,6 +518,9 @@ internal class AndroidInvoicePdfRenderer {
         const val BOX_PADDING = 8f
         const val FOOTER_RESERVE = 26f
         const val MAX_NAME_LINES = 4
+        const val SECTION_HEADER_HEIGHT = 18f
+        const val DETAIL_LABEL_WIDTH = 130f
+        const val BULLET_INDENT = 14f
 
         val INK = 0xFF202124.toInt()
         val MUTED = 0xFF5F6368.toInt()

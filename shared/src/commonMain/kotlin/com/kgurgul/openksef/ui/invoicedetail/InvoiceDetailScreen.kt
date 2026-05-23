@@ -49,11 +49,11 @@ fun InvoiceDetailScreen(viewModel: InvoiceDetailViewModel, onNavigateBack: () ->
 
     var pendingMessage by remember { mutableStateOf<UiText?>(null) }
     ObserveAsEvents(viewModel.events) { event ->
-        pendingMessage =
-            when (event) {
-                is InvoiceDetailEvent.ShowError -> event.message
-                InvoiceDetailEvent.PdfExported -> UiText.Resource(Res.string.pdf_export_success)
-            }
+        when (event) {
+            is InvoiceDetailEvent.ShowError -> pendingMessage = event.message
+            InvoiceDetailEvent.PdfExported ->
+                pendingMessage = UiText.Resource(Res.string.pdf_export_success)
+        }
     }
     val message = pendingMessage?.asString()
     LaunchedEffect(message) {

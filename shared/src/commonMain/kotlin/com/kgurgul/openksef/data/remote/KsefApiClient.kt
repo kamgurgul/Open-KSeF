@@ -16,17 +16,25 @@
 
 package com.kgurgul.openksef.data.remote
 
+import com.kgurgul.openksef.data.SessionEventBus
 import com.kgurgul.openksef.data.SessionHolder
+import com.kgurgul.openksef.data.remote.model.AuthenticationTokenRefreshResponse
 import io.ktor.client.HttpClient
+import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpResponseValidator
+import io.ktor.client.plugins.auth.Auth
+import io.ktor.client.plugins.auth.providers.BearerTokens
+import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.header
+import io.ktor.client.request.post
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
@@ -34,15 +42,64 @@ import kotlinx.serialization.json.Json
 
 object KsefApiClient {
 
-    fun create(sessionHolder: SessionHolder, json: Json): HttpClient {
+    fun create(
+        sessionHolder: SessionHolder,
+        json: Json,
+        sessionEventBus: SessionEventBus,
+    ): HttpClient {
         return HttpClient {
             expectSuccess = false
             install(ContentNegotiation) { json(json, contentType = ContentType.Any) }
             install(Logging) { level = LogLevel.HEADERS }
+            install(Auth) {
+                bearer {
+                    loadTokens {
+                        val access = sessionHolder.accessToken ?: return@loadTokens null
+                        BearerTokens(
+                            accessToken = access,
+                            refreshToken = sessionHolder.refreshToken ?: "",
+                        )
+                    }
+                    refreshTokens {
+                        val refreshToken = sessionHolder.refreshToken
+                        if (refreshToken == null) {
+                            sessionHolder.clear()
+                            return@refreshTokens null
+                        }
+                        try {
+                            val response =
+                                client.post("${sessionHolder.baseUrl}/auth/token/refresh") {
+                                    markAsRefreshTokenRequest()
+                                    header(HttpHeaders.Authorization, "Bearer $refreshToken")
+                                    contentType(ContentType.Application.Json)
+                                }
+                            if (response.status.isSuccess()) {
+                                val tokens = response.body<AuthenticationTokenRefreshResponse>()
+                                sessionHolder.update(accessToken = tokens.accessToken.token)
+                                BearerTokens(
+                                    accessToken = tokens.accessToken.token,
+                                    refreshToken = refreshToken,
+                                )
+                            } else {
+                                sessionHolder.clear()
+                                null
+                            }
+                        } catch (_: Exception) {
+                            sessionHolder.clear()
+                            null
+                        }
+                    }
+                }
+            }
             HttpResponseValidator {
                 validateResponse { response ->
                     if (!response.status.isSuccess()) {
                         val body = runCatching { response.bodyAsText() }.getOrDefault("")
+                        if (response.status == HttpStatusCode.Unauthorized) {
+                            // The session can no longer be refreshed — signal a global redirect.
+                            sessionEventBus.notifySessionExpired()
+                            throw SessionExpiredException()
+                        }
                         throw KsefApiException(
                             statusCode = response.status.value,
                             responseBody = body,
@@ -51,14 +108,7 @@ object KsefApiClient {
                     }
                 }
             }
-            defaultRequest {
-                contentType(ContentType.Application.Json)
-                sessionHolder.accessToken?.let { token ->
-                    if (headers[HttpHeaders.Authorization] == null) {
-                        header(HttpHeaders.Authorization, "Bearer $token")
-                    }
-                }
-            }
+            defaultRequest { contentType(ContentType.Application.Json) }
         }
     }
 }

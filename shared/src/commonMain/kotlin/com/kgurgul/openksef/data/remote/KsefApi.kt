@@ -20,6 +20,8 @@ import com.kgurgul.openksef.data.remote.model.*
 import com.kgurgul.openksef.domain.model.KsefEnvironment
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.auth.authProviders
+import io.ktor.client.plugins.auth.providers.BearerAuthProvider
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -83,6 +85,16 @@ class KsefApi(private val client: HttpClient) {
     /** DELETE /auth/sessions/current — invalidates the current authentication session. */
     suspend fun logoutCurrentSession() {
         client.delete("$baseUrl/auth/sessions/current")
+    }
+
+    /**
+     * Drops the bearer token cached by the Ktor `Auth` plugin so the next request re-reads the
+     * current token from the session. The plugin caches whatever `loadTokens` returned on its first
+     * call — during login that is the temporary authentication token — and never re-reads it
+     * afterwards, so this must be called once the permanent access token has been obtained.
+     */
+    fun clearTokenCache() {
+        client.authProviders.filterIsInstance<BearerAuthProvider>().forEach { it.clearToken() }
     }
 
     /** POST /sessions/online — opens an interactive (online) invoice-sending session. */

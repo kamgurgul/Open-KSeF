@@ -158,9 +158,11 @@ class SendInvoiceViewModelTest {
             }
 
         val sessionHolder = SessionHolder()
-        sessionHolder.accessToken = "test-token"
-        sessionHolder.onlineSessionReferenceNumber = "session-ref"
-        sessionHolder.nip = "9999999999"
+        sessionHolder.update(
+            accessToken = "test-token",
+            onlineSessionReferenceNumber = "session-ref",
+            nip = "9999999999",
+        )
         val api = KsefApi(mockClient)
         val crypto =
             object : KsefCrypto {

@@ -184,7 +184,7 @@ class InvoiceDetailViewModelTest {
                 defaultRequest { contentType(ContentType.Application.Json) }
                 expectSuccess = true
             }
-        val sessionHolder = SessionHolder().apply { accessToken = "test-token" }
+        val sessionHolder = SessionHolder().apply { update(accessToken = "test-token") }
         val api = KsefApi(client)
         val crypto =
             object : KsefCrypto {

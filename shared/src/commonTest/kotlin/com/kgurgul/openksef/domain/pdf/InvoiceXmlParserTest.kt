@@ -18,6 +18,8 @@ package com.kgurgul.openksef.domain.pdf
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class InvoiceXmlParserTest {
@@ -92,6 +94,55 @@ class InvoiceXmlParserTest {
         assertEquals("0.00", document.totalGross)
     }
 
+    @Test
+    fun parse_extractsPaymentInfo() {
+        val payment = InvoiceXmlParser.parse(FA2_INVOICE_FULL).payment
+
+        assertNotNull(payment)
+        assertTrue(payment.isPaid)
+        assertEquals("2026-05-21", payment.paymentDate)
+        assertEquals("2026-06-03", payment.dueDate)
+        assertEquals("Przelew", payment.method)
+        assertEquals("12345678901234567890123456", payment.bankAccount)
+        assertEquals("Test Bank", payment.bankName)
+    }
+
+    @Test
+    fun parse_extractsActiveAnnotationsOnly() {
+        val annotations = InvoiceXmlParser.parse(FA2_INVOICE_FULL).annotations
+
+        // P_17, P_18, P_23 are 0; Zwolnienie/NoweSrodkiTransportu/PMarzy do not apply.
+        assertEquals(listOf("Metoda kasowa", "Mechanizm podzielonej płatności (MPP)"), annotations)
+    }
+
+    @Test
+    fun parse_extractsAdditionalDescriptions() {
+        val descriptions = InvoiceXmlParser.parse(FA2_INVOICE_FULL).additionalDescriptions
+
+        assertEquals(2, descriptions.size)
+        assertEquals(InvoiceKeyValue("Zamówienie", "ZAM/2026/05/7"), descriptions[0])
+        assertEquals(InvoiceKeyValue("Poz. 1 · Gwarancja", "24 miesiące"), descriptions[1])
+    }
+
+    @Test
+    fun parse_extractsFooterLines() {
+        val footer = InvoiceXmlParser.parse(FA2_INVOICE_FULL).footerLines
+
+        assertEquals(2, footer.size)
+        assertEquals("Dziękujemy za współpracę.", footer[0])
+        assertEquals("Seller & Co Sp. z o.o.  ·  KRS: 0000123456  ·  REGON: 123456789", footer[1])
+    }
+
+    @Test
+    fun parse_minimalDocumentHasNoExtraSections() {
+        val document = InvoiceXmlParser.parse("<Faktura></Faktura>")
+
+        assertNull(document.payment)
+        assertTrue(document.annotations.isEmpty())
+        assertTrue(document.additionalDescriptions.isEmpty())
+        assertTrue(document.footerLines.isEmpty())
+    }
+
     private companion object {
         val FA2_INVOICE =
             """
@@ -146,6 +197,63 @@ class InvoiceXmlParserTest {
                   <P_12>8</P_12>
                 </FaWiersz>
               </Fa>
+            </Faktura>
+            """
+                .trimIndent()
+
+        val FA2_INVOICE_FULL =
+            """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <Faktura xmlns="http://crd.gov.pl/wzor/2023/06/29/12648/">
+              <Naglowek>
+                <KodFormularza kodSystemowy="FA (2)" wersjaSchemy="1-0E">FA</KodFormularza>
+              </Naglowek>
+              <Podmiot1><DaneIdentyfikacyjne><NIP>1</NIP><Nazwa>A</Nazwa></DaneIdentyfikacyjne></Podmiot1>
+              <Podmiot2><DaneIdentyfikacyjne><NIP>2</NIP><Nazwa>B</Nazwa></DaneIdentyfikacyjne></Podmiot2>
+              <Fa>
+                <KodWaluty>PLN</KodWaluty>
+                <P_1>2026-05-20</P_1>
+                <P_2>FV/2026/05/9</P_2>
+                <P_15>123.00</P_15>
+                <Adnotacje>
+                  <P_16>1</P_16>
+                  <P_17>0</P_17>
+                  <P_18>0</P_18>
+                  <P_18A>1</P_18A>
+                  <Zwolnienie><P_19N>1</P_19N></Zwolnienie>
+                  <NoweSrodkiTransportu><P_22N>1</P_22N></NoweSrodkiTransportu>
+                  <P_23>0</P_23>
+                  <PMarzy><P_PMarzyN>1</P_PMarzyN></PMarzy>
+                </Adnotacje>
+                <FaWiersz><P_11>100.00</P_11></FaWiersz>
+                <Platnosc>
+                  <Zaplacono>1</Zaplacono>
+                  <DataZaplaty>2026-05-21</DataZaplaty>
+                  <FormaPlatnosci>6</FormaPlatnosci>
+                  <TerminPlatnosci><Termin>2026-06-03</Termin></TerminPlatnosci>
+                  <RachunekBankowy>
+                    <NrRB>12345678901234567890123456</NrRB>
+                    <NazwaBanku>Test Bank</NazwaBanku>
+                  </RachunekBankowy>
+                </Platnosc>
+                <DodatkowyOpis>
+                  <Klucz>Zamówienie</Klucz>
+                  <Wartosc>ZAM/2026/05/7</Wartosc>
+                </DodatkowyOpis>
+                <DodatkowyOpis>
+                  <NrWiersza>1</NrWiersza>
+                  <Klucz>Gwarancja</Klucz>
+                  <Wartosc>24 miesiące</Wartosc>
+                </DodatkowyOpis>
+              </Fa>
+              <Stopka>
+                <Informacje><StopkaFaktury>Dziękujemy za współpracę.</StopkaFaktury></Informacje>
+                <Rejestry>
+                  <PelnaNazwa>Seller &amp; Co Sp. z o.o.</PelnaNazwa>
+                  <KRS>0000123456</KRS>
+                  <REGON>123456789</REGON>
+                </Rejestry>
+              </Stopka>
             </Faktura>
             """
                 .trimIndent()

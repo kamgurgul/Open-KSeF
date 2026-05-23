@@ -16,6 +16,7 @@
 
 package com.kgurgul.openksef.di
 
+import com.kgurgul.openksef.data.SessionEventBus
 import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.local.TokenStore
 import com.kgurgul.openksef.data.local.createDataStore
@@ -28,6 +29,7 @@ import com.kgurgul.openksef.domain.pdf.defaultInvoicePdfExporter
 import com.kgurgul.openksef.ui.invoicedetail.InvoiceDetailViewModel
 import com.kgurgul.openksef.ui.invoices.InvoiceListViewModel
 import com.kgurgul.openksef.ui.login.LoginViewModel
+import com.kgurgul.openksef.ui.main.MainViewModel
 import com.kgurgul.openksef.ui.sendinvoice.SendInvoiceViewModel
 import kotlinx.serialization.json.Json
 import org.koin.core.module.dsl.singleOf
@@ -48,7 +50,8 @@ val appModule = module {
     }
     singleOf(::TokenStore)
     singleOf(::SessionHolder)
-    single { KsefApiClient.create(get(), get()) }
+    singleOf(::SessionEventBus)
+    single { KsefApiClient.create(get(), get(), get()) }
     singleOf(::KsefApi)
     single { defaultKsefCrypto() }
     singleOf(::KsefRepository)
@@ -57,6 +60,7 @@ val appModule = module {
     single<InvoicePdfExporter> { defaultInvoicePdfExporter() }
 
     // ViewModels
+    viewModelOf(::MainViewModel)
     viewModelOf(::LoginViewModel)
     viewModelOf(::InvoiceListViewModel)
     viewModel { params -> InvoiceDetailViewModel(params.get(), get(), get()) }

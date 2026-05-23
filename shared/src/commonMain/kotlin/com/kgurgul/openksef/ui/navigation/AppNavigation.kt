@@ -22,12 +22,15 @@ import androidx.compose.runtime.remember
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import com.kgurgul.openksef.common.ObserveAsEvents
 import com.kgurgul.openksef.ui.invoicedetail.InvoiceDetailScreen
 import com.kgurgul.openksef.ui.invoicedetail.InvoiceDetailViewModel
 import com.kgurgul.openksef.ui.invoices.InvoiceListScreen
 import com.kgurgul.openksef.ui.invoices.InvoiceListViewModel
 import com.kgurgul.openksef.ui.login.LoginScreen
 import com.kgurgul.openksef.ui.login.LoginViewModel
+import com.kgurgul.openksef.ui.main.MainEvent
+import com.kgurgul.openksef.ui.main.MainViewModel
 import com.kgurgul.openksef.ui.sendinvoice.SendInvoiceScreen
 import com.kgurgul.openksef.ui.sendinvoice.SendInvoiceViewModel
 import kotlinx.serialization.Serializable
@@ -46,6 +49,16 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun AppNavigation() {
     val backStack = remember { mutableStateListOf<Any>(LoginKey) }
+
+    val mainViewModel = koinViewModel<MainViewModel>()
+    ObserveAsEvents(mainViewModel.events) { event ->
+        when (event) {
+            MainEvent.NavigateToLogin -> {
+                backStack.clear()
+                backStack.add(LoginKey)
+            }
+        }
+    }
 
     NavDisplay(
         backStack = backStack,
