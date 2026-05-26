@@ -35,18 +35,19 @@ class AndroidInvoicePdfExporter(private val context: Context) : InvoicePdfExport
     override val isSupported: Boolean = true
 
     override suspend fun export(invoiceXml: String, ksefReferenceNumber: String): PdfExportResult =
-        withContext(Dispatchers.IO) {
-            try {
-                val document = InvoiceXmlParser.parse(invoiceXml)
-                val pdfBytes = AndroidInvoicePdfRenderer().render(document, ksefReferenceNumber)
-                val file = writePdf(pdfBytes, ksefReferenceNumber)
-                openInViewer(file)
-                PdfExportResult.Success(file.name)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                PdfExportResult.Failure(e.message)
-            }
+        try {
+            val document = withContext(Dispatchers.Default) { InvoiceXmlParser.parse(invoiceXml) }
+            val pdfBytes =
+                withContext(Dispatchers.Default) {
+                    AndroidInvoicePdfRenderer().render(document, ksefReferenceNumber)
+                }
+            val file = withContext(Dispatchers.IO) { writePdf(pdfBytes, ksefReferenceNumber) }
+            withContext(Dispatchers.Main) { openInViewer(file) }
+            PdfExportResult.Success(file.name)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            PdfExportResult.Failure(e.message)
         }
 
     private fun writePdf(bytes: ByteArray, ksefReferenceNumber: String): File {

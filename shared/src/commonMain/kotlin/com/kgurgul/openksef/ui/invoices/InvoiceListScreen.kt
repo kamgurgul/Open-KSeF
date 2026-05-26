@@ -31,6 +31,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -195,7 +196,15 @@ fun InvoiceListScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Column(
+            modifier =
+                Modifier.fillMaxSize()
+                    .padding(
+                        top = padding.calculateTopPadding(),
+                        start = padding.calculateStartPadding(LocalLayoutDirection.current),
+                        end = padding.calculateEndPadding(LocalLayoutDirection.current),
+                    )
+        ) {
             val selectedTabIndex = if (uiState.subjectType == InvoiceSubjectType.ISSUED) 0 else 1
             PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
                 Tab(
@@ -316,7 +325,13 @@ fun InvoiceListScreen(
             } else {
                 LazyColumn(
                     state = listState,
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding =
+                        PaddingValues(
+                            start = 16.dp,
+                            top = 16.dp,
+                            end = 16.dp,
+                            bottom = padding.calculateBottomPadding() + 88.dp,
+                        ),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(items = uiState.displayedInvoices, key = { it.ksefReferenceNumber }) {

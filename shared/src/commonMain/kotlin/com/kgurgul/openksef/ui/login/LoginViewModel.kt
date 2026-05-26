@@ -57,7 +57,7 @@ class LoginViewModel(private val repository: KsefRepository, private val tokenSt
     private fun loadSavedCredentials() {
         viewModelScope.launch {
             val savedNip = tokenStore.getNip().first()
-            val savedToken = tokenStore.getToken().first()
+            val savedToken = tokenStore.getToken()
             val savedEnv = tokenStore.getEnvironment().first()
 
             _uiState.update { state ->

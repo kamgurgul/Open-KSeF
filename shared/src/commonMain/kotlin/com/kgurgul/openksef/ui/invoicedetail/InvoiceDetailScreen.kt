@@ -16,6 +16,7 @@
 
 package com.kgurgul.openksef.ui.invoicedetail
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -153,6 +154,17 @@ fun InvoiceDetailScreen(viewModel: InvoiceDetailViewModel, onNavigateBack: () ->
                             }
                         }
                     }
+                }
+            }
+
+            if (uiState.isExportingPdf) {
+                Box(
+                    modifier =
+                        Modifier.fillMaxSize()
+                            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
                 }
             }
         }

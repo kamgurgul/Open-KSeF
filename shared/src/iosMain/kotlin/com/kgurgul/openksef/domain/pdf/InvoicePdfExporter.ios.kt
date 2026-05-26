@@ -17,34 +17,32 @@
 package com.kgurgul.openksef.domain.pdf
 
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.convert
+import kotlinx.cinterop.ObjCSignatureOverride
 import kotlinx.cinterop.useContents
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import platform.CoreGraphics.CGRectMake
 import platform.Foundation.NSData
 import platform.Foundation.NSDocumentDirectory
+import platform.Foundation.NSError
 import platform.Foundation.NSFileManager
-import platform.Foundation.NSMakeRange
-import platform.Foundation.NSMutableData
 import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
-import platform.Foundation.NSValue
-import platform.Foundation.setValue
 import platform.Foundation.writeToURL
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
-import platform.UIKit.UIGraphicsBeginPDFContextToData
-import platform.UIKit.UIGraphicsBeginPDFPage
-import platform.UIKit.UIGraphicsEndPDFContext
-import platform.UIKit.UIGraphicsGetPDFContextBounds
-import platform.UIKit.UIMarkupTextPrintFormatter
-import platform.UIKit.UIPrintPageRenderer
 import platform.UIKit.UIViewController
 import platform.UIKit.UIWindow
 import platform.UIKit.popoverPresentationController
-import platform.UIKit.valueWithCGRect
+import platform.WebKit.WKNavigation
+import platform.WebKit.WKNavigationDelegateProtocol
+import platform.WebKit.WKWebView
+import platform.WebKit.WKWebViewConfiguration
+import platform.darwin.NSObject
 
 /**
  * iOS [InvoicePdfExporter]. Apache FOP cannot run on iOS, so the invoice XML is parsed into an
@@ -57,47 +55,58 @@ class IosInvoicePdfExporter : InvoicePdfExporter {
     override val isSupported: Boolean = true
 
     override suspend fun export(invoiceXml: String, ksefReferenceNumber: String): PdfExportResult =
+        try {
+            val document = withContext(Dispatchers.Default) { InvoiceXmlParser.parse(invoiceXml) }
+            val html =
+                withContext(Dispatchers.Default) {
+                    InvoiceHtmlRenderer.render(document, ksefReferenceNumber)
+                }
+            // WKWebView lays out and rasterizes the page on its own queue, so Main stays free
+            // for the spinner and other UI updates.
+            val pdfData = renderHtmlToPdf(html)
+            val fileUrl =
+                withContext(Dispatchers.Default) { writePdf(pdfData, ksefReferenceNumber) }
+            withContext(Dispatchers.Main) { presentShareSheet(fileUrl) }
+            PdfExportResult.Success(fileUrl.lastPathComponent ?: "invoice.pdf")
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            PdfExportResult.Failure(e.message)
+        }
+
+    /**
+     * Renders [html] to PDF data via `WKWebView.createPDF`, which performs layout on WebKit's
+     * internal queue and never blocks the main thread.
+     */
+    private suspend fun renderHtmlToPdf(html: String): NSData =
         withContext(Dispatchers.Main) {
-            try {
-                val document = InvoiceXmlParser.parse(invoiceXml)
-                val html = InvoiceHtmlRenderer.render(document, ksefReferenceNumber)
-                val pdfData = renderHtmlToPdf(html)
-                val fileUrl = writePdf(pdfData, ksefReferenceNumber)
-                presentShareSheet(fileUrl)
-                PdfExportResult.Success(fileUrl.lastPathComponent ?: "invoice.pdf")
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                PdfExportResult.Failure(e.message)
+            suspendCancellableCoroutine { cont ->
+                val frame = CGRectMake(0.0, 0.0, PAGE_WIDTH, PAGE_HEIGHT)
+                val webView = WKWebView(frame = frame, configuration = WKWebViewConfiguration())
+                val delegate =
+                    PdfNavigationDelegate(
+                        webView = webView,
+                        onResult = { data, error ->
+                            when {
+                                cont.isCompleted -> Unit
+                                data != null -> cont.resume(data)
+                                else ->
+                                    cont.resumeWithException(
+                                        IllegalStateException(
+                                            error?.localizedDescription ?: "PDF render failed"
+                                        )
+                                    )
+                            }
+                        },
+                    )
+                webView.navigationDelegate = delegate
+                cont.invokeOnCancellation {
+                    webView.stopLoading()
+                    @Suppress("UNUSED_EXPRESSION") delegate // keep alive until cancellation
+                }
+                webView.loadHTMLString(html, baseURL = null)
             }
         }
-
-    /** Lays out the HTML on A4 pages and renders them into in-memory PDF data. */
-    private fun renderHtmlToPdf(html: String): NSData {
-        val renderer = UIPrintPageRenderer()
-        renderer.addPrintFormatter(
-            UIMarkupTextPrintFormatter(markupText = html),
-            startingAtPageAtIndex = 0L,
-        )
-
-        val pageRect = CGRectMake(0.0, 0.0, PAGE_WIDTH, PAGE_HEIGHT)
-        val printableRect =
-            CGRectMake(MARGIN, MARGIN, PAGE_WIDTH - 2 * MARGIN, PAGE_HEIGHT - 2 * MARGIN)
-        renderer.setValue(NSValue.valueWithCGRect(pageRect), forKey = "paperRect")
-        renderer.setValue(NSValue.valueWithCGRect(printableRect), forKey = "printableRect")
-
-        val pdfData = NSMutableData()
-        UIGraphicsBeginPDFContextToData(pdfData, pageRect, null)
-        val pageCount = renderer.numberOfPages.toInt()
-        renderer.prepareForDrawingPages(NSMakeRange(0.convert(), pageCount.convert()))
-        val bounds = UIGraphicsGetPDFContextBounds()
-        for (page in 0 until pageCount) {
-            UIGraphicsBeginPDFPage()
-            renderer.drawPageAtIndex(page.toLong(), inRect = bounds)
-        }
-        UIGraphicsEndPDFContext()
-        return pdfData
-    }
 
     private fun writePdf(data: NSData, ksefReferenceNumber: String): NSURL {
         val fileManager = NSFileManager.defaultManager
@@ -154,9 +163,37 @@ class IosInvoicePdfExporter : InvoicePdfExporter {
     private companion object {
         const val PAGE_WIDTH = 595.0
         const val PAGE_HEIGHT = 842.0
-        const val MARGIN = 32.0
         const val INVOICES_DIR = "invoices"
         val UNSAFE_FILE_CHARS = Regex("[^A-Za-z0-9._-]")
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private class PdfNavigationDelegate(
+    private val webView: WKWebView,
+    private val onResult: (NSData?, NSError?) -> Unit,
+) : NSObject(), WKNavigationDelegateProtocol {
+
+    override fun webView(webView: WKWebView, didFinishNavigation: WKNavigation?) {
+        webView.createPDFWithConfiguration(null) { data, error -> onResult(data, error) }
+    }
+
+    @ObjCSignatureOverride
+    override fun webView(
+        webView: WKWebView,
+        didFailNavigation: WKNavigation?,
+        withError: NSError,
+    ) {
+        onResult(null, withError)
+    }
+
+    @ObjCSignatureOverride
+    override fun webView(
+        webView: WKWebView,
+        didFailProvisionalNavigation: WKNavigation?,
+        withError: NSError,
+    ) {
+        onResult(null, withError)
     }
 }
 

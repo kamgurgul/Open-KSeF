@@ -19,6 +19,7 @@ package com.kgurgul.openksef.ui.login
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.kgurgul.openksef.common.UiText
 import com.kgurgul.openksef.data.SessionHolder
+import com.kgurgul.openksef.data.local.SecureTokenStorage
 import com.kgurgul.openksef.data.local.TokenStore
 import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefCrypto
@@ -219,8 +220,15 @@ class LoginViewModelTest {
         val tmpDir = FileSystem.SYSTEM_TEMPORARY_DIRECTORY
         val tmpPath = tmpDir / "test_prefs_${Random.nextInt()}.preferences_pb"
         val dataStore = PreferenceDataStoreFactory.createWithPath(produceFile = { tmpPath })
-        val tokenStore = TokenStore(dataStore)
+        val tokenStore = TokenStore(dataStore, InMemorySecureTokenStorage())
 
         return LoginViewModel(repository, tokenStore)
+    }
+
+    private class InMemorySecureTokenStorage : SecureTokenStorage {
+        private var token: String? = null
+        override suspend fun saveToken(token: String) { this.token = token }
+        override suspend fun readToken(): String? = token
+        override suspend fun clearToken() { token = null }
     }
 }

@@ -41,7 +41,7 @@ class DesktopInvoicePdfExporter : InvoicePdfExporter {
     override suspend fun export(invoiceXml: String, ksefReferenceNumber: String): PdfExportResult {
         val pdfBytes =
             try {
-                withContext(Dispatchers.IO) { generatePdf(invoiceXml, ksefReferenceNumber) }
+                withContext(Dispatchers.Default) { generatePdf(invoiceXml, ksefReferenceNumber) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -54,10 +54,8 @@ class DesktopInvoicePdfExporter : InvoicePdfExporter {
             } ?: return PdfExportResult.Cancelled
 
         return try {
-            withContext(Dispatchers.IO) {
-                target.writeBytes(pdfBytes)
-                openInSystemViewer(target)
-            }
+            withContext(Dispatchers.IO) { target.writeBytes(pdfBytes) }
+            withContext(Dispatchers.IO) { openInSystemViewer(target) }
             PdfExportResult.Success(target.absolutePath)
         } catch (e: CancellationException) {
             throw e

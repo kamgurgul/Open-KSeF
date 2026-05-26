@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kgurgul.openksef.common.asString
@@ -68,8 +69,9 @@ fun LoginScreen(viewModel: LoginViewModel, onLoginSuccess: () -> Unit) {
                 modifier =
                     Modifier.fillMaxSize()
                         .padding(padding)
-                        .padding(horizontal = 24.dp)
-                        .verticalScroll(rememberScrollState()),
+                        .imePadding()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
@@ -134,9 +136,16 @@ fun LoginScreen(viewModel: LoginViewModel, onLoginSuccess: () -> Unit) {
                                 ),
                             onClick = { viewModel.onEnvironmentChanged(env) },
                             selected = uiState.environment == env,
-                        ) {
-                            Text(env.name)
-                        }
+                            label = {
+                                Text(
+                                    text = env.name,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            },
+                        )
                     }
                 }
 

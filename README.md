@@ -5,6 +5,14 @@ e-Faktur) - the Polish National System of e-Invoices. It is built using Kotlin M
 Jetpack Compose, and it runs on Android, iOS and desktop. The app fetches data from the KSeF API.
 Api documentation: https://api-test.ksef.mf.gov.pl/docs/v2/index.html
 
+## TODO
+Work in progress, but the app is already able to fetch and display a list of invoices.
+* test and update sending invoices to KSeF
+* fix money formatting and dates standard
+* add invoice templates 
+* update UI
+* unify PDF exporting 
+
 ## License
 
     Copyright KG Soft

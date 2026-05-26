@@ -20,6 +20,7 @@ import com.kgurgul.openksef.data.SessionEventBus
 import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.local.TokenStore
 import com.kgurgul.openksef.data.local.createDataStore
+import com.kgurgul.openksef.data.local.defaultSecureTokenStorage
 import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefApiClient
 import com.kgurgul.openksef.data.remote.defaultKsefCrypto
@@ -48,6 +49,7 @@ val appModule = module {
             encodeDefaults = true
         }
     }
+    single { defaultSecureTokenStorage() }
     singleOf(::TokenStore)
     singleOf(::SessionHolder)
     singleOf(::SessionEventBus)

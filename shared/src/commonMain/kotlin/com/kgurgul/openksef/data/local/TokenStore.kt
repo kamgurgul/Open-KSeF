@@ -24,18 +24,20 @@ import com.kgurgul.openksef.domain.model.KsefEnvironment
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class TokenStore(private val dataStore: DataStore<Preferences>) {
+class TokenStore(
+    private val dataStore: DataStore<Preferences>,
+    private val secureTokenStorage: SecureTokenStorage,
+) {
     private companion object {
-        val TOKEN_KEY = stringPreferencesKey("ksef_token")
         val NIP_KEY = stringPreferencesKey("ksef_nip")
         val ENVIRONMENT_KEY = stringPreferencesKey("ksef_environment")
     }
 
     suspend fun saveToken(token: String) {
-        dataStore.edit { prefs -> prefs[TOKEN_KEY] = token }
+        secureTokenStorage.saveToken(token)
     }
 
-    fun getToken(): Flow<String?> = dataStore.data.map { prefs -> prefs[TOKEN_KEY] }
+    suspend fun getToken(): String? = secureTokenStorage.readToken()
 
     suspend fun saveNip(nip: String) {
         dataStore.edit { prefs -> prefs[NIP_KEY] = nip }
@@ -62,6 +64,7 @@ class TokenStore(private val dataStore: DataStore<Preferences>) {
         }
 
     suspend fun clear() {
+        secureTokenStorage.clearToken()
         dataStore.edit { prefs -> prefs.clear() }
     }
 }

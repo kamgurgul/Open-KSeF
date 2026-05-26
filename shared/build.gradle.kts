@@ -7,12 +7,11 @@ plugins {
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "com.kgurgul.openksef.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
         androidResources.enable = true
-        withHostTest {}
     }
 
     listOf(
@@ -31,8 +30,8 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.ktor.client.okhttp)
-            // FileProvider used to share the natively rendered invoice PDF.
             implementation(libs.androidx.core.ktx)
+            implementation(libs.tink.android)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -82,13 +81,13 @@ kotlin {
         jvmMain.dependencies {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.kotlinx.coroutinesSwing)
-
-            // PDF generation (Apache FOP based - JVM/desktop only)
             implementation(libs.ksef.fop)
+            implementation(libs.tink)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
         }
     }
 }
+
 
