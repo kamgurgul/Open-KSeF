@@ -4,9 +4,16 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.androidxRoom)
 }
 
 kotlin {
+    compilerOptions {
+        // Room generates an `actual` object (AppDatabaseConstructor) for the expect declaration.
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     android {
         namespace = "com.kgurgul.openksef.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -32,6 +39,7 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.androidx.core.ktx)
             implementation(libs.tink.android)
+            implementation(libs.androidx.room.sqlite.wrapper)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -61,6 +69,10 @@ kotlin {
             // DataStore
             implementation(libs.datastore.preferences)
 
+            // Room
+            implementation(libs.androidx.room.runtime)
+            implementation(libs.androidx.sqlite.bundled)
+
             // Navigation 3
             implementation(libs.navigation3.ui)
 
@@ -88,6 +100,17 @@ kotlin {
             implementation(libs.ktor.client.darwin)
         }
     }
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
+dependencies {
+    add("kspAndroid", libs.androidx.room.compiler)
+    add("kspJvm", libs.androidx.room.compiler)
+    add("kspIosArm64", libs.androidx.room.compiler)
+    add("kspIosSimulatorArm64", libs.androidx.room.compiler)
 }
 
 

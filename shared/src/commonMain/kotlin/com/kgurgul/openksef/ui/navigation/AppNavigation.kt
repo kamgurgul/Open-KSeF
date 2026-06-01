@@ -17,22 +17,26 @@
 package com.kgurgul.openksef.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
-import com.kgurgul.openksef.common.ObserveAsEvents
 import com.kgurgul.openksef.ui.invoicedetail.InvoiceDetailScreen
 import com.kgurgul.openksef.ui.invoicedetail.InvoiceDetailViewModel
 import com.kgurgul.openksef.ui.invoices.InvoiceListScreen
 import com.kgurgul.openksef.ui.invoices.InvoiceListViewModel
 import com.kgurgul.openksef.ui.login.LoginScreen
 import com.kgurgul.openksef.ui.login.LoginViewModel
-import com.kgurgul.openksef.ui.main.MainEvent
 import com.kgurgul.openksef.ui.main.MainViewModel
 import com.kgurgul.openksef.ui.sendinvoice.SendInvoiceScreen
 import com.kgurgul.openksef.ui.sendinvoice.SendInvoiceViewModel
+import com.kgurgul.openksef.ui.settings.SellerConfigScreen
+import com.kgurgul.openksef.ui.settings.SellerConfigViewModel
+import com.kgurgul.openksef.ui.settings.SettingsScreen
 import kotlinx.serialization.Serializable
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -46,17 +50,24 @@ import org.koin.core.parameter.parametersOf
 
 @Serializable data object SendInvoiceKey : NavKey
 
+@Serializable data object SettingsKey : NavKey
+
+@Serializable data object SellerConfigKey : NavKey
+
 @Composable
 fun AppNavigation() {
     val backStack = remember { mutableStateListOf<Any>(LoginKey) }
 
     val mainViewModel = koinViewModel<MainViewModel>()
-    ObserveAsEvents(mainViewModel.events) { event ->
-        when (event) {
-            MainEvent.NavigateToLogin -> {
-                backStack.clear()
-                backStack.add(LoginKey)
-            }
+    val mainUiState by mainViewModel.uiState.collectAsStateWithLifecycle()
+
+    // Session-expiry redirect is driven by retained state so it cannot be dropped: whenever the
+    // flag is set we reset the back stack to the login screen, then acknowledge it.
+    LaunchedEffect(mainUiState.sessionExpired) {
+        if (mainUiState.sessionExpired) {
+            backStack.clear()
+            backStack.add(LoginKey)
+            mainViewModel.onSessionExpiryHandled()
         }
     }
 
@@ -82,6 +93,7 @@ fun AppNavigation() {
                         viewModel = viewModel,
                         onInvoiceClick = { ksefRef -> backStack.add(InvoiceDetailKey(ksefRef)) },
                         onSendInvoiceClick = { backStack.add(SendInvoiceKey) },
+                        onSettingsClick = { backStack.add(SettingsKey) },
                         onLoggedOut = {
                             backStack.clear()
                             backStack.add(LoginKey)
@@ -103,6 +115,21 @@ fun AppNavigation() {
                 entry<SendInvoiceKey> {
                     val viewModel = koinViewModel<SendInvoiceViewModel>()
                     SendInvoiceScreen(
+                        viewModel = viewModel,
+                        onNavigateBack = { backStack.removeLastOrNull() },
+                    )
+                }
+
+                entry<SettingsKey> {
+                    SettingsScreen(
+                        onNavigateBack = { backStack.removeLastOrNull() },
+                        onSellerConfigClick = { backStack.add(SellerConfigKey) },
+                    )
+                }
+
+                entry<SellerConfigKey> {
+                    val viewModel = koinViewModel<SellerConfigViewModel>()
+                    SellerConfigScreen(
                         viewModel = viewModel,
                         onNavigateBack = { backStack.removeLastOrNull() },
                     )

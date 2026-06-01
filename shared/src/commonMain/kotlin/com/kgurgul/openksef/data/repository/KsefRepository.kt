@@ -21,6 +21,7 @@ import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefCrypto
 import com.kgurgul.openksef.data.remote.model.*
 import com.kgurgul.openksef.domain.model.*
+import com.kgurgul.openksef.domain.money.Money
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.time.Clock
@@ -46,7 +47,8 @@ class KsefRepository(
      */
     @OptIn(ExperimentalEncodingApi::class)
     suspend fun initSession(nip: String, ksefToken: String): Result<SessionInfo> = runCatching {
-        val certificate = pickKsefTokenEncryptionCertificate(api.getPublicKeyCertificates())
+        val certificate =
+            pickCertificate(api.getPublicKeyCertificates(), CERT_USAGE_KSEF_TOKEN_ENCRYPTION)
         val challenge = api.requestChallenge()
 
         val payload = "$ksefToken|${challenge.timestampMs}".encodeToByteArray()
@@ -85,24 +87,22 @@ class KsefRepository(
     }
 
     @OptIn(ExperimentalTime::class)
-    private fun pickKsefTokenEncryptionCertificate(
-        certs: List<PublicKeyCertificate>
+    private fun pickCertificate(
+        certs: List<PublicKeyCertificate>,
+        usage: String,
     ): PublicKeyCertificate {
         val now = Clock.System.now()
+        fun PublicKeyCertificate.hasUsage() = this.usage.any { it.equals(usage, ignoreCase = true) }
         val candidates = certs.filter { cert ->
-            cert.usage.any { it.equals("KsefTokenEncryption", ignoreCase = true) } &&
+            cert.hasUsage() &&
                 runCatching {
                         Instant.parse(cert.validFrom) <= now && now <= Instant.parse(cert.validTo)
                     }
                     .getOrDefault(true)
         }
         return candidates.firstOrNull()
-            ?: certs.firstOrNull { c ->
-                c.usage.any { it.equals("KsefTokenEncryption", ignoreCase = true) }
-            }
-            ?: error(
-                "No KsefTokenEncryption certificate returned by /security/public-key-certificates"
-            )
+            ?: certs.firstOrNull { it.hasUsage() }
+            ?: error("No $usage certificate returned by /security/public-key-certificates")
     }
 
     private suspend fun waitForRedeem(authReferenceNumber: String): AuthenticationTokensResponse {
@@ -134,31 +134,33 @@ class KsefRepository(
         api.clearTokenCache()
     }
 
+    /**
+     * Sends a single invoice through an online (interactive) session.
+     *
+     * The KSeF v2 online-session protocol encrypts the invoice symmetrically: a fresh AES-256 key
+     * and IV are generated, the key is wrapped with the Ministry of Finance public key (RSA-OAEP)
+     * to open the session, and the invoice XML is encrypted with AES-256-CBC before upload. A new
+     * session is opened per send, so the caller never has to manage session lifecycle.
+     */
     @OptIn(ExperimentalEncodingApi::class)
     suspend fun sendInvoice(invoiceXml: String): Result<SendInvoiceResult> = runCatching {
-        val sessionRef =
-            sessionHolder.onlineSessionReferenceNumber
-                ?: error("No online session is open — call openOnlineSession first.")
+        val aesKey = crypto.secureRandomBytes(AES_KEY_SIZE_BYTES)
+        val iv = crypto.secureRandomBytes(AES_IV_SIZE_BYTES)
+        val sessionRef = openOnlineSession(aesKey, iv)
 
         val xmlBytes = invoiceXml.encodeToByteArray()
-        val invoiceHash = sha256Base64(xmlBytes)
-
-        // The on-the-wire encrypted fields require AES-256-CBC encryption with the symmetric key
-        // negotiated when opening the session. Platform crypto plugs in here; for now we forward
-        // the same content so the request shape matches the v2 spec exactly.
-        val encryptedBytes = xmlBytes
-        val encryptedBase64 = Base64.encode(encryptedBytes)
+        val encryptedBytes = crypto.aesCbcEncrypt(xmlBytes, aesKey, iv)
 
         val response =
             api.sendInvoice(
                 sessionReferenceNumber = sessionRef,
                 request =
                     SendInvoiceRequest(
-                        invoiceHash = invoiceHash,
+                        invoiceHash = sha256Base64(xmlBytes),
                         invoiceSize = xmlBytes.size.toLong(),
                         encryptedInvoiceHash = sha256Base64(encryptedBytes),
                         encryptedInvoiceSize = encryptedBytes.size.toLong(),
-                        encryptedInvoiceContent = encryptedBase64,
+                        encryptedInvoiceContent = Base64.encode(encryptedBytes),
                     ),
             )
 
@@ -166,18 +168,32 @@ class KsefRepository(
     }
 
     /**
-     * Opens an online (interactive) invoice session. `encryption` carries the symmetric AES key
-     * (encrypted with the MF public key) and IV; both must be produced in platform code.
+     * Opens an online session for the FA(2) schema. [aesKey] is wrapped with the symmetric-key
+     * encryption certificate from `/security/public-key-certificates`; [iv] is sent in the clear as
+     * required by the spec. Returns the new session reference number (also stored on the session).
      */
-    suspend fun openOnlineSession(formCode: FormCode, encryption: EncryptionInfo): Result<String> =
-        runCatching {
-            val response =
-                api.openOnlineSession(
-                    OpenOnlineSessionRequest(formCode = formCode, encryption = encryption)
+    @OptIn(ExperimentalEncodingApi::class)
+    private suspend fun openOnlineSession(aesKey: ByteArray, iv: ByteArray): String {
+        val certificate =
+            pickCertificate(api.getPublicKeyCertificates(), CERT_USAGE_SYMMETRIC_KEY_ENCRYPTION)
+        val certificateDer = Base64.decode(certificate.certificate)
+        val encryptedSymmetricKey =
+            Base64.encode(crypto.rsaOaepSha256Encrypt(aesKey, certificateDer))
+
+        val response =
+            api.openOnlineSession(
+                OpenOnlineSessionRequest(
+                    formCode = FA2_FORM_CODE,
+                    encryption =
+                        EncryptionInfo(
+                            encryptedSymmetricKey = encryptedSymmetricKey,
+                            initializationVector = Base64.encode(iv),
+                        ),
                 )
-            sessionHolder.update(onlineSessionReferenceNumber = response.referenceNumber)
-            response.referenceNumber
-        }
+            )
+        sessionHolder.update(onlineSessionReferenceNumber = response.referenceNumber)
+        return response.referenceNumber
+    }
 
     suspend fun getSessionStatus(referenceNumber: String): Result<SessionStatusResponse> =
         runCatching {
@@ -237,9 +253,9 @@ class KsefRepository(
             sellerName = seller.name ?: "",
             buyerNip = buyer.identifier?.value ?: buyer.nip ?: "",
             buyerName = buyer.name ?: "",
-            net = netAmount.toString(),
-            vat = vatAmount.toString(),
-            gross = grossAmount.toString(),
+            net = Money.fromDouble(netAmount),
+            vat = Money.fromDouble(vatAmount),
+            gross = Money.fromDouble(grossAmount),
         )
 
     companion object {
@@ -247,5 +263,15 @@ class KsefRepository(
         private const val AUTH_STATUS_SUCCESS = 200
         private const val MAX_AUTH_POLL_ATTEMPTS = 30
         private const val AUTH_POLL_DELAY_MS = 1_000L
+
+        private const val AES_KEY_SIZE_BYTES = 32
+        private const val AES_IV_SIZE_BYTES = 16
+
+        private const val CERT_USAGE_KSEF_TOKEN_ENCRYPTION = "KsefTokenEncryption"
+        private const val CERT_USAGE_SYMMETRIC_KEY_ENCRYPTION = "SymmetricKeyEncryption"
+
+        /** Form code for the FA(2) invoice schema produced by InvoiceBuilder. */
+        private val FA2_FORM_CODE =
+            FormCode(systemCode = "FA (2)", schemaVersion = "1-0E", value = "FA")
     }
 }

@@ -33,10 +33,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kgurgul.openksef.common.asString
+import com.kgurgul.openksef.domain.invoice.InvoiceTemplate
+import com.kgurgul.openksef.domain.money.Money
 import com.kgurgul.openksef.ui.components.LoadingOverlay
 import com.kgurgul.openksef.ui.components.SectionHeader
 import openksef.shared.generated.resources.Res
 import openksef.shared.generated.resources.action_back
+import openksef.shared.generated.resources.action_cancel
 import openksef.shared.generated.resources.action_delete
 import openksef.shared.generated.resources.action_ok
 import openksef.shared.generated.resources.amount_pln
@@ -55,15 +58,20 @@ import openksef.shared.generated.resources.send_invoice_net_value
 import openksef.shared.generated.resources.send_invoice_number
 import openksef.shared.generated.resources.send_invoice_quantity
 import openksef.shared.generated.resources.send_invoice_reference_number_label
+import openksef.shared.generated.resources.send_invoice_save_template
 import openksef.shared.generated.resources.send_invoice_seller
 import openksef.shared.generated.resources.send_invoice_send
 import openksef.shared.generated.resources.send_invoice_sent_message
 import openksef.shared.generated.resources.send_invoice_sent_title
 import openksef.shared.generated.resources.send_invoice_summary
+import openksef.shared.generated.resources.send_invoice_template
+import openksef.shared.generated.resources.send_invoice_template_name
+import openksef.shared.generated.resources.send_invoice_template_none
 import openksef.shared.generated.resources.send_invoice_title
 import openksef.shared.generated.resources.send_invoice_total_gross
 import openksef.shared.generated.resources.send_invoice_total_net
 import openksef.shared.generated.resources.send_invoice_total_vat
+import openksef.shared.generated.resources.send_invoice_unit
 import openksef.shared.generated.resources.send_invoice_unit_price
 import openksef.shared.generated.resources.send_invoice_vat
 import org.jetbrains.compose.resources.stringResource
@@ -73,6 +81,17 @@ import org.jetbrains.compose.resources.stringResource
 fun SendInvoiceScreen(viewModel: SendInvoiceViewModel, onNavigateBack: () -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    var showSaveTemplateDialog by remember { mutableStateOf(false) }
+
+    if (showSaveTemplateDialog) {
+        SaveTemplateDialog(
+            onDismiss = { showSaveTemplateDialog = false },
+            onConfirm = { name ->
+                viewModel.onSaveTemplate(name)
+                showSaveTemplateDialog = false
+            },
+        )
+    }
 
     val errorMessage = uiState.error?.asString()
     LaunchedEffect(errorMessage) {
@@ -138,6 +157,24 @@ fun SendInvoiceScreen(viewModel: SendInvoiceViewModel, onNavigateBack: () -> Uni
                         .verticalScroll(rememberScrollState())
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
+
+                // Template selector
+                SectionHeader(stringResource(Res.string.send_invoice_template))
+                TemplateSelector(
+                    templates = uiState.templates,
+                    selectedTemplateId = uiState.selectedTemplateId,
+                    onTemplateSelected = viewModel::onTemplateSelected,
+                    onDeleteTemplate = viewModel::onDeleteTemplate,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { showSaveTemplateDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(Res.string.send_invoice_save_template))
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Seller section
                 SectionHeader(stringResource(Res.string.send_invoice_seller))
@@ -351,6 +388,13 @@ private fun LineItemCard(
                     singleLine = true,
                 )
                 OutlinedTextField(
+                    value = item.unit,
+                    onValueChange = { onUpdate(item.copy(unit = it)) },
+                    label = { Text(stringResource(Res.string.send_invoice_unit)) },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                )
+                OutlinedTextField(
                     value = item.unitPrice,
                     onValueChange = { onUpdate(item.copy(unitPrice = it)) },
                     label = { Text(stringResource(Res.string.send_invoice_unit_price)) },
@@ -372,11 +416,19 @@ private fun LineItemCard(
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = stringResource(Res.string.send_invoice_net_value, item.netValue),
+                        text =
+                            stringResource(
+                                Res.string.send_invoice_net_value,
+                                item.netValue.toFormattedString(),
+                            ),
                         style = MaterialTheme.typography.bodySmall,
                     )
                     Text(
-                        text = stringResource(Res.string.send_invoice_gross_value, item.grossValue),
+                        text =
+                            stringResource(
+                                Res.string.send_invoice_gross_value,
+                                item.grossValue.toFormattedString(),
+                            ),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
                     )
@@ -426,10 +478,94 @@ private fun VatRateSelector(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TemplateSelector(
+    templates: List<InvoiceTemplate>,
+    selectedTemplateId: String?,
+    onTemplateSelected: (InvoiceTemplate) -> Unit,
+    onDeleteTemplate: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val noneLabel = stringResource(Res.string.send_invoice_template_none)
+    val selectedName = templates.firstOrNull { it.id == selectedTemplateId }?.name ?: noneLabel
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { if (templates.isNotEmpty()) expanded = it },
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        OutlinedTextField(
+            value = selectedName,
+            onValueChange = {},
+            readOnly = true,
+            enabled = templates.isNotEmpty(),
+            label = { Text(stringResource(Res.string.send_invoice_template)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier =
+                Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                    .fillMaxWidth(),
+            singleLine = true,
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            templates.forEach { template ->
+                DropdownMenuItem(
+                    text = { Text(template.name) },
+                    onClick = {
+                        onTemplateSelected(template)
+                        expanded = false
+                    },
+                    trailingIcon = {
+                        IconButton(
+                            onClick = {
+                                onDeleteTemplate(template.id)
+                                expanded = false
+                            }
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = stringResource(Res.string.action_delete),
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SaveTemplateDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(Res.string.send_invoice_save_template)) },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text(stringResource(Res.string.send_invoice_template_name)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) {
+                Text(stringResource(Res.string.action_ok))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
+        },
+    )
+}
+
 @Composable
 private fun TotalsCard(items: List<InvoiceLineItemUi>) {
-    val totalNet = items.sumOf { it.netValue.toDoubleOrNull() ?: 0.0 }
-    val totalGross = items.sumOf { it.grossValue.toDoubleOrNull() ?: 0.0 }
+    val totalNet = Money.sum(items.map { it.netValue })
+    val totalGross = Money.sum(items.map { it.grossValue })
     val totalVat = totalGross - totalNet
 
     Card(
@@ -449,14 +585,14 @@ private fun TotalsCard(items: List<InvoiceLineItemUi>) {
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(stringResource(Res.string.send_invoice_total_net))
-                Text(stringResource(Res.string.amount_pln, formatDisplay(totalNet)))
+                Text(stringResource(Res.string.amount_pln, totalNet.toFormattedString()))
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(stringResource(Res.string.send_invoice_total_vat))
-                Text(stringResource(Res.string.amount_pln, formatDisplay(totalVat)))
+                Text(stringResource(Res.string.amount_pln, totalVat.toFormattedString()))
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
             Row(
@@ -468,25 +604,10 @@ private fun TotalsCard(items: List<InvoiceLineItemUi>) {
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = stringResource(Res.string.amount_pln, formatDisplay(totalGross)),
+                    text = stringResource(Res.string.amount_pln, totalGross.toFormattedString()),
                     fontWeight = FontWeight.Bold,
                 )
             }
-        }
-    }
-}
-
-private fun formatDisplay(value: Double): String {
-    val rounded = kotlin.math.round(value * 100) / 100.0
-    val str = rounded.toString()
-    val dotIndex = str.indexOf('.')
-    return if (dotIndex == -1) "$str.00"
-    else {
-        val decimals = str.length - dotIndex - 1
-        when {
-            decimals == 1 -> "${str}0"
-            decimals >= 2 -> str.substring(0, dotIndex + 3)
-            else -> str
         }
     }
 }

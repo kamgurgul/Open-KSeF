@@ -20,6 +20,7 @@ import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefCrypto
 import com.kgurgul.openksef.data.remote.SessionExpiredException
+import com.kgurgul.openksef.domain.money.Money
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.mock.MockEngine
@@ -59,6 +60,10 @@ class KsefRepositoryTest {
 
     private object FakeCrypto : KsefCrypto {
         override fun rsaOaepSha256Encrypt(data: ByteArray, certificateDer: ByteArray) = data
+
+        override fun secureRandomBytes(size: Int) = ByteArray(size)
+
+        override fun aesCbcEncrypt(data: ByteArray, key: ByteArray, iv: ByteArray) = data
     }
 
     // ---------------------------------------------------------------------------
@@ -102,8 +107,8 @@ class KsefRepositoryTest {
                                         .let { it["accessToken"] }
                                         ?.let {
                                             json.decodeFromString<
-                                                    com.kgurgul.openksef.data.remote.model.TokenInfo
-                                                    >(
+                                                com.kgurgul.openksef.data.remote.model.TokenInfo
+                                            >(
                                                 it.toString()
                                             )
                                         }
@@ -287,22 +292,45 @@ class KsefRepositoryTest {
         val invoice = invoiceList.items.first()
         assertEquals("KSEF-REF-001", invoice.ksefReferenceNumber)
         assertEquals("1111111111", invoice.sellerNip)
-        assertEquals("1000.0", invoice.net)
+        assertEquals(Money.fromMajorUnits(1000), invoice.net)
     }
 
     @Test
-    fun sendInvoice_returnsReferenceNumber() = runTest {
-        val engine = MockEngine { _ ->
-            respond(
-                content = """{"referenceNumber":"INV-REF-001"}""",
-                status = HttpStatusCode.Accepted,
-                headers = jsonHeaders,
-            )
-        }
-        val sessionHolder =
-            SessionHolder().apply {
-                update(accessToken = "active-token", onlineSessionReferenceNumber = "session-ref")
+    fun sendInvoice_opensOnlineSessionThenReturnsReferenceNumber() = runTest {
+        var openSessionCalled = false
+        val engine = MockEngine { request ->
+            val path = request.url.encodedPath
+            when {
+                path.endsWith("/security/public-key-certificates") ->
+                    respond(
+                        content =
+                            """[{"certificate":"AAAA","validFrom":"2024-01-01T00:00:00Z","validTo":"2099-01-01T00:00:00Z","usage":["SymmetricKeyEncryption"]}]""",
+                        status = HttpStatusCode.OK,
+                        headers = jsonHeaders,
+                    )
+
+                path.endsWith("/sessions/online") -> {
+                    openSessionCalled = true
+                    respond(
+                        content =
+                            """{"referenceNumber":"session-ref","validUntil":"2099-01-01T00:00:00Z"}""",
+                        status = HttpStatusCode.OK,
+                        headers = jsonHeaders,
+                    )
+                }
+
+                path.endsWith("/sessions/online/session-ref/invoices") ->
+                    respond(
+                        content = """{"referenceNumber":"INV-REF-001"}""",
+                        status = HttpStatusCode.Accepted,
+                        headers = jsonHeaders,
+                    )
+
+                else ->
+                    respond(content = "{}", status = HttpStatusCode.NotFound, headers = jsonHeaders)
             }
+        }
+        val sessionHolder = SessionHolder().apply { update(accessToken = "active-token") }
         val client = buildTestClient(engine, sessionHolder)
         val api = KsefApi(client)
         val repository = KsefRepository(api, sessionHolder, FakeCrypto)
@@ -313,6 +341,8 @@ class KsefRepositoryTest {
             result.isSuccess,
             "Expected success but got: ${result.exceptionOrNull()?.message}",
         )
+        assertTrue(openSessionCalled, "Expected an online session to be opened before sending")
+        assertEquals("session-ref", sessionHolder.onlineSessionReferenceNumber)
         val sendResult = result.getOrNull()
         assertNotNull(sendResult)
         assertEquals("INV-REF-001", sendResult.referenceNumber)

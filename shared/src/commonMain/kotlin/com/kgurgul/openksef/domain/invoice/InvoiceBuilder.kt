@@ -16,14 +16,15 @@
 
 package com.kgurgul.openksef.domain.invoice
 
-import kotlin.math.roundToInt
+import com.kgurgul.openksef.domain.money.Money
+import kotlin.math.round
 
 object InvoiceBuilder {
 
     fun buildXml(data: InvoiceData): String {
-        val totalNet = data.items.sumOf { it.netValue }
-        val totalVat = data.items.sumOf { it.grossValue - it.netValue }
-        val totalGross = data.items.sumOf { it.grossValue }
+        val totalNet = Money.sum(data.items.map { it.netValue })
+        val totalVat = Money.sum(data.items.map { it.grossValue - it.netValue })
+        val totalGross = Money.sum(data.items.map { it.grossValue })
 
         return buildString {
             appendLine("""<?xml version="1.0" encoding="UTF-8"?>""")
@@ -64,9 +65,9 @@ object InvoiceBuilder {
             appendLine("""    <KodWaluty>${data.currency}</KodWaluty>""")
             appendLine("""    <P_1>${data.issueDate}</P_1>""")
             appendLine("""    <P_2>${escapeXml(data.invoiceNumber)}</P_2>""")
-            appendLine("""    <P_13_1>${formatAmount(totalNet)}</P_13_1>""")
-            appendLine("""    <P_14_1>${formatAmount(totalVat)}</P_14_1>""")
-            appendLine("""    <P_15>${formatAmount(totalGross)}</P_15>""")
+            appendLine("""    <P_13_1>${totalNet.toPlainString()}</P_13_1>""")
+            appendLine("""    <P_14_1>${totalVat.toPlainString()}</P_14_1>""")
+            appendLine("""    <P_15>${totalGross.toPlainString()}</P_15>""")
             appendLine("""    <Adnotacje>""")
             appendLine("""      <P_16>2</P_16>""")
             appendLine("""      <P_17>2</P_17>""")
@@ -78,10 +79,10 @@ object InvoiceBuilder {
                 appendLine("""    <FaWiersz>""")
                 appendLine("""      <NrWierszaFa>${index + 1}</NrWierszaFa>""")
                 appendLine("""      <P_7>${escapeXml(item.description)}</P_7>""")
-                appendLine("""      <P_8A>szt.</P_8A>""")
-                appendLine("""      <P_8B>${formatAmount(item.quantity)}</P_8B>""")
-                appendLine("""      <P_9A>${formatAmount(item.unitPrice)}</P_9A>""")
-                appendLine("""      <P_11>${formatAmount(item.netValue)}</P_11>""")
+                appendLine("""      <P_8A>${escapeXml(item.unit)}</P_8A>""")
+                appendLine("""      <P_8B>${formatQuantity(item.quantity)}</P_8B>""")
+                appendLine("""      <P_9A>${item.unitPrice.toPlainString()}</P_9A>""")
+                appendLine("""      <P_11>${item.netValue.toPlainString()}</P_11>""")
                 appendLine("""      <P_12>${item.vatRate}</P_12>""")
                 appendLine("""    </FaWiersz>""")
             }
@@ -100,19 +101,12 @@ object InvoiceBuilder {
             .replace("'", "&apos;")
     }
 
-    private fun formatAmount(value: Double): String {
-        val rounded = (value * 100).roundToInt() / 100.0
-        val str = rounded.toString()
-        val dotIndex = str.indexOf('.')
-        return if (dotIndex == -1) {
-            "$str.00"
-        } else {
-            val decimals = str.length - dotIndex - 1
-            when {
-                decimals == 1 -> "${str}0"
-                decimals >= 2 -> str.substring(0, dotIndex + 3)
-                else -> str
-            }
-        }
+    /** Renders a (non-monetary) quantity with two fraction digits and a dot separator. */
+    private fun formatQuantity(value: Double): String {
+        val negative = value < 0
+        val hundredths = round(value * 100).toLong()
+        val abs = if (negative) -hundredths else hundredths
+        val fraction = (abs % 100).toString().padStart(2, '0')
+        return "${if (negative) "-" else ""}${abs / 100}.$fraction"
     }
 }

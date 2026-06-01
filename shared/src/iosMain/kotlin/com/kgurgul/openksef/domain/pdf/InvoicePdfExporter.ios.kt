@@ -112,7 +112,7 @@ class IosInvoicePdfExporter : InvoicePdfExporter {
         val fileManager = NSFileManager.defaultManager
         val documents =
             fileManager.URLsForDirectory(NSDocumentDirectory, NSUserDomainMask).firstOrNull()
-                    as? NSURL ?: error("Documents directory is unavailable")
+                as? NSURL ?: error("Documents directory is unavailable")
         val directory =
             documents.URLByAppendingPathComponent(INVOICES_DIR, isDirectory = true)
                 ?: error("Cannot resolve the invoices directory")
@@ -179,11 +179,7 @@ private class PdfNavigationDelegate(
     }
 
     @ObjCSignatureOverride
-    override fun webView(
-        webView: WKWebView,
-        didFailNavigation: WKNavigation?,
-        withError: NSError,
-    ) {
+    override fun webView(webView: WKWebView, didFailNavigation: WKNavigation?, withError: NSError) {
         onResult(null, withError)
     }
 

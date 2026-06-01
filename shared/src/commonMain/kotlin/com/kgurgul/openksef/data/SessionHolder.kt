@@ -29,8 +29,7 @@ import kotlin.concurrent.Volatile
  */
 class SessionHolder {
 
-    @Volatile
-    private var state = State()
+    @Volatile private var state = State()
 
     /** Permanent access token (Bearer) returned by /auth/token/redeem — used for all API calls. */
     val accessToken: String?

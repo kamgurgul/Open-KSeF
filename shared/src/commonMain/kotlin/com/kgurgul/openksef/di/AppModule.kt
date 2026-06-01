@@ -20,11 +20,18 @@ import com.kgurgul.openksef.data.SessionEventBus
 import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.local.TokenStore
 import com.kgurgul.openksef.data.local.createDataStore
+import com.kgurgul.openksef.data.local.db.AppDatabase
+import com.kgurgul.openksef.data.local.db.getDatabaseBuilder
+import com.kgurgul.openksef.data.local.db.getRoomDatabase
 import com.kgurgul.openksef.data.local.defaultSecureTokenStorage
 import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefApiClient
 import com.kgurgul.openksef.data.remote.defaultKsefCrypto
+import com.kgurgul.openksef.data.repository.InvoiceTemplateRepository
 import com.kgurgul.openksef.data.repository.KsefRepository
+import com.kgurgul.openksef.data.repository.RoomInvoiceTemplateRepository
+import com.kgurgul.openksef.data.repository.RoomSellerConfigRepository
+import com.kgurgul.openksef.data.repository.SellerConfigRepository
 import com.kgurgul.openksef.domain.pdf.InvoicePdfExporter
 import com.kgurgul.openksef.domain.pdf.defaultInvoicePdfExporter
 import com.kgurgul.openksef.ui.invoicedetail.InvoiceDetailViewModel
@@ -32,6 +39,7 @@ import com.kgurgul.openksef.ui.invoices.InvoiceListViewModel
 import com.kgurgul.openksef.ui.login.LoginViewModel
 import com.kgurgul.openksef.ui.main.MainViewModel
 import com.kgurgul.openksef.ui.sendinvoice.SendInvoiceViewModel
+import com.kgurgul.openksef.ui.settings.SellerConfigViewModel
 import kotlinx.serialization.json.Json
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModel
@@ -57,6 +65,11 @@ val appModule = module {
     singleOf(::KsefApi)
     single { defaultKsefCrypto() }
     singleOf(::KsefRepository)
+    single { getRoomDatabase(getDatabaseBuilder()) }
+    single { get<AppDatabase>().invoiceTemplateDao() }
+    single<InvoiceTemplateRepository> { RoomInvoiceTemplateRepository(get()) }
+    single { get<AppDatabase>().sellerConfigDao() }
+    single<SellerConfigRepository> { RoomSellerConfigRepository(get()) }
 
     // Domain
     single<InvoicePdfExporter> { defaultInvoicePdfExporter() }
@@ -67,4 +80,5 @@ val appModule = module {
     viewModelOf(::InvoiceListViewModel)
     viewModel { params -> InvoiceDetailViewModel(params.get(), get(), get()) }
     viewModelOf(::SendInvoiceViewModel)
+    viewModelOf(::SellerConfigViewModel)
 }

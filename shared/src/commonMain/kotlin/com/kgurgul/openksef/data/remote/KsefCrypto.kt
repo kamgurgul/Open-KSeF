@@ -31,6 +31,19 @@ interface KsefCrypto {
      * responsible for any further encoding such as Base64).
      */
     fun rsaOaepSha256Encrypt(data: ByteArray, certificateDer: ByteArray): ByteArray
+
+    /**
+     * Returns [size] cryptographically secure random bytes, used to generate the AES symmetric key
+     * and initialization vector for an online session.
+     */
+    fun secureRandomBytes(size: Int): ByteArray
+
+    /**
+     * Encrypts [data] with AES-256-CBC and PKCS#7 padding using the given [key] (32 bytes) and [iv]
+     * (16 bytes). This is the symmetric scheme the KSeF v2 API requires for online-session invoice
+     * payloads. Returns the raw ciphertext bytes.
+     */
+    fun aesCbcEncrypt(data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray
 }
 
 /** Returns the platform-default [KsefCrypto] implementation. */

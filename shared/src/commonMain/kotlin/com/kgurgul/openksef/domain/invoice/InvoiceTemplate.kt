@@ -16,27 +16,24 @@
 
 package com.kgurgul.openksef.domain.invoice
 
-import com.kgurgul.openksef.domain.money.Money
+import kotlinx.serialization.Serializable
 
-data class InvoiceData(
-    val invoiceNumber: String,
-    val issueDate: String,
-    val sellerNip: String,
-    val sellerName: String,
-    val sellerAddress: String = "",
-    val buyerNip: String,
-    val buyerName: String,
+/** A user-created preset that pre-fills the send invoice form. */
+@Serializable
+data class InvoiceTemplate(
+    val id: String,
+    val name: String,
+    val buyerNip: String = "",
+    val buyerName: String = "",
     val buyerAddress: String = "",
-    val currency: String = "PLN",
-    val items: List<InvoiceLineItem>,
+    val items: List<InvoiceTemplateItem> = emptyList(),
 )
 
-data class InvoiceLineItem(
+@Serializable
+data class InvoiceTemplateItem(
     val description: String,
-    val quantity: Double,
-    val unit: String = "szt.",
-    val unitPrice: Money,
+    val quantity: String,
+    val unit: String,
+    val unitPrice: String,
     val vatRate: Int,
-    val netValue: Money,
-    val grossValue: Money,
 )

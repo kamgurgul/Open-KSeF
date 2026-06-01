@@ -211,9 +211,9 @@ class InvoiceListViewModel(private val repository: KsefRepository) : ViewModel()
                     sellerName,
                     buyerNip,
                     buyerName,
-                    net,
-                    vat,
-                    gross,
+                    net.toPlainString(),
+                    vat.toPlainString(),
+                    gross.toPlainString(),
                 )
             return fields.any { it.contains(query, ignoreCase = true) }
         }

@@ -13,6 +13,7 @@
     <string name="action_delete">Delete</string>
     <string name="action_clear_filter">Clear filter</string>
     <string name="action_send_invoice">Send invoice</string>
+    <string name="action_settings">Settings</string>
 
     <!-- Login -->
     <string name="login_nip_label">NIP</string>
@@ -55,6 +56,7 @@
     <string name="send_invoice_item_index">Item %1$d</string>
     <string name="send_invoice_description">Description</string>
     <string name="send_invoice_quantity">Quantity</string>
+    <string name="send_invoice_unit">Unit</string>
     <string name="send_invoice_unit_price">Unit price</string>
     <string name="send_invoice_vat">VAT</string>
     <string name="send_invoice_net_value">Net: %1$s PLN</string>
@@ -64,6 +66,10 @@
     <string name="send_invoice_total_vat">VAT:</string>
     <string name="send_invoice_total_gross">Gross:</string>
     <string name="send_invoice_send">Send to KSeF</string>
+    <string name="send_invoice_template">Template</string>
+    <string name="send_invoice_template_none">No templates saved</string>
+    <string name="send_invoice_save_template">Save as template</string>
+    <string name="send_invoice_template_name">Template name</string>
 
     <!-- Invoice card -->
     <string name="invoice_card_seller">Seller: %1$s</string>
@@ -72,6 +78,15 @@
     <string name="invoice_card_vat">VAT</string>
     <string name="invoice_card_gross">Gross</string>
     <string name="amount_pln">%1$s PLN</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_seller_info">Seller information</string>
+    <string name="settings_seller_info_description">Name and address pre-filled on new invoices</string>
+    <string name="seller_config_name">Seller name</string>
+    <string name="seller_config_address">Seller address</string>
+    <string name="seller_config_save">Save</string>
+    <string name="seller_config_saved">Seller information saved</string>
 
     <!-- Errors -->
     <string name="error_nip_invalid">NIP must be 10 digits</string>

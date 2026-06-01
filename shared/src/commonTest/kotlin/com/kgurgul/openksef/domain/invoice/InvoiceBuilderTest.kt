@@ -16,6 +16,7 @@
 
 package com.kgurgul.openksef.domain.invoice
 
+import com.kgurgul.openksef.domain.money.Money
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
@@ -39,10 +40,11 @@ class InvoiceBuilderTest {
                         InvoiceLineItem(
                             description = "Usługa programistyczna",
                             quantity = 10.0,
-                            unitPrice = 100.0,
+                            unit = "godz.",
+                            unitPrice = Money.fromMajorUnits(100),
                             vatRate = 23,
-                            netValue = 1000.0,
-                            grossValue = 1230.0,
+                            netValue = Money.fromMajorUnits(1000),
+                            grossValue = Money.fromMajorUnits(1230),
                         )
                     ),
             )
@@ -50,6 +52,7 @@ class InvoiceBuilderTest {
         val xml = InvoiceBuilder.buildXml(data)
 
         assertTrue(xml.contains("<?xml version=\"1.0\""))
+        assertTrue(xml.contains("<P_8A>godz.</P_8A>"))
         assertTrue(xml.contains("<Faktura"))
         assertTrue(xml.contains("FA (2)"))
         assertTrue(xml.contains("<NIP>1111111111</NIP>"))
@@ -75,8 +78,24 @@ class InvoiceBuilderTest {
                 buyerName = "Buyer",
                 items =
                     listOf(
-                        InvoiceLineItem("Item 1", 2.0, 50.0, 23, 100.0, 123.0),
-                        InvoiceLineItem("Item 2", 1.0, 200.0, 8, 200.0, 216.0),
+                        InvoiceLineItem(
+                            "Item 1",
+                            2.0,
+                            "szt.",
+                            Money.fromMajorUnits(50),
+                            23,
+                            Money.fromMajorUnits(100),
+                            Money.fromMajorUnits(123),
+                        ),
+                        InvoiceLineItem(
+                            "Item 2",
+                            1.0,
+                            "szt.",
+                            Money.fromMajorUnits(200),
+                            8,
+                            Money.fromMajorUnits(200),
+                            Money.fromMajorUnits(216),
+                        ),
                     ),
             )
 
@@ -100,7 +119,18 @@ class InvoiceBuilderTest {
                 sellerName = "Seller",
                 buyerNip = "2222222222",
                 buyerName = "Buyer",
-                items = listOf(InvoiceLineItem("Service", 1.0, 1000.0, 23, 1000.0, 1230.0)),
+                items =
+                    listOf(
+                        InvoiceLineItem(
+                            "Service",
+                            1.0,
+                            "szt.",
+                            Money.fromMajorUnits(1000),
+                            23,
+                            Money.fromMajorUnits(1000),
+                            Money.fromMajorUnits(1230),
+                        )
+                    ),
             )
 
         val xml = InvoiceBuilder.buildXml(data)
@@ -121,7 +151,18 @@ class InvoiceBuilderTest {
                 sellerName = "Firma A&B <Corp>",
                 buyerNip = "2222222222",
                 buyerName = "Buyer \"Special\"",
-                items = listOf(InvoiceLineItem("Item's <special>", 1.0, 100.0, 23, 100.0, 123.0)),
+                items =
+                    listOf(
+                        InvoiceLineItem(
+                            "Item's <special>",
+                            1.0,
+                            "szt.",
+                            Money.fromMajorUnits(100),
+                            23,
+                            Money.fromMajorUnits(100),
+                            Money.fromMajorUnits(123),
+                        )
+                    ),
             )
 
         val xml = InvoiceBuilder.buildXml(data)

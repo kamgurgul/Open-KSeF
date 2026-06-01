@@ -125,7 +125,8 @@ fun InvoiceCard(invoice: InvoiceSummary, onClick: () -> Unit, modifier: Modifier
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        text = stringResource(Res.string.amount_pln, invoice.net),
+                        text =
+                            stringResource(Res.string.amount_pln, invoice.net.toFormattedString()),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
@@ -136,7 +137,8 @@ fun InvoiceCard(invoice: InvoiceSummary, onClick: () -> Unit, modifier: Modifier
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        text = stringResource(Res.string.amount_pln, invoice.vat),
+                        text =
+                            stringResource(Res.string.amount_pln, invoice.vat.toFormattedString()),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
@@ -147,7 +149,11 @@ fun InvoiceCard(invoice: InvoiceSummary, onClick: () -> Unit, modifier: Modifier
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        text = stringResource(Res.string.amount_pln, invoice.gross),
+                        text =
+                            stringResource(
+                                Res.string.amount_pln,
+                                invoice.gross.toFormattedString(),
+                            ),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
                     )

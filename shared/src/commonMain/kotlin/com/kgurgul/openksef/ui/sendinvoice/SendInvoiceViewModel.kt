@@ -20,14 +20,22 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kgurgul.openksef.common.UiText
 import com.kgurgul.openksef.data.SessionHolder
+import com.kgurgul.openksef.data.repository.InvoiceTemplateRepository
 import com.kgurgul.openksef.data.repository.KsefRepository
+import com.kgurgul.openksef.data.repository.SellerConfigRepository
 import com.kgurgul.openksef.domain.invoice.InvoiceBuilder
 import com.kgurgul.openksef.domain.invoice.InvoiceData
 import com.kgurgul.openksef.domain.invoice.InvoiceLineItem
+import com.kgurgul.openksef.domain.invoice.InvoiceTemplate
+import com.kgurgul.openksef.domain.invoice.InvoiceTemplateItem
+import com.kgurgul.openksef.domain.money.Money
 import kotlin.time.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
@@ -41,10 +49,11 @@ import openksef.shared.generated.resources.error_send_invoice
 data class InvoiceLineItemUi(
     val description: String = "",
     val quantity: String = "1",
+    val unit: String = "szt.",
     val unitPrice: String = "",
     val vatRate: Int = 23,
-    val netValue: String = "0.00",
-    val grossValue: String = "0.00",
+    val netValue: Money = Money.ZERO,
+    val grossValue: Money = Money.ZERO,
 )
 
 data class SendInvoiceUiState(
@@ -57,6 +66,8 @@ data class SendInvoiceUiState(
     val invoiceNumber: String = "",
     val issueDate: String = "",
     val items: List<InvoiceLineItemUi> = listOf(InvoiceLineItemUi()),
+    val templates: List<InvoiceTemplate> = emptyList(),
+    val selectedTemplateId: String? = null,
     val currency: String = "PLN",
     val isLoading: Boolean = false,
     val isSent: Boolean = false,
@@ -68,6 +79,8 @@ data class SendInvoiceUiState(
 class SendInvoiceViewModel(
     private val repository: KsefRepository,
     private val sessionHolder: SessionHolder,
+    private val templateRepository: InvoiceTemplateRepository,
+    private val sellerConfigRepository: SellerConfigRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SendInvoiceUiState())
@@ -78,6 +91,22 @@ class SendInvoiceViewModel(
         _uiState.update {
             it.copy(sellerNip = sessionHolder.nip ?: "", issueDate = today.toString())
         }
+        viewModelScope.launch {
+            sellerConfigRepository.config.first()?.let { config ->
+                _uiState.update { it.copy(sellerName = config.name, sellerAddress = config.address) }
+            }
+        }
+        templateRepository.templates
+            .onEach { templates ->
+                _uiState.update { state ->
+                    val stillExists = templates.any { it.id == state.selectedTemplateId }
+                    state.copy(
+                        templates = templates,
+                        selectedTemplateId = state.selectedTemplateId.takeIf { stillExists },
+                    )
+                }
+            }
+            .launchIn(viewModelScope)
     }
 
     fun onSellerNameChanged(name: String) {
@@ -132,12 +161,7 @@ class SendInvoiceViewModel(
     }
 
     fun updateItem(index: Int, item: InvoiceLineItemUi) {
-        val qty = item.quantity.toDoubleOrNull() ?: 0.0
-        val price = item.unitPrice.toDoubleOrNull() ?: 0.0
-        val net = qty * price
-        val gross = net * (1 + item.vatRate / 100.0)
-
-        val updated = item.copy(netValue = formatAmount(net), grossValue = formatAmount(gross))
+        val updated = withCalculatedValues(item)
 
         _uiState.update { state ->
             state.copy(
@@ -145,6 +169,69 @@ class SendInvoiceViewModel(
                 validationErrors = state.validationErrors - FIELD_ITEMS,
             )
         }
+    }
+
+    fun onTemplateSelected(template: InvoiceTemplate) {
+        val items =
+            template.items.map { templateItem ->
+                withCalculatedValues(
+                    InvoiceLineItemUi(
+                        description = templateItem.description,
+                        quantity = templateItem.quantity,
+                        unit = templateItem.unit,
+                        unitPrice = templateItem.unitPrice,
+                        vatRate = templateItem.vatRate,
+                    )
+                )
+            }
+
+        _uiState.update { state ->
+            state.copy(
+                selectedTemplateId = template.id,
+                buyerNip = template.buyerNip.ifBlank { state.buyerNip },
+                buyerName = template.buyerName.ifBlank { state.buyerName },
+                buyerAddress = template.buyerAddress.ifBlank { state.buyerAddress },
+                items = items.ifEmpty { listOf(InvoiceLineItemUi()) },
+                validationErrors = emptyMap(),
+            )
+        }
+    }
+
+    fun onSaveTemplate(name: String) {
+        val trimmedName = name.trim()
+        if (trimmedName.isBlank()) return
+        val state = _uiState.value
+        val template =
+            InvoiceTemplate(
+                id = Clock.System.now().toEpochMilliseconds().toString(),
+                name = trimmedName,
+                buyerNip = state.buyerNip,
+                buyerName = state.buyerName,
+                buyerAddress = state.buyerAddress,
+                items =
+                    state.items.map { item ->
+                        InvoiceTemplateItem(
+                            description = item.description,
+                            quantity = item.quantity,
+                            unit = item.unit,
+                            unitPrice = item.unitPrice,
+                            vatRate = item.vatRate,
+                        )
+                    },
+            )
+        viewModelScope.launch { templateRepository.save(template) }
+    }
+
+    fun onDeleteTemplate(id: String) {
+        viewModelScope.launch { templateRepository.delete(id) }
+    }
+
+    private fun withCalculatedValues(item: InvoiceLineItemUi): InvoiceLineItemUi {
+        val qty = item.quantity.toDoubleOrNull() ?: 0.0
+        val unitPrice = Money.fromFormattedString(item.unitPrice)
+        val net = unitPrice * qty
+        val gross = net.withVatRate(item.vatRate)
+        return item.copy(netValue = net, grossValue = gross)
     }
 
     fun send() {
@@ -193,10 +280,11 @@ class SendInvoiceViewModel(
                                 InvoiceLineItem(
                                     description = item.description,
                                     quantity = item.quantity.toDoubleOrNull() ?: 0.0,
-                                    unitPrice = item.unitPrice.toDoubleOrNull() ?: 0.0,
+                                    unit = item.unit.ifBlank { "szt." },
+                                    unitPrice = Money.fromFormattedString(item.unitPrice),
                                     vatRate = item.vatRate,
-                                    netValue = item.netValue.toDoubleOrNull() ?: 0.0,
-                                    grossValue = item.grossValue.toDoubleOrNull() ?: 0.0,
+                                    netValue = item.netValue,
+                                    grossValue = item.grossValue,
                                 )
                             },
                 )
@@ -228,21 +316,6 @@ class SendInvoiceViewModel(
 
     fun clearError() {
         _uiState.update { it.copy(error = null) }
-    }
-
-    private fun formatAmount(value: Double): String {
-        val rounded = kotlin.math.round(value * 100) / 100.0
-        val str = rounded.toString()
-        val dotIndex = str.indexOf('.')
-        return if (dotIndex == -1) "$str.00"
-        else {
-            val decimals = str.length - dotIndex - 1
-            when {
-                decimals == 1 -> "${str}0"
-                decimals >= 2 -> str.substring(0, dotIndex + 3)
-                else -> str
-            }
-        }
     }
 
     companion object {

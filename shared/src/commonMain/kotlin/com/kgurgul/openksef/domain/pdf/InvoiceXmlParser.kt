@@ -16,6 +16,8 @@
 
 package com.kgurgul.openksef.domain.pdf
 
+import com.kgurgul.openksef.domain.money.Money
+
 /**
  * Extracts an [InvoiceDocument] from raw KSeF FA invoice XML.
  *
@@ -34,13 +36,12 @@ object InvoiceXmlParser {
 
         val netFromTotals = sumRateFields(fa, prefix = "P_13_")
         val vatFromTotals = sumRateFields(fa, prefix = "P_14_")
-        val netFromLines = items.mapNotNull { parseCents(it.netValue) }.sum()
-        val grossCents = parseCents(fa?.childText("P_15"))
+        val netFromLines = Money.sum(items.mapNotNull { parseAmount(it.netValue) })
+        val gross = parseAmount(fa?.childText("P_15"))
 
-        val totalNetCents = netFromTotals ?: netFromLines
-        val totalVatCents =
-            vatFromTotals ?: if (grossCents != null) grossCents - totalNetCents else 0L
-        val totalGrossCents = grossCents ?: (totalNetCents + totalVatCents)
+        val totalNet = netFromTotals ?: netFromLines
+        val totalVat = vatFromTotals ?: if (gross != null) gross - totalNet else Money.ZERO
+        val totalGross = gross ?: (totalNet + totalVat)
 
         return InvoiceDocument(
             schema = detectSchema(header),
@@ -52,9 +53,9 @@ object InvoiceXmlParser {
             seller = parseParty(root.child("Podmiot1")),
             buyer = parseParty(root.child("Podmiot2")),
             items = items,
-            totalNet = formatCents(totalNetCents),
-            totalVat = formatCents(totalVatCents),
-            totalGross = formatCents(totalGrossCents),
+            totalNet = totalNet.toPlainString(),
+            totalVat = totalVat.toPlainString(),
+            totalGross = totalGross.toPlainString(),
             payment = parsePayment(fa?.child("Platnosc")),
             annotations = parseAnnotations(fa?.child("Adnotacje")),
             additionalDescriptions =
@@ -112,13 +113,13 @@ object InvoiceXmlParser {
         )
 
     /** Sums `P_13_1..P_13_7` (or `P_14_*`) rate buckets. Returns null when none are present. */
-    private fun sumRateFields(fa: XmlNode?, prefix: String): Long? {
+    private fun sumRateFields(fa: XmlNode?, prefix: String): Money? {
         if (fa == null) return null
-        var total = 0L
+        var total = Money.ZERO
         var found = false
         for (rate in 1..7) {
-            val cents = parseCents(fa.childText("$prefix$rate")) ?: continue
-            total += cents
+            val amount = parseAmount(fa.childText("$prefix$rate")) ?: continue
+            total += amount
             found = true
         }
         return if (found) total else null
@@ -151,11 +152,11 @@ object InvoiceXmlParser {
         val bankName = account?.childText("NazwaBanku").orEmpty()
         val hasContent =
             isPaid ||
-                    paymentDate.isNotEmpty() ||
-                    dueDate.isNotEmpty() ||
-                    method.isNotEmpty() ||
-                    bankAccount.isNotEmpty() ||
-                    bankName.isNotEmpty()
+                paymentDate.isNotEmpty() ||
+                dueDate.isNotEmpty() ||
+                method.isNotEmpty() ||
+                bankAccount.isNotEmpty() ||
+                bankName.isNotEmpty()
         return if (hasContent) {
             InvoicePaymentInfo(
                 isPaid = isPaid,
@@ -231,35 +232,12 @@ object InvoiceXmlParser {
 }
 
 /**
- * Parses a decimal amount (e.g. `"1234.56"`) into integer hundredths, or null when not a number.
+ * Parses a decimal amount (e.g. `"1234.56"`) into [Money], or null when the text is missing or not
+ * a number.
  */
-internal fun parseCents(value: String?): Long? {
-    val raw = value?.trim()?.replace(',', '.') ?: return null
+internal fun parseAmount(value: String?): Money? {
+    val raw = value?.trim() ?: return null
     if (raw.isEmpty()) return null
-    val negative = raw.startsWith('-')
-    val body = raw.trimStart('-', '+')
-    val dot = body.indexOf('.')
-    return try {
-        val whole: Long
-        val fraction: Long
-        if (dot == -1) {
-            whole = body.toLong()
-            fraction = 0
-        } else {
-            whole = body.substring(0, dot).ifEmpty { "0" }.toLong()
-            fraction = (body.substring(dot + 1) + "00").substring(0, 2).toLong()
-        }
-        val total = whole * 100 + fraction
-        if (negative) -total else total
-    } catch (_: NumberFormatException) {
-        null
-    }
-}
-
-/** Formats integer hundredths back into a `"0.00"`-style decimal string. */
-internal fun formatCents(cents: Long): String {
-    val negative = cents < 0
-    val abs = if (negative) -cents else cents
-    val sign = if (negative) "-" else ""
-    return "$sign${abs / 100}.${(abs % 100).toString().padStart(2, '0')}"
+    if (raw.replace(',', '.').toDoubleOrNull() == null) return null
+    return Money.fromFormattedString(raw)
 }

@@ -18,12 +18,15 @@ package com.kgurgul.openksef.data.remote
 
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.ULongVar
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.alloc
+import kotlinx.cinterop.convert
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.usePinned
 import kotlinx.cinterop.value
+import platform.CoreCrypto.CCCrypt
 import platform.CoreFoundation.CFDataRef
 import platform.CoreFoundation.CFErrorRefVar
 import platform.CoreFoundation.CFRelease
@@ -35,7 +38,10 @@ import platform.Foundation.create
 import platform.Security.SecCertificateCopyKey
 import platform.Security.SecCertificateCreateWithData
 import platform.Security.SecKeyCreateEncryptedData
+import platform.Security.SecRandomCopyBytes
+import platform.Security.errSecSuccess
 import platform.Security.kSecKeyAlgorithmRSAEncryptionOAEPSHA256
+import platform.Security.kSecRandomDefault
 import platform.posix.memcpy
 
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
@@ -91,6 +97,63 @@ class IosKsefCrypto : KsefCrypto {
         } finally {
             CFRelease(certCfData)
         }
+    }
+
+    override fun secureRandomBytes(size: Int): ByteArray {
+        val bytes = ByteArray(size)
+        val status =
+            bytes.usePinned { pinned ->
+                SecRandomCopyBytes(kSecRandomDefault, size.convert(), pinned.addressOf(0))
+            }
+        if (status != errSecSuccess) {
+            error("Secure random generation failed with status $status")
+        }
+        return bytes
+    }
+
+    override fun aesCbcEncrypt(data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
+        // PKCS#7 padding adds up to one extra block, so the output buffer needs that headroom.
+        val outputCapacity = data.size + AES_BLOCK_SIZE_BYTES
+        val output = ByteArray(outputCapacity)
+        return memScoped {
+            val bytesWritten = alloc<ULongVar>()
+            val status =
+                data.usePinned { dataPinned ->
+                    key.usePinned { keyPinned ->
+                        iv.usePinned { ivPinned ->
+                            output.usePinned { outputPinned ->
+                                CCCrypt(
+                                    op = CC_ENCRYPT.convert(),
+                                    alg = CC_ALGORITHM_AES.convert(),
+                                    options = CC_OPTION_PKCS7_PADDING.convert(),
+                                    key = keyPinned.addressOf(0),
+                                    keyLength = key.size.convert(),
+                                    iv = ivPinned.addressOf(0),
+                                    dataIn = dataPinned.addressOf(0),
+                                    dataInLength = data.size.convert(),
+                                    dataOut = outputPinned.addressOf(0),
+                                    dataOutAvailable = outputCapacity.convert(),
+                                    dataOutMoved = bytesWritten.ptr,
+                                )
+                            }
+                        }
+                    }
+                }
+            if (status != CC_CRYPT_SUCCESS) {
+                error("AES-256-CBC encryption failed with status $status")
+            }
+            output.copyOf(bytesWritten.value.toInt())
+        }
+    }
+
+    private companion object {
+        // Stable CommonCrypto ABI values (CommonCryptor.h). Declared as literals because the
+        // cinterop does not surface these particular anonymous-enum constants.
+        const val CC_ENCRYPT = 0 // kCCEncrypt
+        const val CC_ALGORITHM_AES = 0 // kCCAlgorithmAES
+        const val CC_OPTION_PKCS7_PADDING = 1 // kCCOptionPKCS7Padding (0x0001)
+        const val CC_CRYPT_SUCCESS = 0 // kCCSuccess
+        const val AES_BLOCK_SIZE_BYTES = 16 // kCCBlockSizeAES128
     }
 }
 

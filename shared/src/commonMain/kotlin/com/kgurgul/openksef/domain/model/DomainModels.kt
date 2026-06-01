@@ -16,6 +16,8 @@
 
 package com.kgurgul.openksef.domain.model
 
+import com.kgurgul.openksef.domain.money.Money
+
 enum class KsefEnvironment(val baseUrl: String) {
     TEST("https://api-test.ksef.mf.gov.pl/v2"),
     DEMO("https://api-ksef-demo.mf.gov.pl/v2"),
@@ -32,9 +34,9 @@ data class InvoiceSummary(
     val sellerName: String,
     val buyerNip: String,
     val buyerName: String,
-    val net: String,
-    val vat: String,
-    val gross: String,
+    val net: Money,
+    val vat: Money,
+    val gross: Money,
 )
 
 data class InvoiceListResult(

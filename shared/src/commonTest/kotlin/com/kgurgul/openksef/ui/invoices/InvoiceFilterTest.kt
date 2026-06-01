@@ -17,6 +17,7 @@
 package com.kgurgul.openksef.ui.invoices
 
 import com.kgurgul.openksef.domain.model.InvoiceSummary
+import com.kgurgul.openksef.domain.money.Money
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -32,9 +33,9 @@ class InvoiceFilterTest {
             sellerName = "Alpha Sp. z o.o.",
             buyerNip = "2222222222",
             buyerName = "Beta Sp. z o.o.",
-            net = "1000.00",
-            vat = "230.00",
-            gross = "1230.00",
+            net = Money.fromMajorUnits(1000),
+            vat = Money.fromMajorUnits(230),
+            gross = Money.fromMajorUnits(1230),
         )
 
     private val invoiceB =
@@ -46,9 +47,9 @@ class InvoiceFilterTest {
             sellerName = "Gamma S.A.",
             buyerNip = "4444444444",
             buyerName = "Delta Sp. j.",
-            net = "500.00",
-            vat = "115.00",
-            gross = "615.00",
+            net = Money.fromMajorUnits(500),
+            vat = Money.fromMajorUnits(115),
+            gross = Money.fromMajorUnits(615),
         )
 
     private val invoiceC =
@@ -60,9 +61,9 @@ class InvoiceFilterTest {
             sellerName = "Alpha Plus",
             buyerNip = "6666666666",
             buyerName = "Epsilon",
-            net = "200.00",
-            vat = "46.00",
-            gross = "246.00",
+            net = Money.fromMajorUnits(200),
+            vat = Money.fromMajorUnits(46),
+            gross = Money.fromMajorUnits(246),
         )
 
     private val all = listOf(invoiceA, invoiceB, invoiceC)

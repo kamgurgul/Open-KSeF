@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -52,6 +53,7 @@ import openksef.shared.generated.resources.action_ok
 import openksef.shared.generated.resources.action_refresh
 import openksef.shared.generated.resources.action_search
 import openksef.shared.generated.resources.action_send_invoice
+import openksef.shared.generated.resources.action_settings
 import openksef.shared.generated.resources.invoices_date_range
 import openksef.shared.generated.resources.invoices_empty_description
 import openksef.shared.generated.resources.invoices_empty_filtered_description
@@ -69,6 +71,7 @@ fun InvoiceListScreen(
     viewModel: InvoiceListViewModel,
     onInvoiceClick: (String) -> Unit,
     onSendInvoiceClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     onLoggedOut: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -169,6 +172,12 @@ fun InvoiceListScreen(
                         Icon(
                             Icons.Default.Refresh,
                             contentDescription = stringResource(Res.string.action_refresh),
+                        )
+                    }
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = stringResource(Res.string.action_settings),
                         )
                     }
                     IconButton(onClick = viewModel::onLogoutClicked) {

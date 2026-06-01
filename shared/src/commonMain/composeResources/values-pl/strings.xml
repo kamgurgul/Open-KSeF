@@ -13,6 +13,7 @@
     <string name="action_delete">Usuń</string>
     <string name="action_clear_filter">Wyczyść filtr</string>
     <string name="action_send_invoice">Wyślij fakturę</string>
+    <string name="action_settings">Ustawienia</string>
 
     <!-- Login -->
     <string name="login_nip_label">NIP</string>
@@ -55,6 +56,7 @@
     <string name="send_invoice_item_index">Pozycja %1$d</string>
     <string name="send_invoice_description">Opis</string>
     <string name="send_invoice_quantity">Ilość</string>
+    <string name="send_invoice_unit">Miara</string>
     <string name="send_invoice_unit_price">Cena jedn.</string>
     <string name="send_invoice_vat">VAT</string>
     <string name="send_invoice_net_value">Netto: %1$s PLN</string>
@@ -64,6 +66,10 @@
     <string name="send_invoice_total_vat">VAT:</string>
     <string name="send_invoice_total_gross">Brutto:</string>
     <string name="send_invoice_send">Wyślij do KSeF</string>
+    <string name="send_invoice_template">Szablon</string>
+    <string name="send_invoice_template_none">Brak zapisanych szablonów</string>
+    <string name="send_invoice_save_template">Zapisz jako szablon</string>
+    <string name="send_invoice_template_name">Nazwa szablonu</string>
 
     <!-- Invoice card -->
     <string name="invoice_card_seller">Sprzedawca: %1$s</string>
@@ -72,6 +78,15 @@
     <string name="invoice_card_vat">VAT</string>
     <string name="invoice_card_gross">Brutto</string>
     <string name="amount_pln">%1$s PLN</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Ustawienia</string>
+    <string name="settings_seller_info">Dane sprzedawcy</string>
+    <string name="settings_seller_info_description">Nazwa i adres uzupełniane na nowych fakturach</string>
+    <string name="seller_config_name">Nazwa sprzedawcy</string>
+    <string name="seller_config_address">Adres sprzedawcy</string>
+    <string name="seller_config_save">Zapisz</string>
+    <string name="seller_config_saved">Zapisano dane sprzedawcy</string>
 
     <!-- Errors -->
     <string name="error_nip_invalid">NIP musi mieć 10 cyfr</string>

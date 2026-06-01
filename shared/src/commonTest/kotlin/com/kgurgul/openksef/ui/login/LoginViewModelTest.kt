@@ -214,6 +214,8 @@ class LoginViewModelTest {
         val crypto =
             object : KsefCrypto {
                 override fun rsaOaepSha256Encrypt(data: ByteArray, certificateDer: ByteArray) = data
+                override fun secureRandomBytes(size: Int) = ByteArray(size)
+                override fun aesCbcEncrypt(data: ByteArray, key: ByteArray, iv: ByteArray) = data
             }
         val repository = KsefRepository(api, sessionHolder, crypto)
 
@@ -227,8 +229,15 @@ class LoginViewModelTest {
 
     private class InMemorySecureTokenStorage : SecureTokenStorage {
         private var token: String? = null
-        override suspend fun saveToken(token: String) { this.token = token }
+
+        override suspend fun saveToken(token: String) {
+            this.token = token
+        }
+
         override suspend fun readToken(): String? = token
-        override suspend fun clearToken() { token = null }
+
+        override suspend fun clearToken() {
+            token = null
+        }
     }
 }

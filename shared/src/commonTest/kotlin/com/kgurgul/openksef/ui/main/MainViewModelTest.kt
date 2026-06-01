@@ -18,20 +18,21 @@ package com.kgurgul.openksef.ui.main
 
 import com.kgurgul.openksef.data.SessionEventBus
 import kotlin.test.Test
-import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 
 class MainViewModelTest {
 
     @Test
-    fun sessionExpired_emitsNavigateToLoginEvent() = runTest {
+    fun sessionExpired_setsSessionExpiredState() = runTest {
         val sessionEventBus = SessionEventBus()
         val viewModel = MainViewModel(sessionEventBus)
 
         sessionEventBus.notifySessionExpired()
 
-        assertEquals(MainEvent.NavigateToLogin, viewModel.events.first())
+        assertTrue(viewModel.uiState.first { it.sessionExpired }.sessionExpired)
     }
 
     @Test
@@ -42,6 +43,18 @@ class MainViewModelTest {
 
         val viewModel = MainViewModel(sessionEventBus)
 
-        assertEquals(MainEvent.NavigateToLogin, viewModel.events.first())
+        assertTrue(viewModel.uiState.first { it.sessionExpired }.sessionExpired)
+    }
+
+    @Test
+    fun onSessionExpiryHandled_clearsState() = runTest {
+        val sessionEventBus = SessionEventBus()
+        val viewModel = MainViewModel(sessionEventBus)
+        sessionEventBus.notifySessionExpired()
+        viewModel.uiState.first { it.sessionExpired }
+
+        viewModel.onSessionExpiryHandled()
+
+        assertFalse(viewModel.uiState.value.sessionExpired)
     }
 }

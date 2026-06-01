@@ -209,6 +209,8 @@ class InvoiceDetailViewModelTest {
         val crypto =
             object : KsefCrypto {
                 override fun rsaOaepSha256Encrypt(data: ByteArray, certificateDer: ByteArray) = data
+                override fun secureRandomBytes(size: Int) = ByteArray(size)
+                override fun aesCbcEncrypt(data: ByteArray, key: ByteArray, iv: ByteArray) = data
             }
         val repository = KsefRepository(api, sessionHolder, crypto)
         return InvoiceDetailViewModel(ksefRef, repository, exporter)

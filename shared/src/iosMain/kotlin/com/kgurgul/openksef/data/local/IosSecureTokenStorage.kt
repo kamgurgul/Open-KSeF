@@ -96,13 +96,11 @@ class IosSecureTokenStorage : SecureTokenStorage {
                     val status: OSStatus = SecItemCopyMatching(query, resultVar.ptr)
                     when (status) {
                         errSecSuccess -> {
-                            val nsData =
-                                resultVar.value?.let { CFBridgingRelease(it) as? NSData }
+                            val nsData = resultVar.value?.let { CFBridgingRelease(it) as? NSData }
                             nsData?.toByteArray()?.decodeToString()
                         }
                         errSecItemNotFound -> null
-                        else ->
-                            error("Keychain SecItemCopyMatching failed with status $status")
+                        else -> error("Keychain SecItemCopyMatching failed with status $status")
                     }
                 }
             }

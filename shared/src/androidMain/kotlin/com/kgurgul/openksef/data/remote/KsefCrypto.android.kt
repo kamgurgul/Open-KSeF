@@ -17,14 +17,20 @@
 package com.kgurgul.openksef.data.remote
 
 import java.io.ByteArrayInputStream
+import java.security.SecureRandom
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.security.spec.MGF1ParameterSpec
 import javax.crypto.Cipher
+import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.OAEPParameterSpec
 import javax.crypto.spec.PSource
+import javax.crypto.spec.SecretKeySpec
 
 class JvmKsefCrypto : KsefCrypto {
+
+    private val secureRandom = SecureRandom()
+
     override fun rsaOaepSha256Encrypt(data: ByteArray, certificateDer: ByteArray): ByteArray {
         val factory = CertificateFactory.getInstance("X.509")
         val cert =
@@ -38,6 +44,15 @@ class JvmKsefCrypto : KsefCrypto {
                 PSource.PSpecified.DEFAULT,
             )
         cipher.init(Cipher.ENCRYPT_MODE, cert.publicKey, params)
+        return cipher.doFinal(data)
+    }
+
+    override fun secureRandomBytes(size: Int): ByteArray =
+        ByteArray(size).also { secureRandom.nextBytes(it) }
+
+    override fun aesCbcEncrypt(data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), IvParameterSpec(iv))
         return cipher.doFinal(data)
     }
 }

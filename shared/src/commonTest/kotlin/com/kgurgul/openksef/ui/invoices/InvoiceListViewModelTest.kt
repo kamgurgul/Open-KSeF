@@ -250,6 +250,8 @@ class InvoiceListViewModelTest {
         val crypto =
             object : KsefCrypto {
                 override fun rsaOaepSha256Encrypt(data: ByteArray, certificateDer: ByteArray) = data
+                override fun secureRandomBytes(size: Int) = ByteArray(size)
+                override fun aesCbcEncrypt(data: ByteArray, key: ByteArray, iv: ByteArray) = data
             }
         val repository = KsefRepository(KsefApi(client), sessionHolder, crypto)
         return InvoiceListViewModel(repository)
@@ -286,8 +288,8 @@ class InvoiceListViewModelTest {
                                 val newToken =
                                     obj["accessToken"]?.let {
                                         json.decodeFromString<
-                                                com.kgurgul.openksef.data.remote.model.TokenInfo
-                                                >(
+                                            com.kgurgul.openksef.data.remote.model.TokenInfo
+                                        >(
                                             it.toString()
                                         )
                                     }
