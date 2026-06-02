@@ -48,7 +48,7 @@ object KsefApiClient {
         sessionEventBus: SessionEventBus,
     ): HttpClient {
         return HttpClient {
-            expectSuccess = false
+            expectSuccess = true
             install(ContentNegotiation) { json(json, contentType = ContentType.Any) }
             install(Logging) { level = LogLevel.HEADERS }
             install(Auth) {
@@ -82,29 +82,14 @@ object KsefApiClient {
                                 )
                             } else {
                                 sessionHolder.clear()
+                                sessionEventBus.notifySessionExpired()
                                 null
                             }
                         } catch (_: Exception) {
                             sessionHolder.clear()
+                            sessionEventBus.notifySessionExpired()
                             null
                         }
-                    }
-                }
-            }
-            HttpResponseValidator {
-                validateResponse { response ->
-                    if (!response.status.isSuccess()) {
-                        val body = runCatching { response.bodyAsText() }.getOrDefault("")
-                        if (response.status == HttpStatusCode.Unauthorized) {
-                            // The session can no longer be refreshed — signal a global redirect.
-                            sessionEventBus.notifySessionExpired()
-                            throw SessionExpiredException()
-                        }
-                        throw KsefApiException(
-                            statusCode = response.status.value,
-                            responseBody = body,
-                            url = response.call.request.url.toString(),
-                        )
                     }
                 }
             }

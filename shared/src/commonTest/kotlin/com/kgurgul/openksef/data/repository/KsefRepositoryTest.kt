@@ -76,7 +76,7 @@ class KsefRepositoryTest {
      */
     private fun buildTestClient(engine: MockEngine, sessionHolder: SessionHolder): HttpClient =
         HttpClient(engine) {
-            expectSuccess = false
+            expectSuccess = true
             install(ContentNegotiation) { json(json, contentType = ContentType.Any) }
             install(Auth) {
                 bearer {
@@ -127,20 +127,6 @@ class KsefRepositoryTest {
                             sessionHolder.clear()
                             null
                         }
-                    }
-                }
-            }
-            HttpResponseValidator {
-                validateResponse { response ->
-                    if (!response.status.isSuccess()) {
-                        if (response.status == HttpStatusCode.Unauthorized) {
-                            throw SessionExpiredException()
-                        }
-                        throw com.kgurgul.openksef.data.remote.KsefApiException(
-                            statusCode = response.status.value,
-                            responseBody = runCatching { response.bodyAsText() }.getOrDefault(""),
-                            url = response.call.request.url.toString(),
-                        )
                     }
                 }
             }

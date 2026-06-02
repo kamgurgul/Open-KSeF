@@ -17,20 +17,19 @@
 package com.kgurgul.openksef.ui.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import com.kgurgul.openksef.common.ObserveAsEvents
 import com.kgurgul.openksef.ui.invoicedetail.InvoiceDetailScreen
 import com.kgurgul.openksef.ui.invoicedetail.InvoiceDetailViewModel
 import com.kgurgul.openksef.ui.invoices.InvoiceListScreen
 import com.kgurgul.openksef.ui.invoices.InvoiceListViewModel
 import com.kgurgul.openksef.ui.login.LoginScreen
 import com.kgurgul.openksef.ui.login.LoginViewModel
+import com.kgurgul.openksef.ui.main.MainEvent
 import com.kgurgul.openksef.ui.main.MainViewModel
 import com.kgurgul.openksef.ui.sendinvoice.SendInvoiceScreen
 import com.kgurgul.openksef.ui.sendinvoice.SendInvoiceViewModel
@@ -59,15 +58,13 @@ fun AppNavigation() {
     val backStack = remember { mutableStateListOf<Any>(LoginKey) }
 
     val mainViewModel = koinViewModel<MainViewModel>()
-    val mainUiState by mainViewModel.uiState.collectAsStateWithLifecycle()
 
-    // Session-expiry redirect is driven by retained state so it cannot be dropped: whenever the
-    // flag is set we reset the back stack to the login screen, then acknowledge it.
-    LaunchedEffect(mainUiState.sessionExpired) {
-        if (mainUiState.sessionExpired) {
-            backStack.clear()
-            backStack.add(LoginKey)
-            mainViewModel.onSessionExpiryHandled()
+    ObserveAsEvents(mainViewModel.events) { event ->
+        when (event) {
+            MainEvent.SessionExpired -> {
+                backStack.clear()
+                backStack.add(LoginKey)
+            }
         }
     }
 

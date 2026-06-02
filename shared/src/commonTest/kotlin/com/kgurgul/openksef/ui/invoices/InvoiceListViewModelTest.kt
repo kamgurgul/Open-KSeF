@@ -19,12 +19,10 @@ package com.kgurgul.openksef.ui.invoices
 import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefCrypto
-import com.kgurgul.openksef.data.remote.SessionExpiredException
 import com.kgurgul.openksef.data.repository.KsefRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
-import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.plugins.auth.providers.bearer
@@ -260,7 +258,7 @@ class InvoiceListViewModelTest {
     /** Mirrors the Auth-plugin + validator setup of KsefApiClient. */
     private fun buildTestClient(engine: MockEngine, sessionHolder: SessionHolder): HttpClient =
         HttpClient(engine) {
-            expectSuccess = false
+            expectSuccess = true
             install(ContentNegotiation) { json(json, contentType = ContentType.Any) }
             install(Auth) {
                 bearer {
@@ -308,19 +306,6 @@ class InvoiceListViewModelTest {
                             sessionHolder.clear()
                             null
                         }
-                    }
-                }
-            }
-            HttpResponseValidator {
-                validateResponse { response ->
-                    if (!response.status.isSuccess()) {
-                        if (response.status == HttpStatusCode.Unauthorized)
-                            throw SessionExpiredException()
-                        throw com.kgurgul.openksef.data.remote.KsefApiException(
-                            statusCode = response.status.value,
-                            responseBody = runCatching { response.bodyAsText() }.getOrDefault(""),
-                            url = response.call.request.url.toString(),
-                        )
                     }
                 }
             }

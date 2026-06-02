@@ -19,36 +19,30 @@ package com.kgurgul.openksef.ui.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kgurgul.openksef.data.SessionEventBus
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.receiveAsFlow
 
-/** Root-screen state. [sessionExpired] stays `true` until the navigation host resets the stack. */
-data class MainUiState(val sessionExpired: Boolean = false)
+/** One-shot events emitted by [MainViewModel]. */
+sealed interface MainEvent {
+    data object SessionExpired : MainEvent
+}
 
 /**
  * Root-screen [ViewModel]. It owns the single, app-wide reaction to session expiry: it observes
- * [SessionEventBus] and raises [MainUiState.sessionExpired]. The flag is exposed as retained state
- * (not a one-shot event) so the redirect cannot be missed if the navigation host is recomposing or
- * its lifecycle is briefly stopped when the session expires — the host always converges to the
- * login screen and then calls [onSessionExpiryHandled].
+ * [SessionEventBus] and emits a [MainEvent.SessionExpired] event through a buffered channel so the
+ * navigation host can react via `ObserveAsEvents` without missing the signal.
  */
 class MainViewModel(sessionEventBus: SessionEventBus) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(MainUiState())
-    val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+    private val eventChannel = Channel<MainEvent>(Channel.BUFFERED)
+    val events: Flow<MainEvent> = eventChannel.receiveAsFlow()
 
     init {
         sessionEventBus.sessionExpired
-            .onEach { _uiState.update { it.copy(sessionExpired = true) } }
+            .onEach { eventChannel.send(MainEvent.SessionExpired) }
             .launchIn(viewModelScope)
-    }
-
-    /** Acknowledges the redirect once the navigation host has shown the login screen. */
-    fun onSessionExpiryHandled() {
-        _uiState.update { it.copy(sessionExpired = false) }
     }
 }

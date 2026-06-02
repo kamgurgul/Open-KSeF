@@ -16,7 +16,6 @@
 
 package com.kgurgul.openksef.data.local.db
 
-import androidx.room.AutoMigration
 import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.RoomDatabase
@@ -29,8 +28,7 @@ const val DATABASE_FILE_NAME = "openksef.db"
 
 @Database(
     entities = [InvoiceTemplateEntity::class, SellerConfigEntity::class],
-    version = 2,
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    version = 1,
 )
 @TypeConverters(InvoiceTemplateItemConverter::class)
 @ConstructedBy(AppDatabaseConstructor::class)

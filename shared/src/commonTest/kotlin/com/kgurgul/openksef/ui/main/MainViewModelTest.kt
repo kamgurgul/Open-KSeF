@@ -18,43 +18,42 @@ package com.kgurgul.openksef.ui.main
 
 import com.kgurgul.openksef.data.SessionEventBus
 import kotlin.test.Test
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 
 class MainViewModelTest {
 
     @Test
-    fun sessionExpired_setsSessionExpiredState() = runTest {
+    fun sessionExpired_emitsSessionExpiredEvent() = runTest {
         val sessionEventBus = SessionEventBus()
         val viewModel = MainViewModel(sessionEventBus)
 
         sessionEventBus.notifySessionExpired()
 
-        assertTrue(viewModel.uiState.first { it.sessionExpired }.sessionExpired)
+        assertIs<MainEvent.SessionExpired>(viewModel.events.first())
     }
 
     @Test
     fun sessionExpired_signalledBeforeCollection_isStillDelivered() = runTest {
-        // The bus is conflated, so a signal raised before MainViewModel collects is not lost.
+        // The channel is buffered, so a signal raised before collection is not lost.
         val sessionEventBus = SessionEventBus()
         sessionEventBus.notifySessionExpired()
 
         val viewModel = MainViewModel(sessionEventBus)
 
-        assertTrue(viewModel.uiState.first { it.sessionExpired }.sessionExpired)
+        assertIs<MainEvent.SessionExpired>(viewModel.events.first())
     }
 
     @Test
-    fun onSessionExpiryHandled_clearsState() = runTest {
+    fun multipleSessionExpired_signalsEmitMultipleEvents() = runTest {
         val sessionEventBus = SessionEventBus()
         val viewModel = MainViewModel(sessionEventBus)
+
         sessionEventBus.notifySessionExpired()
-        viewModel.uiState.first { it.sessionExpired }
+        val event = viewModel.events.first()
 
-        viewModel.onSessionExpiryHandled()
-
-        assertFalse(viewModel.uiState.value.sessionExpired)
+        assertEquals(MainEvent.SessionExpired, event)
     }
 }
