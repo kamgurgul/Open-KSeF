@@ -53,7 +53,6 @@ import openksef.shared.generated.resources.seller_config_save
 import openksef.shared.generated.resources.seller_config_saved
 import openksef.shared.generated.resources.settings_seller_info
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SellerConfigScreen(viewModel: SellerConfigViewModel, onNavigateBack: () -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -66,6 +65,26 @@ fun SellerConfigScreen(viewModel: SellerConfigViewModel, onNavigateBack: () -> U
         }
     }
 
+    SellerConfigScreen(
+        uiState = uiState,
+        onNavigateBack = onNavigateBack,
+        onNameChanged = viewModel::onNameChanged,
+        onAddressChanged = viewModel::onAddressChanged,
+        onSaveClicked = viewModel::onSaveClicked,
+        snackbarHostState = snackbarHostState,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SellerConfigScreen(
+    uiState: SellerConfigUiState,
+    onNavigateBack: () -> Unit,
+    onNameChanged: (String) -> Unit,
+    onAddressChanged: (String) -> Unit,
+    onSaveClicked: () -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -97,7 +116,7 @@ fun SellerConfigScreen(viewModel: SellerConfigViewModel, onNavigateBack: () -> U
         ) {
             OutlinedTextField(
                 value = uiState.name,
-                onValueChange = viewModel::onNameChanged,
+                onValueChange = onNameChanged,
                 label = { Text(stringResource(Res.string.seller_config_name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -105,12 +124,12 @@ fun SellerConfigScreen(viewModel: SellerConfigViewModel, onNavigateBack: () -> U
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
                 value = uiState.address,
-                onValueChange = viewModel::onAddressChanged,
+                onValueChange = onAddressChanged,
                 label = { Text(stringResource(Res.string.seller_config_address)) },
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(modifier = Modifier.height(24.dp))
-            Button(onClick = viewModel::onSaveClicked, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = onSaveClicked, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(Res.string.seller_config_save))
             }
         }

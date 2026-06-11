@@ -63,6 +63,27 @@ fun LoginScreen(viewModel: LoginViewModel, onLoginSuccess: () -> Unit) {
         }
     }
 
+    LoginScreen(
+        uiState = uiState,
+        onNipChanged = viewModel::onNipChanged,
+        onTokenChanged = viewModel::onTokenChanged,
+        onEnvironmentChanged = viewModel::onEnvironmentChanged,
+        onRememberChanged = viewModel::onRememberChanged,
+        onLoginClick = viewModel::login,
+        snackbarHostState = snackbarHostState,
+    )
+}
+
+@Composable
+fun LoginScreen(
+    uiState: LoginUiState,
+    onNipChanged: (String) -> Unit,
+    onTokenChanged: (String) -> Unit,
+    onEnvironmentChanged: (KsefEnvironment) -> Unit,
+    onRememberChanged: (Boolean) -> Unit,
+    onLoginClick: () -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+) {
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -96,7 +117,7 @@ fun LoginScreen(viewModel: LoginViewModel, onLoginSuccess: () -> Unit) {
                     value = uiState.nip,
                     onValueChange = {
                         val trimmed = it.filter { char -> char.isDigit() }
-                        if (trimmed.length <= 10) viewModel.onNipChanged(it)
+                        if (trimmed.length <= 10) onNipChanged(it)
                     },
                     label = { Text(stringResource(Res.string.login_nip_label)) },
                     placeholder = { Text(stringResource(Res.string.login_nip_placeholder)) },
@@ -109,7 +130,7 @@ fun LoginScreen(viewModel: LoginViewModel, onLoginSuccess: () -> Unit) {
 
                 OutlinedTextField(
                     value = uiState.token,
-                    onValueChange = viewModel::onTokenChanged,
+                    onValueChange = onTokenChanged,
                     label = { Text(stringResource(Res.string.login_token_label)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
@@ -134,7 +155,7 @@ fun LoginScreen(viewModel: LoginViewModel, onLoginSuccess: () -> Unit) {
                                     index = index,
                                     count = KsefEnvironment.entries.size,
                                 ),
-                            onClick = { viewModel.onEnvironmentChanged(env) },
+                            onClick = { onEnvironmentChanged(env) },
                             selected = uiState.environment == env,
                             label = {
                                 Text(
@@ -157,7 +178,7 @@ fun LoginScreen(viewModel: LoginViewModel, onLoginSuccess: () -> Unit) {
                 ) {
                     Checkbox(
                         checked = uiState.rememberCredentials,
-                        onCheckedChange = viewModel::onRememberChanged,
+                        onCheckedChange = onRememberChanged,
                     )
                     Text(
                         text = stringResource(Res.string.login_remember_credentials),
@@ -168,7 +189,7 @@ fun LoginScreen(viewModel: LoginViewModel, onLoginSuccess: () -> Unit) {
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = viewModel::login,
+                    onClick = onLoginClick,
                     enabled = !uiState.isLoading,
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                 ) {

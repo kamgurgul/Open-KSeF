@@ -42,7 +42,6 @@ import openksef.shared.generated.resources.invoice_detail_xml_title
 import openksef.shared.generated.resources.pdf_export_success
 import org.jetbrains.compose.resources.stringResource
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InvoiceDetailScreen(viewModel: InvoiceDetailViewModel, onNavigateBack: () -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -64,6 +63,22 @@ fun InvoiceDetailScreen(viewModel: InvoiceDetailViewModel, onNavigateBack: () ->
         }
     }
 
+    InvoiceDetailScreen(
+        uiState = uiState,
+        onNavigateBack = onNavigateBack,
+        onExportPdfClick = viewModel::onExportPdfClick,
+        snackbarHostState = snackbarHostState,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun InvoiceDetailScreen(
+    uiState: InvoiceDetailUiState,
+    onNavigateBack: () -> Unit,
+    onExportPdfClick: () -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -96,7 +111,7 @@ fun InvoiceDetailScreen(viewModel: InvoiceDetailViewModel, onNavigateBack: () ->
                                 )
                             }
                         } else {
-                            IconButton(onClick = viewModel::onExportPdfClick) {
+                            IconButton(onClick = onExportPdfClick) {
                                 Icon(
                                     Icons.Default.PictureAsPdf,
                                     contentDescription =

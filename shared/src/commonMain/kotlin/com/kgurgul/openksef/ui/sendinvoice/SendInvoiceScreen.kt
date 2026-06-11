@@ -76,22 +76,10 @@ import openksef.shared.generated.resources.send_invoice_unit_price
 import openksef.shared.generated.resources.send_invoice_vat
 import org.jetbrains.compose.resources.stringResource
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SendInvoiceScreen(viewModel: SendInvoiceViewModel, onNavigateBack: () -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showSaveTemplateDialog by remember { mutableStateOf(false) }
-
-    if (showSaveTemplateDialog) {
-        SaveTemplateDialog(
-            onDismiss = { showSaveTemplateDialog = false },
-            onConfirm = { name ->
-                viewModel.onSaveTemplate(name)
-                showSaveTemplateDialog = false
-            },
-        )
-    }
 
     val errorMessage = uiState.error?.asString()
     LaunchedEffect(errorMessage) {
@@ -99,6 +87,60 @@ fun SendInvoiceScreen(viewModel: SendInvoiceViewModel, onNavigateBack: () -> Uni
             snackbarHostState.showSnackbar(it)
             viewModel.clearError()
         }
+    }
+
+    SendInvoiceScreen(
+        uiState = uiState,
+        onNavigateBack = onNavigateBack,
+        onSellerNameChanged = viewModel::onSellerNameChanged,
+        onSellerAddressChanged = viewModel::onSellerAddressChanged,
+        onBuyerNipChanged = viewModel::onBuyerNipChanged,
+        onBuyerNameChanged = viewModel::onBuyerNameChanged,
+        onBuyerAddressChanged = viewModel::onBuyerAddressChanged,
+        onInvoiceNumberChanged = viewModel::onInvoiceNumberChanged,
+        onIssueDateChanged = viewModel::onIssueDateChanged,
+        onTemplateSelected = viewModel::onTemplateSelected,
+        onDeleteTemplate = viewModel::onDeleteTemplate,
+        onSaveTemplate = viewModel::onSaveTemplate,
+        onAddItem = viewModel::addItem,
+        onRemoveItem = viewModel::removeItem,
+        onUpdateItem = viewModel::updateItem,
+        onSend = viewModel::send,
+        snackbarHostState = snackbarHostState,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SendInvoiceScreen(
+    uiState: SendInvoiceUiState,
+    onNavigateBack: () -> Unit,
+    onSellerNameChanged: (String) -> Unit,
+    onSellerAddressChanged: (String) -> Unit,
+    onBuyerNipChanged: (String) -> Unit,
+    onBuyerNameChanged: (String) -> Unit,
+    onBuyerAddressChanged: (String) -> Unit,
+    onInvoiceNumberChanged: (String) -> Unit,
+    onIssueDateChanged: (String) -> Unit,
+    onTemplateSelected: (InvoiceTemplate) -> Unit,
+    onDeleteTemplate: (String) -> Unit,
+    onSaveTemplate: (String) -> Unit,
+    onAddItem: () -> Unit,
+    onRemoveItem: (Int) -> Unit,
+    onUpdateItem: (Int, InvoiceLineItemUi) -> Unit,
+    onSend: () -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+) {
+    var showSaveTemplateDialog by remember { mutableStateOf(false) }
+
+    if (showSaveTemplateDialog) {
+        SaveTemplateDialog(
+            onDismiss = { showSaveTemplateDialog = false },
+            onConfirm = { name ->
+                onSaveTemplate(name)
+                showSaveTemplateDialog = false
+            },
+        )
     }
 
     if (uiState.isSent) {
@@ -163,8 +205,8 @@ fun SendInvoiceScreen(viewModel: SendInvoiceViewModel, onNavigateBack: () -> Uni
                 TemplateSelector(
                     templates = uiState.templates,
                     selectedTemplateId = uiState.selectedTemplateId,
-                    onTemplateSelected = viewModel::onTemplateSelected,
-                    onDeleteTemplate = viewModel::onDeleteTemplate,
+                    onTemplateSelected = onTemplateSelected,
+                    onDeleteTemplate = onDeleteTemplate,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
@@ -188,7 +230,7 @@ fun SendInvoiceScreen(viewModel: SendInvoiceViewModel, onNavigateBack: () -> Uni
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = uiState.sellerName,
-                    onValueChange = viewModel::onSellerNameChanged,
+                    onValueChange = onSellerNameChanged,
                     label = { Text(stringResource(Res.string.send_invoice_name)) },
                     isError =
                         uiState.validationErrors.containsKey(
@@ -203,7 +245,7 @@ fun SendInvoiceScreen(viewModel: SendInvoiceViewModel, onNavigateBack: () -> Uni
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = uiState.sellerAddress,
-                    onValueChange = viewModel::onSellerAddressChanged,
+                    onValueChange = onSellerAddressChanged,
                     label = { Text(stringResource(Res.string.send_invoice_address)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -214,7 +256,7 @@ fun SendInvoiceScreen(viewModel: SendInvoiceViewModel, onNavigateBack: () -> Uni
                 SectionHeader(stringResource(Res.string.send_invoice_buyer))
                 OutlinedTextField(
                     value = uiState.buyerNip,
-                    onValueChange = viewModel::onBuyerNipChanged,
+                    onValueChange = onBuyerNipChanged,
                     label = { Text(stringResource(Res.string.login_nip_label)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     isError =
@@ -228,7 +270,7 @@ fun SendInvoiceScreen(viewModel: SendInvoiceViewModel, onNavigateBack: () -> Uni
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = uiState.buyerName,
-                    onValueChange = viewModel::onBuyerNameChanged,
+                    onValueChange = onBuyerNameChanged,
                     label = { Text(stringResource(Res.string.send_invoice_name)) },
                     isError =
                         uiState.validationErrors.containsKey(SendInvoiceViewModel.FIELD_BUYER_NAME),
@@ -241,7 +283,7 @@ fun SendInvoiceScreen(viewModel: SendInvoiceViewModel, onNavigateBack: () -> Uni
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = uiState.buyerAddress,
-                    onValueChange = viewModel::onBuyerAddressChanged,
+                    onValueChange = onBuyerAddressChanged,
                     label = { Text(stringResource(Res.string.send_invoice_address)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -252,7 +294,7 @@ fun SendInvoiceScreen(viewModel: SendInvoiceViewModel, onNavigateBack: () -> Uni
                 SectionHeader(stringResource(Res.string.send_invoice_details))
                 OutlinedTextField(
                     value = uiState.invoiceNumber,
-                    onValueChange = viewModel::onInvoiceNumberChanged,
+                    onValueChange = onInvoiceNumberChanged,
                     label = { Text(stringResource(Res.string.send_invoice_number)) },
                     isError =
                         uiState.validationErrors.containsKey(
@@ -267,7 +309,7 @@ fun SendInvoiceScreen(viewModel: SendInvoiceViewModel, onNavigateBack: () -> Uni
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = uiState.issueDate,
-                    onValueChange = viewModel::onIssueDateChanged,
+                    onValueChange = onIssueDateChanged,
                     label = { Text(stringResource(Res.string.send_invoice_issue_date)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -290,13 +332,13 @@ fun SendInvoiceScreen(viewModel: SendInvoiceViewModel, onNavigateBack: () -> Uni
                         index = index,
                         item = item,
                         canRemove = uiState.items.size > 1,
-                        onUpdate = { viewModel.updateItem(index, it) },
-                        onRemove = { viewModel.removeItem(index) },
+                        onUpdate = { onUpdateItem(index, it) },
+                        onRemove = { onRemoveItem(index) },
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                OutlinedButton(onClick = viewModel::addItem, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = onAddItem, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(stringResource(Res.string.send_invoice_add_item))
@@ -310,7 +352,7 @@ fun SendInvoiceScreen(viewModel: SendInvoiceViewModel, onNavigateBack: () -> Uni
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = viewModel::send,
+                    onClick = onSend,
                     enabled = !uiState.isLoading,
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                 ) {
