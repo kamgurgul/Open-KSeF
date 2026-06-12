@@ -93,7 +93,9 @@ class SendInvoiceViewModel(
         }
         viewModelScope.launch {
             sellerConfigRepository.config.first()?.let { config ->
-                _uiState.update { it.copy(sellerName = config.name, sellerAddress = config.address) }
+                _uiState.update {
+                    it.copy(sellerName = config.name, sellerAddress = config.address)
+                }
             }
         }
         templateRepository.templates

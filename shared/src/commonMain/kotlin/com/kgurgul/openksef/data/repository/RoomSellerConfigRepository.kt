@@ -26,7 +26,9 @@ import kotlinx.coroutines.flow.map
 class RoomSellerConfigRepository(private val dao: SellerConfigDao) : SellerConfigRepository {
 
     override val config: Flow<SellerConfig?> =
-        dao.get().map { entity -> entity?.let { SellerConfig(name = it.name, address = it.address) } }
+        dao.get().map { entity ->
+            entity?.let { SellerConfig(name = it.name, address = it.address) }
+        }
 
     override suspend fun save(config: SellerConfig) {
         dao.upsert(SellerConfigEntity(name = config.name, address = config.address))

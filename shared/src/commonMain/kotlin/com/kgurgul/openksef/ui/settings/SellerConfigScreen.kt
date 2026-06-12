@@ -44,7 +44,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kgurgul.openksef.common.ObserveAsEvents
-import org.jetbrains.compose.resources.stringResource
 import openksef.shared.generated.resources.Res
 import openksef.shared.generated.resources.action_back
 import openksef.shared.generated.resources.seller_config_address
@@ -52,6 +51,7 @@ import openksef.shared.generated.resources.seller_config_name
 import openksef.shared.generated.resources.seller_config_save
 import openksef.shared.generated.resources.seller_config_saved
 import openksef.shared.generated.resources.settings_seller_info
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SellerConfigScreen(viewModel: SellerConfigViewModel, onNavigateBack: () -> Unit) {

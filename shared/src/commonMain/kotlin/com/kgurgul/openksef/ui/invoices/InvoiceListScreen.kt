@@ -16,6 +16,8 @@
 
 package com.kgurgul.openksef.ui.invoices
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,11 +27,14 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -37,7 +42,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kgurgul.openksef.common.ObserveAsEvents
+import com.kgurgul.openksef.common.PlatformVerticalScrollbar
 import com.kgurgul.openksef.common.asString
+import com.kgurgul.openksef.domain.date.DateFormatter
 import com.kgurgul.openksef.domain.model.InvoiceSubjectType
 import com.kgurgul.openksef.ui.components.InvoiceCard
 import kotlinx.datetime.Instant
@@ -48,6 +55,8 @@ import kotlinx.datetime.toLocalDateTime
 import openksef.shared.generated.resources.Res
 import openksef.shared.generated.resources.action_cancel
 import openksef.shared.generated.resources.action_clear_filter
+import openksef.shared.generated.resources.action_collapse_filters
+import openksef.shared.generated.resources.action_expand_filters
 import openksef.shared.generated.resources.action_logout
 import openksef.shared.generated.resources.action_ok
 import openksef.shared.generated.resources.action_refresh
@@ -128,6 +137,7 @@ fun InvoiceListScreen(
     val listState = rememberLazyListState()
     var showDateFromPicker by remember { mutableStateOf(false) }
     var showDateToPicker by remember { mutableStateOf(false) }
+    var filtersExpanded by rememberSaveable { mutableStateOf(false) }
 
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -271,64 +281,113 @@ fun InvoiceListScreen(
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier =
+                            Modifier.fillMaxWidth().clickable {
+                                filtersExpanded = !filtersExpanded
+                            },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Icon(
                             Icons.Default.DateRange,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(Res.string.invoices_date_range),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(Res.string.invoices_date_range),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            if (!filtersExpanded) {
+                                Text(
+                                    text =
+                                        "${DateFormatter.format(uiState.dateFrom)} — " +
+                                                DateFormatter.format(uiState.dateTo),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
+                        }
+                        Icon(
+                            imageVector =
+                                if (filtersExpanded) {
+                                    Icons.Default.KeyboardArrowUp
+                                } else {
+                                    Icons.Default.KeyboardArrowDown
+                                },
+                            contentDescription =
+                                stringResource(
+                                    if (filtersExpanded) {
+                                        Res.string.action_collapse_filters
+                                    } else {
+                                        Res.string.action_expand_filters
+                                    }
+                                ),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        OutlinedButton(
-                            onClick = { showDateFromPicker = true },
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text(uiState.dateFrom, style = MaterialTheme.typography.bodySmall)
-                        }
-                        Text(" — ", modifier = Modifier.padding(horizontal = 4.dp))
-                        OutlinedButton(
-                            onClick = { showDateToPicker = true },
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text(uiState.dateTo, style = MaterialTheme.typography.bodySmall)
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        FilledTonalButton(onClick = onSearchClick) {
-                            Text(stringResource(Res.string.action_search))
+
+                    AnimatedVisibility(visible = filtersExpanded) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                OutlinedButton(
+                                    onClick = { showDateFromPicker = true },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(
+                                        DateFormatter.format(uiState.dateFrom),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
+                                Text(" — ", modifier = Modifier.padding(horizontal = 4.dp))
+                                OutlinedButton(
+                                    onClick = { showDateToPicker = true },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(
+                                        DateFormatter.format(uiState.dateTo),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                FilledTonalButton(onClick = onSearchClick) {
+                                    Text(stringResource(Res.string.action_search))
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = uiState.searchQuery,
+                                onValueChange = onSearchQueryChanged,
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = {
+                                    Text(stringResource(Res.string.invoices_filter_placeholder))
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Search, contentDescription = null)
+                                },
+                                trailingIcon = {
+                                    if (uiState.searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { onSearchQueryChanged("") }) {
+                                            Icon(
+                                                Icons.Default.Clear,
+                                                contentDescription =
+                                                    stringResource(Res.string.action_clear_filter),
+                                            )
+                                        }
+                                    }
+                                },
+                                singleLine = true,
+                            )
                         }
                     }
                 }
             }
-
-            OutlinedTextField(
-                value = uiState.searchQuery,
-                onValueChange = onSearchQueryChanged,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                placeholder = { Text(stringResource(Res.string.invoices_filter_placeholder)) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (uiState.searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { onSearchQueryChanged("") }) {
-                            Icon(
-                                Icons.Default.Clear,
-                                contentDescription = stringResource(Res.string.action_clear_filter),
-                            )
-                        }
-                    }
-                },
-                singleLine = true,
-            )
 
             if (uiState.isLoading && uiState.invoices.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -366,35 +425,41 @@ fun InvoiceListScreen(
                     }
                 }
             } else {
-                LazyColumn(
-                    state = listState,
-                    contentPadding =
-                        PaddingValues(
-                            start = 16.dp,
-                            top = 16.dp,
-                            end = 16.dp,
-                            bottom = padding.calculateBottomPadding() + 88.dp,
-                        ),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(items = uiState.displayedInvoices, key = { it.ksefReferenceNumber }) {
-                        invoice ->
-                        InvoiceCard(
-                            invoice = invoice,
-                            onClick = { onInvoiceClick(invoice.ksefReferenceNumber) },
-                        )
-                    }
+                Box(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding =
+                            PaddingValues(
+                                start = 16.dp,
+                                top = 16.dp,
+                                end = 16.dp,
+                                bottom = padding.calculateBottomPadding() + 88.dp,
+                            ),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(
+                            items = uiState.displayedInvoices,
+                            key = { it.ksefReferenceNumber },
+                        ) { invoice ->
+                            InvoiceCard(
+                                invoice = invoice,
+                                onClick = { onInvoiceClick(invoice.ksefReferenceNumber) },
+                            )
+                        }
 
-                    if (uiState.isLoading) {
-                        item {
-                            Box(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                        if (uiState.isLoading) {
+                            item {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                                }
                             }
                         }
                     }
+                    PlatformVerticalScrollbar(listState)
                 }
             }
         }

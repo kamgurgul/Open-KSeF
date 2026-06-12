@@ -12,6 +12,8 @@
     <string name="action_logout">Logout</string>
     <string name="action_delete">Delete</string>
     <string name="action_clear_filter">Clear filter</string>
+    <string name="action_expand_filters">Expand filters</string>
+    <string name="action_collapse_filters">Collapse filters</string>
     <string name="action_send_invoice">Send invoice</string>
     <string name="action_settings">Settings</string>
 

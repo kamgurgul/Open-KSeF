@@ -12,6 +12,8 @@
     <string name="action_logout">Wyloguj</string>
     <string name="action_delete">Usuń</string>
     <string name="action_clear_filter">Wyczyść filtr</string>
+    <string name="action_expand_filters">Rozwiń filtry</string>
+    <string name="action_collapse_filters">Zwiń filtry</string>
     <string name="action_send_invoice">Wyślij fakturę</string>
     <string name="action_settings">Ustawienia</string>
 

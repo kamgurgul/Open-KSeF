@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kgurgul.openksef.common.ObserveAsEvents
+import com.kgurgul.openksef.common.PlatformHorizontalScrollbar
+import com.kgurgul.openksef.common.PlatformVerticalScrollbar
 import com.kgurgul.openksef.common.UiText
 import com.kgurgul.openksef.common.asString
 import openksef.shared.generated.resources.Res
@@ -146,6 +148,8 @@ fun InvoiceDetailScreen(
                             color = MaterialTheme.colorScheme.primary,
                         )
                         Spacer(modifier = Modifier.height(8.dp))
+                        val verticalScrollState = rememberScrollState()
+                        val horizontalScrollState = rememberScrollState()
                         Card(
                             modifier = Modifier.fillMaxSize(),
                             colors =
@@ -153,19 +157,23 @@ fun InvoiceDetailScreen(
                                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                                 ),
                         ) {
-                            Box(
-                                modifier =
-                                    Modifier.fillMaxSize()
-                                        .padding(12.dp)
-                                        .verticalScroll(rememberScrollState())
-                                        .horizontalScroll(rememberScrollState())
-                            ) {
-                                Text(
-                                    text = uiState.invoiceXml ?: "",
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 12.sp,
-                                    lineHeight = 18.sp,
-                                )
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                Box(
+                                    modifier =
+                                        Modifier.fillMaxSize()
+                                            .padding(12.dp)
+                                            .verticalScroll(verticalScrollState)
+                                            .horizontalScroll(horizontalScrollState)
+                                ) {
+                                    Text(
+                                        text = uiState.invoiceXml ?: "",
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 12.sp,
+                                        lineHeight = 18.sp,
+                                    )
+                                }
+                                PlatformVerticalScrollbar(verticalScrollState)
+                                PlatformHorizontalScrollbar(horizontalScrollState)
                             }
                         }
                     }

@@ -26,8 +26,8 @@ import kotlin.math.round
  * The amount is stored as a [Long] of the smallest currency unit (minor units), avoiding
  * floating-point precision issues. For example, 123.99 is stored as 12399 minor units.
  *
- * This class is multiplatform-compatible and provides precise decimal operations without relying
- * on `BigDecimal`.
+ * This class is multiplatform-compatible and provides precise decimal operations without relying on
+ * `BigDecimal`.
  *
  * @property minorUnits The value in minor units (smallest currency denomination). For example,
  *   12399 represents 123.99 in the major currency unit.
@@ -83,8 +83,8 @@ value class Money(val minorUnits: Long) : Comparable<Money> {
     fun withVatRate(vatRatePercent: Int): Money = this * (1.0 + vatRatePercent / 100.0)
 
     /**
-     * Formats the value using the Polish locale with two fraction digits. For 12399 minor units this
-     * returns "123,99".
+     * Formats the value using the Polish locale with two fraction digits. For 12399 minor units
+     * this returns "123,99".
      */
     fun toFormattedString(
         currencyCode: String = DEFAULT_CURRENCY_CODE,
@@ -133,22 +133,16 @@ value class Money(val minorUnits: Long) : Comparable<Money> {
          * Creates a [Money] from a [Double], rounding to the nearest minor unit. Use with caution
          * due to floating-point precision; prefer [fromMinorUnits] or [fromMajorUnits].
          */
-        fun fromDouble(value: Double): Money =
-            Money(round(value * MINOR_UNITS_PER_MAJOR).toLong())
+        fun fromDouble(value: Double): Money = Money(round(value * MINOR_UNITS_PER_MAJOR).toLong())
 
         /**
          * Parses a formatted string into a [Money]. Handles both comma and dot decimal separators
-         * and removes thousand separators (spaces, non-breaking spaces, etc.). For example "123,99",
-         * "123.99", "2 000,00" or "2,000.99" produce the appropriate value. Returns [ZERO] when the
-         * string cannot be parsed.
+         * and removes thousand separators (spaces, non-breaking spaces, etc.). For example
+         * "123,99", "123.99", "2 000,00" or "2,000.99" produce the appropriate value. Returns
+         * [ZERO] when the string cannot be parsed.
          */
         fun fromFormattedString(value: String): Money {
-            val cleaned =
-                value
-                    .trim()
-                    .replace(" ", "")
-                    .replace(" ", "")
-                    .replace(" ", "")
+            val cleaned = value.trim().replace(" ", "").replace(" ", "").replace(" ", "")
 
             val lastCommaIndex = cleaned.lastIndexOf(',')
             val lastDotIndex = cleaned.lastIndexOf('.')

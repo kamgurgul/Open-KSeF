@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.kgurgul.openksef.domain.date.DateFormatter
 import com.kgurgul.openksef.domain.model.InvoiceSummary
 import openksef.shared.generated.resources.Res
 import openksef.shared.generated.resources.amount_pln
@@ -83,7 +84,7 @@ fun InvoiceCard(invoice: InvoiceSummary, onClick: () -> Unit, modifier: Modifier
                     modifier = Modifier.weight(1f),
                 )
                 Text(
-                    text = invoice.invoicingDate.take(10),
+                    text = DateFormatter.format(invoice.invoicingDate),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

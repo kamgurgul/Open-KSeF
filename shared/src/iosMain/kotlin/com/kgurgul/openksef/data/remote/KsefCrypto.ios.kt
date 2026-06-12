@@ -101,10 +101,9 @@ class IosKsefCrypto : KsefCrypto {
 
     override fun secureRandomBytes(size: Int): ByteArray {
         val bytes = ByteArray(size)
-        val status =
-            bytes.usePinned { pinned ->
-                SecRandomCopyBytes(kSecRandomDefault, size.convert(), pinned.addressOf(0))
-            }
+        val status = bytes.usePinned { pinned ->
+            SecRandomCopyBytes(kSecRandomDefault, size.convert(), pinned.addressOf(0))
+        }
         if (status != errSecSuccess) {
             error("Secure random generation failed with status $status")
         }
@@ -117,28 +116,27 @@ class IosKsefCrypto : KsefCrypto {
         val output = ByteArray(outputCapacity)
         return memScoped {
             val bytesWritten = alloc<ULongVar>()
-            val status =
-                data.usePinned { dataPinned ->
-                    key.usePinned { keyPinned ->
-                        iv.usePinned { ivPinned ->
-                            output.usePinned { outputPinned ->
-                                CCCrypt(
-                                    op = CC_ENCRYPT.convert(),
-                                    alg = CC_ALGORITHM_AES.convert(),
-                                    options = CC_OPTION_PKCS7_PADDING.convert(),
-                                    key = keyPinned.addressOf(0),
-                                    keyLength = key.size.convert(),
-                                    iv = ivPinned.addressOf(0),
-                                    dataIn = dataPinned.addressOf(0),
-                                    dataInLength = data.size.convert(),
-                                    dataOut = outputPinned.addressOf(0),
-                                    dataOutAvailable = outputCapacity.convert(),
-                                    dataOutMoved = bytesWritten.ptr,
-                                )
-                            }
+            val status = data.usePinned { dataPinned ->
+                key.usePinned { keyPinned ->
+                    iv.usePinned { ivPinned ->
+                        output.usePinned { outputPinned ->
+                            CCCrypt(
+                                op = CC_ENCRYPT.convert(),
+                                alg = CC_ALGORITHM_AES.convert(),
+                                options = CC_OPTION_PKCS7_PADDING.convert(),
+                                key = keyPinned.addressOf(0),
+                                keyLength = key.size.convert(),
+                                iv = ivPinned.addressOf(0),
+                                dataIn = dataPinned.addressOf(0),
+                                dataInLength = data.size.convert(),
+                                dataOut = outputPinned.addressOf(0),
+                                dataOutAvailable = outputCapacity.convert(),
+                                dataOutMoved = bytesWritten.ptr,
+                            )
                         }
                     }
                 }
+            }
             if (status != CC_CRYPT_SUCCESS) {
                 error("AES-256-CBC encryption failed with status $status")
             }

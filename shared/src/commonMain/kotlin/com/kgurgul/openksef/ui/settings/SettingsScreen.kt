@@ -36,12 +36,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import org.jetbrains.compose.resources.stringResource
 import openksef.shared.generated.resources.Res
 import openksef.shared.generated.resources.action_back
 import openksef.shared.generated.resources.settings_seller_info
 import openksef.shared.generated.resources.settings_seller_info_description
 import openksef.shared.generated.resources.settings_title
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

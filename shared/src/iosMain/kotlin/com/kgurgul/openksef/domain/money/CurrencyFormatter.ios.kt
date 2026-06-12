@@ -36,7 +36,6 @@ actual object CurrencyFormatter {
                     this.currencyCode = currencyCode
                 }
             }
-        return formatter.stringFromNumber(NSNumber(double = amount))
-            ?: amount.toString()
+        return formatter.stringFromNumber(NSNumber(double = amount)) ?: amount.toString()
     }
 }
