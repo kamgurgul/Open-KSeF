@@ -166,7 +166,7 @@ fun InvoiceDetailScreen(
                                             .horizontalScroll(horizontalScrollState)
                                 ) {
                                     Text(
-                                        text = uiState.invoiceXml ?: "",
+                                        text = uiState.invoiceXml,
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 12.sp,
                                         lineHeight = 18.sp,

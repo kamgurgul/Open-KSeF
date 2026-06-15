@@ -202,8 +202,10 @@ object InvoiceHtmlRenderer {
 
     private val CSS =
         """
+        @page { margin: 0; }
         body { font-family: -apple-system, 'Helvetica Neue', Helvetica, sans-serif;
-               color: #202124; font-size: 10px; margin: 0; }
+               color: #202124; font-size: 10px; margin: 0;
+               box-sizing: border-box; padding: 40px; }
         h1 { font-size: 21px; color: #1F3B57; margin: 0 0 2px 0; }
         .muted { color: #5F6368; font-size: 8px; }
         .strong { font-weight: bold; }

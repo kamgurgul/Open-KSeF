@@ -10,7 +10,6 @@ plugins {
 
 kotlin {
     compilerOptions {
-        // Room generates an `actual` object (AppDatabaseConstructor) for the expect declaration.
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 
@@ -29,6 +28,7 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
+            binaryOption("bundleId", "com.kgurgul.openksef.shared")
         }
     }
 
