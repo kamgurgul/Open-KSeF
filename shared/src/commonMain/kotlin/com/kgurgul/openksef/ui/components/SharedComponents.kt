@@ -19,16 +19,20 @@ package com.kgurgul.openksef.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kgurgul.openksef.domain.date.DateFormatter
 import com.kgurgul.openksef.domain.model.InvoiceSummary
+import com.kgurgul.openksef.ui.theme.jetBrainsMonoFamily
+import com.kgurgul.openksef.ui.theme.spaceGroteskFamily
 import openksef.shared.generated.resources.Res
 import openksef.shared.generated.resources.amount_pln
 import openksef.shared.generated.resources.invoice_card_buyer
@@ -43,9 +47,9 @@ fun LoadingOverlay(isLoading: Boolean) {
     if (isLoading) {
         Box(
             modifier =
-                Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)).clickable(
-                    enabled = false
-                ) {},
+                Modifier.fillMaxSize()
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f))
+                    .clickable(enabled = false) {},
             contentAlignment = Alignment.Center,
         ) {
             CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
@@ -58,8 +62,7 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = modifier.padding(vertical = 8.dp),
     )
 }
@@ -68,98 +71,128 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier) {
 fun InvoiceCard(invoice: InvoiceSummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = invoice.invoiceNumber.ifBlank { invoice.ksefReferenceNumber },
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
+                InvoiceAvatar(invoice.sellerName.ifBlank { invoice.sellerNip })
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = invoice.invoiceNumber.ifBlank { invoice.ksefReferenceNumber },
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text =
+                            stringResource(
+                                Res.string.invoice_card_seller,
+                                invoice.sellerName.ifBlank { invoice.sellerNip },
+                            ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text =
+                            stringResource(
+                                Res.string.invoice_card_buyer,
+                                invoice.buyerName.ifBlank { invoice.buyerNip },
+                            ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = DateFormatter.format(invoice.invoicingDate),
-                    style = MaterialTheme.typography.bodySmall,
+                    style =
+                        MaterialTheme.typography.labelSmall.copy(fontFamily = jetBrainsMonoFamily()),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text =
-                    stringResource(
-                        Res.string.invoice_card_seller,
-                        invoice.sellerName.ifBlank { invoice.sellerNip },
-                    ),
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text =
-                    stringResource(
-                        Res.string.invoice_card_buyer,
-                        invoice.buyerName.ifBlank { invoice.buyerNip },
-                    ),
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Spacer(modifier = Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Column {
-                    Text(
-                        text = stringResource(Res.string.invoice_card_net),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text =
-                            stringResource(Res.string.amount_pln, invoice.net.toFormattedString()),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-                Column {
-                    Text(
-                        text = stringResource(Res.string.invoice_card_vat),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text =
-                            stringResource(Res.string.amount_pln, invoice.vat.toFormattedString()),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-                Column {
-                    Text(
-                        text = stringResource(Res.string.invoice_card_gross),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text =
-                            stringResource(
-                                Res.string.amount_pln,
-                                invoice.gross.toFormattedString(),
-                            ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
+                AmountColumn(stringResource(Res.string.invoice_card_net), invoice.net.toFormattedString())
+                AmountColumn(stringResource(Res.string.invoice_card_vat), invoice.vat.toFormattedString())
+                AmountColumn(
+                    label = stringResource(Res.string.invoice_card_gross),
+                    value = invoice.gross.toFormattedString(),
+                    emphasized = true,
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun AmountColumn(label: String, value: String, emphasized: Boolean = false) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = stringResource(Res.string.amount_pln, value),
+            style =
+                MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = jetBrainsMonoFamily(),
+                    fontWeight = if (emphasized) FontWeight.SemiBold else FontWeight.Normal,
+                ),
+            color =
+                if (emphasized) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+        )
+    }
+}
+
+@Composable
+private fun InvoiceAvatar(name: String) {
+    Box(
+        modifier =
+            Modifier.size(44.dp)
+                .clip(RoundedCornerShape(11.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = name.toInitials(),
+            style =
+                MaterialTheme.typography.titleSmall.copy(
+                    fontFamily = spaceGroteskFamily(),
+                    fontWeight = FontWeight.Bold,
+                ),
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+private fun String.toInitials(): String {
+    val words = trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+    return when {
+        words.isEmpty() -> "?"
+        words.size == 1 -> words[0].take(2).uppercase()
+        else -> (words[0].take(1) + words[1].take(1)).uppercase()
     }
 }

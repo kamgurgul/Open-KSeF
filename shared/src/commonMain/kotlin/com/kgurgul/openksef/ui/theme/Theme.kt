@@ -18,67 +18,77 @@ package com.kgurgul.openksef.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-private val Blue700 = Color(0xFF1565C0)
-private val Blue500 = Color(0xFF1E88E5)
-private val Blue200 = Color(0xFF90CAF9)
-private val Indigo700 = Color(0xFF283593)
-private val Indigo400 = Color(0xFF5C6BC0)
-private val Orange500 = Color(0xFFFF9800)
-private val Orange200 = Color(0xFFFFCC80)
-
 private val LightColorScheme =
     lightColorScheme(
-        primary = Blue700,
-        onPrimary = Color.White,
-        primaryContainer = Blue200,
-        onPrimaryContainer = Indigo700,
-        secondary = Indigo400,
-        onSecondary = Color.White,
-        secondaryContainer = Color(0xFFC5CAE9),
-        onSecondaryContainer = Indigo700,
-        tertiary = Orange500,
-        onTertiary = Color.White,
-        background = Color(0xFFFAFAFA),
-        onBackground = Color(0xFF1C1B1F),
-        surface = Color.White,
-        onSurface = Color(0xFF1C1B1F),
-        surfaceVariant = Color(0xFFE8EAF6),
-        onSurfaceVariant = Color(0xFF49454F),
-        error = Color(0xFFB3261E),
-        onError = Color.White,
+        primary = Blue600,
+        onPrimary = Neutral0,
+        primaryContainer = Blue100,
+        onPrimaryContainer = BlueOnContainer,
+        secondary = Neutral600,
+        onSecondary = Neutral0,
+        secondaryContainer = Neutral100,
+        onSecondaryContainer = Neutral800,
+        tertiary = Success,
+        onTertiary = Neutral0,
+        tertiaryContainer = SuccessContainer,
+        onTertiaryContainer = OnSuccessContainer,
+        background = Neutral50,
+        onBackground = Neutral900,
+        surface = Neutral0,
+        onSurface = Neutral900,
+        surfaceVariant = Neutral100,
+        onSurfaceVariant = Neutral500,
+        outline = Neutral300,
+        outlineVariant = Neutral200,
+        error = ErrorRed,
+        onError = Neutral0,
+        errorContainer = ErrorContainerRed,
+        onErrorContainer = OnErrorContainerRed,
+        scrim = Neutral900,
     )
 
 private val DarkColorScheme =
     darkColorScheme(
-        primary = Blue200,
-        onPrimary = Indigo700,
+        primary = Blue300,
+        onPrimary = Blue900,
         primaryContainer = Blue700,
-        onPrimaryContainer = Blue200,
-        secondary = Color(0xFF9FA8DA),
-        onSecondary = Indigo700,
-        secondaryContainer = Indigo400,
-        onSecondaryContainer = Color(0xFFC5CAE9),
-        tertiary = Orange200,
-        onTertiary = Color(0xFF4E2600),
-        background = Color(0xFF1C1B1F),
-        onBackground = Color(0xFFE6E1E5),
-        surface = Color(0xFF1C1B1F),
-        onSurface = Color(0xFFE6E1E5),
-        surfaceVariant = Color(0xFF49454F),
-        onSurfaceVariant = Color(0xFFCAC4D0),
-        error = Color(0xFFF2B8B5),
-        onError = Color(0xFF601410),
+        onPrimaryContainer = Blue100,
+        secondary = Neutral300,
+        onSecondary = Neutral900,
+        secondaryContainer = Neutral800,
+        onSecondaryContainer = Neutral100,
+        tertiary = Color(0xFF5BD0A0),
+        onTertiary = OnSuccessContainer,
+        tertiaryContainer = Color(0xFF105C3E),
+        onTertiaryContainer = SuccessContainer,
+        background = Neutral900,
+        onBackground = Neutral100,
+        surface = Neutral800,
+        onSurface = Neutral100,
+        surfaceVariant = Neutral800,
+        onSurfaceVariant = Neutral400,
+        outline = Neutral600,
+        outlineVariant = Neutral800,
+        error = Color(0xFFFFB3B5),
+        onError = Color(0xFF5C1115),
+        errorContainer = Color(0xFF8A2229),
+        onErrorContainer = ErrorContainerRed,
+        scrim = NavyDeep,
     )
 
 @Composable
 fun OpenKsefTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
-    MaterialTheme(colorScheme = colorScheme, typography = Typography(), content = content)
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = ksefTypography(),
+        shapes = KsefShapes,
+        content = content,
+    )
 }
