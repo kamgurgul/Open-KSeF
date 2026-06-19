@@ -30,9 +30,9 @@ turbine = "1.2.1"
 kotlincrypto-sha2 = "0.8.0"
 tink = "1.21.0"
 tink-android = "1.21.0"
-ksef-fop = "1.2.25"
+ksef-fop = "1.2.26"
 ktfmt = "0.63"
-spotless = "8.6.0"
+spotless = "8.7.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
