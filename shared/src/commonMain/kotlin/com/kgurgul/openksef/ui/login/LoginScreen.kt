@@ -30,6 +30,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kgurgul.openksef.common.ObserveAsEvents
 import com.kgurgul.openksef.common.asString
 import com.kgurgul.openksef.domain.model.KsefEnvironment
 import com.kgurgul.openksef.ui.components.LoadingOverlay
@@ -49,9 +50,9 @@ fun LoginScreen(viewModel: LoginViewModel, onLoginSuccess: () -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(uiState.isLoggedIn) {
-        if (uiState.isLoggedIn) {
-            onLoginSuccess()
+    ObserveAsEvents(viewModel.events) { event ->
+        when (event) {
+            LoginEvent.LoginSuccess -> onLoginSuccess()
         }
     }
 

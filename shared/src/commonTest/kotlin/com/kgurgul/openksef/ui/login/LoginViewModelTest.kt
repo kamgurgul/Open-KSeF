@@ -42,7 +42,9 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -77,7 +79,19 @@ class LoginViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(KsefEnvironment.TEST, state.environment)
         assertFalse(state.isLoading)
-        assertFalse(state.isLoggedIn)
+    }
+
+    @Test
+    fun login_success_emitsLoginSuccessEvent() = runTest {
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onNipChanged("1234567890")
+        viewModel.onTokenChanged("token")
+        viewModel.login()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertIs<LoginEvent.LoginSuccess>(viewModel.events.first())
     }
 
     @Test
@@ -134,6 +148,18 @@ class LoginViewModelTest {
         val engine = MockEngine { request ->
             val path = request.url.encodedPath
             when {
+                path.endsWith("/security/public-key-certificates") ->
+                    respond(
+                        content =
+                            """[{"certificate":"AAAA","validFrom":"2024-01-01T00:00:00Z","validTo":"2099-01-01T00:00:00Z","usage":["KsefTokenEncryption"]}]""",
+                        status = HttpStatusCode.OK,
+                        headers =
+                            headersOf(
+                                HttpHeaders.ContentType,
+                                ContentType.Application.Json.toString(),
+                            ),
+                    )
+
                 path.endsWith("/auth/challenge") ->
                     respond(
                         content =

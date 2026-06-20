@@ -23,10 +23,13 @@ import com.kgurgul.openksef.common.UiText
 import com.kgurgul.openksef.data.local.TokenStore
 import com.kgurgul.openksef.data.repository.KsefRepository
 import com.kgurgul.openksef.domain.model.KsefEnvironment
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import openksef.shared.generated.resources.Res
@@ -40,15 +43,22 @@ data class LoginUiState(
     val environment: KsefEnvironment = KsefEnvironment.TEST,
     val rememberCredentials: Boolean = false,
     val isLoading: Boolean = false,
-    val isLoggedIn: Boolean = false,
     val error: UiText? = null,
 )
+
+/** One-shot events emitted by [LoginViewModel]. */
+sealed interface LoginEvent {
+    data object LoginSuccess : LoginEvent
+}
 
 class LoginViewModel(private val repository: KsefRepository, private val tokenStore: TokenStore) :
     ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
+
+    private val eventChannel = Channel<LoginEvent>(Channel.BUFFERED)
+    val events: Flow<LoginEvent> = eventChannel.receiveAsFlow()
 
     init {
         loadSavedCredentials()
@@ -116,7 +126,8 @@ class LoginViewModel(private val repository: KsefRepository, private val tokenSt
                     } else {
                         tokenStore.clear()
                     }
-                    _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
+                    _uiState.update { it.copy(isLoading = false) }
+                    eventChannel.send(LoginEvent.LoginSuccess)
                 }
                 .onFailure { e ->
                     KsefLogger.e(e) { "Login failed" }
