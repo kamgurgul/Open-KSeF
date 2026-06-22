@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kgurgul.openksef.common.ObserveAsEvents
@@ -339,20 +340,28 @@ fun InvoiceListScreen(
                                 OutlinedButton(
                                     onClick = { showDateFromPicker = true },
                                     modifier = Modifier.weight(1f),
+                                    contentPadding = PaddingValues(horizontal = 8.dp),
                                 ) {
                                     Text(
                                         DateFormatter.format(uiState.dateFrom),
                                         style = MaterialTheme.typography.bodySmall,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Ellipsis,
                                     )
                                 }
                                 Text(" — ", modifier = Modifier.padding(horizontal = 4.dp))
                                 OutlinedButton(
                                     onClick = { showDateToPicker = true },
                                     modifier = Modifier.weight(1f),
+                                    contentPadding = PaddingValues(horizontal = 8.dp),
                                 ) {
                                     Text(
                                         DateFormatter.format(uiState.dateTo),
                                         style = MaterialTheme.typography.bodySmall,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Ellipsis,
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(8.dp))

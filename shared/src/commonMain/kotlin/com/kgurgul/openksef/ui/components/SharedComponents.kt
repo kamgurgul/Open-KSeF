@@ -67,6 +67,7 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier) {
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun InvoiceCard(invoice: InvoiceSummary, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Card(
@@ -125,9 +126,10 @@ fun InvoiceCard(invoice: InvoiceSummary, onClick: () -> Unit, modifier: Modifier
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 AmountColumn(stringResource(Res.string.invoice_card_net), invoice.net.toFormattedString())
                 AmountColumn(stringResource(Res.string.invoice_card_vat), invoice.vat.toFormattedString())
