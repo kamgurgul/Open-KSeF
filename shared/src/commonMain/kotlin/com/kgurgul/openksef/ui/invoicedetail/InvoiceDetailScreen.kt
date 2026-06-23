@@ -16,7 +16,6 @@
 
 package com.kgurgul.openksef.ui.invoicedetail
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -99,30 +98,6 @@ fun InvoiceDetailScreen(
                         )
                     }
                 },
-                actions = {
-                    if (uiState.canExportPdf && uiState.invoiceXml != null) {
-                        if (uiState.isExportingPdf) {
-                            Box(
-                                modifier = Modifier.size(48.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(22.dp),
-                                    strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                )
-                            }
-                        } else {
-                            IconButton(onClick = onExportPdfClick) {
-                                Icon(
-                                    Icons.Default.PictureAsPdf,
-                                    contentDescription =
-                                        stringResource(Res.string.action_export_pdf),
-                                )
-                            }
-                        }
-                    }
-                },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primary,
@@ -131,6 +106,40 @@ fun InvoiceDetailScreen(
                         actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
                     ),
             )
+        },
+        bottomBar = {
+            if (uiState.canExportPdf && uiState.invoiceXml != null) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 8.dp,
+                ) {
+                    Button(
+                        onClick = onExportPdfClick,
+                        enabled = !uiState.isExportingPdf,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .navigationBarsPadding()
+                                .padding(16.dp)
+                                .height(52.dp),
+                        shape = MaterialTheme.shapes.medium,
+                    ) {
+                        if (uiState.isExportingPdf) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.PictureAsPdf,
+                                contentDescription = null,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = stringResource(Res.string.action_export_pdf))
+                        }
+                    }
+                }
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
@@ -177,17 +186,6 @@ fun InvoiceDetailScreen(
                             }
                         }
                     }
-                }
-            }
-
-            if (uiState.isExportingPdf) {
-                Box(
-                    modifier =
-                        Modifier.fillMaxSize()
-                            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator()
                 }
             }
         }

@@ -28,9 +28,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.kgurgul.openksef.domain.date.DateFormatter
 import com.kgurgul.openksef.domain.model.InvoiceSummary
+import com.kgurgul.openksef.ui.theme.Blue100
+import com.kgurgul.openksef.ui.theme.Blue600
+import com.kgurgul.openksef.ui.theme.ErrorContainerRed
+import com.kgurgul.openksef.ui.theme.ErrorRed
+import com.kgurgul.openksef.ui.theme.Neutral100
+import com.kgurgul.openksef.ui.theme.Neutral600
+import com.kgurgul.openksef.ui.theme.Success
+import com.kgurgul.openksef.ui.theme.SuccessContainer
+import com.kgurgul.openksef.ui.theme.Warning
+import com.kgurgul.openksef.ui.theme.WarningContainer
 import com.kgurgul.openksef.ui.theme.jetBrainsMonoFamily
 import com.kgurgul.openksef.ui.theme.spaceGroteskFamily
 import openksef.shared.generated.resources.Res
@@ -168,26 +179,49 @@ private fun AmountColumn(label: String, value: String, emphasized: Boolean = fal
     }
 }
 
+/**
+ * Avatar color pairs derived from the design-system semantic status palette. The background/content
+ * pair is picked deterministically from the initials so the same contractor always renders in the
+ * same color.
+ */
+private data class AvatarColors(val container: Color, val content: Color)
+
+private val avatarPalette =
+    listOf(
+        AvatarColors(Blue100, Blue600),
+        AvatarColors(SuccessContainer, Success),
+        AvatarColors(WarningContainer, Warning),
+        AvatarColors(ErrorContainerRed, ErrorRed),
+        AvatarColors(Neutral100, Neutral600),
+    )
+
 @Composable
 private fun InvoiceAvatar(name: String) {
+    val initials = name.toInitials()
+    val colors = avatarPalette[initials.colorIndex(avatarPalette.size)]
     Box(
         modifier =
             Modifier.size(44.dp)
                 .clip(RoundedCornerShape(11.dp))
-                .background(MaterialTheme.colorScheme.primaryContainer),
+                .background(colors.container),
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = name.toInitials(),
+            text = initials,
             style =
                 MaterialTheme.typography.titleSmall.copy(
                     fontFamily = spaceGroteskFamily(),
                     fontWeight = FontWeight.Bold,
                 ),
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            color = colors.content,
             textAlign = TextAlign.Center,
         )
     }
+}
+
+private fun String.colorIndex(size: Int): Int {
+    // Stable, non-negative index regardless of hashCode sign (incl. Int.MIN_VALUE).
+    return ((hashCode() % size) + size) % size
 }
 
 private fun String.toInitials(): String {
