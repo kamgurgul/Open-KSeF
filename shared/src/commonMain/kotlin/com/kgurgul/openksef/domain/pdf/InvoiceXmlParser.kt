@@ -49,10 +49,12 @@ object InvoiceXmlParser {
             issueDate =
                 fa?.childText("P_1")
                     ?: header?.childText("DataWytworzeniaFa")?.substringBefore('T').orEmpty(),
+            saleDate = parseSaleDate(fa),
             currency = fa?.childText("KodWaluty") ?: "PLN",
             seller = parseParty(root.child("Podmiot1")),
             buyer = parseParty(root.child("Podmiot2")),
             items = items,
+            vatSummary = buildVatSummary(items),
             totalNet = totalNet.toPlainString(),
             totalVat = totalVat.toPlainString(),
             totalGross = totalGross.toPlainString(),
@@ -65,9 +67,10 @@ object InvoiceXmlParser {
     }
 
     /** Detects the schema variant from the source XML, defaulting to FA(2) when unknown. */
-    fun detectSchema(xml: String): InvoiceSchemaType =
-        runCatching { detectSchema(MiniXml.parse(xml).child("Naglowek")) }
-            .getOrDefault(InvoiceSchemaType.FA2)
+    fun detectSchema(xml: String): InvoiceSchemaType = runCatching {
+        detectSchema(MiniXml.parse(xml).child("Naglowek"))
+    }
+        .getOrDefault(InvoiceSchemaType.FA2)
 
     private fun detectSchema(header: XmlNode?): InvoiceSchemaType {
         val code = header?.child("KodFormularza")?.attributes?.get("kodSystemowy").orEmpty()
@@ -111,6 +114,53 @@ object InvoiceXmlParser {
             netValue = node.childText("P_11").orEmpty(),
             vatRate = node.childText("P_12").orEmpty(),
         )
+
+    /**
+     * Date of supply / completion of service (`P_6`). The VAT Act only mandates it when it differs
+     * from the issue date, so a value equal to `P_1` is dropped to avoid redundant noise.
+     */
+    private fun parseSaleDate(fa: XmlNode?): String {
+        val saleDate = fa?.childText("P_6").orEmpty()
+        val issueDate = fa?.childText("P_1").orEmpty()
+        return if (saleDate == issueDate) "" else saleDate
+    }
+
+    /**
+     * Builds the net/VAT/gross totals grouped by tax rate from the invoice lines (`P_12` + `P_11`).
+     * This satisfies the "podział na stawki" requirement of art. 106e of the VAT Act for the
+     * canvas/HTML renderers. Lines without a usable net value are skipped; for non-numeric rates
+     * (`zw`, `np`, `oo`, …) the VAT amount is zero.
+     */
+    private fun buildVatSummary(items: List<InvoiceDocumentLine>): List<InvoiceVatRateSummary> {
+        val netByRate = LinkedHashMap<String, Money>()
+        for (item in items) {
+            val net = parseAmount(item.netValue) ?: continue
+            val rate = item.vatRate.trim()
+            netByRate[rate] = (netByRate[rate] ?: Money.ZERO) + net
+        }
+        if (netByRate.isEmpty()) return emptyList()
+        return netByRate
+            .map { (rate, net) ->
+                val vat = vatAmountForRate(rate, net)
+                InvoiceVatRateSummary(
+                    rate = rate,
+                    net = net.toPlainString(),
+                    vat = vat.toPlainString(),
+                    gross = (net + vat).toPlainString(),
+                )
+            }
+            .sortedWith(
+                compareByDescending<InvoiceVatRateSummary> { it.rate.toIntOrNull() != null }
+                    .thenByDescending { it.rate.toIntOrNull() ?: 0 }
+                    .thenBy { it.rate }
+            )
+    }
+
+    /** VAT amount for a [net] base at the given rate token; zero for non-numeric/exempt rates. */
+    private fun vatAmountForRate(rate: String, net: Money): Money {
+        val percent = rate.toIntOrNull() ?: return Money.ZERO
+        return net.withVatRate(percent) - net
+    }
 
     /** Sums `P_13_1..P_13_7` (or `P_14_*`) rate buckets. Returns null when none are present. */
     private fun sumRateFields(fa: XmlNode?, prefix: String): Money? {

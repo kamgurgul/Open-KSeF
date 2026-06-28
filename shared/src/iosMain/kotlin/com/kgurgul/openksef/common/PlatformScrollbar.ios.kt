@@ -21,11 +21,8 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 
-@Composable
-actual fun BoxScope.PlatformVerticalScrollbar(listState: LazyListState) = Unit
+@Composable actual fun BoxScope.PlatformVerticalScrollbar(listState: LazyListState) = Unit
 
-@Composable
-actual fun BoxScope.PlatformVerticalScrollbar(scrollState: ScrollState) = Unit
+@Composable actual fun BoxScope.PlatformVerticalScrollbar(scrollState: ScrollState) = Unit
 
-@Composable
-actual fun BoxScope.PlatformHorizontalScrollbar(scrollState: ScrollState) = Unit
+@Composable actual fun BoxScope.PlatformHorizontalScrollbar(scrollState: ScrollState) = Unit

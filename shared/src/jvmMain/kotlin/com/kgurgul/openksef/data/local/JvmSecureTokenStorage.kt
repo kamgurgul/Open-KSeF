@@ -69,9 +69,9 @@ class JvmSecureTokenStorage(private val storageDir: File) : SecureTokenStorage {
         withContext(Dispatchers.IO) {
             if (!ciphertextFile.exists()) return@withContext null
             runCatching {
-                    val ciphertext = Base64.getDecoder().decode(ciphertextFile.readText())
-                    aead.decrypt(ciphertext, ASSOCIATED_DATA).decodeToString()
-                }
+                val ciphertext = Base64.getDecoder().decode(ciphertextFile.readText())
+                aead.decrypt(ciphertext, ASSOCIATED_DATA).decodeToString()
+            }
                 .getOrNull()
         }
 

@@ -34,10 +34,14 @@ data class InvoiceDocument(
     val schema: InvoiceSchemaType,
     val invoiceNumber: String,
     val issueDate: String,
+    /** Date of supply / completion of service (`P_6`); blank when it equals the issue date. */
+    val saleDate: String = "",
     val currency: String,
     val seller: InvoiceDocumentParty,
     val buyer: InvoiceDocumentParty,
     val items: List<InvoiceDocumentLine>,
+    /** Net/VAT/gross totals broken down by tax rate, as required by art. 106e of the VAT Act. */
+    val vatSummary: List<InvoiceVatRateSummary> = emptyList(),
     val totalNet: String,
     val totalVat: String,
     val totalGross: String,
@@ -45,6 +49,17 @@ data class InvoiceDocument(
     val annotations: List<String> = emptyList(),
     val additionalDescriptions: List<InvoiceKeyValue> = emptyList(),
     val footerLines: List<String> = emptyList(),
+)
+
+/**
+ * Sales totals for a single VAT rate. The [rate] is the raw rate token from the invoice line
+ * (`P_12`), e.g. `"23"`, `"8"`, `"0"`, `"zw"`. All monetary values are already-formatted strings.
+ */
+data class InvoiceVatRateSummary(
+    val rate: String,
+    val net: String,
+    val vat: String,
+    val gross: String,
 )
 
 /** Identification and address data of an invoice party (`Podmiot1`/`Podmiot2`). */

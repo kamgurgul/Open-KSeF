@@ -62,6 +62,7 @@ internal class AndroidInvoicePdfRenderer {
         drawTitleBlock(document, ksefReferenceNumber)
         drawParties(document)
         drawItemsTable(document)
+        drawVatSummary(document)
         drawTotals(document)
         drawPaymentSection(document.payment)
         drawAnnotationsSection(document.annotations)
@@ -105,28 +106,35 @@ internal class AndroidInvoicePdfRenderer {
     // region Sections
 
     private fun drawTitleBlock(document: InvoiceDocument, ksefReferenceNumber: String) {
-        canvas.drawText("FAKTURA", MARGIN, cursorY + 16f, titlePaint)
+        val top = cursorY
+        canvas.drawText("FAKTURA", MARGIN, top + 16f, titlePaint)
 
         val rightX = PAGE_WIDTH - MARGIN
-        drawRightLabelValue(
-            "Numer faktury",
-            document.invoiceNumber.ifBlank { "—" },
-            rightX,
-            cursorY,
-        )
+        drawRightLabelValue("Numer faktury", document.invoiceNumber.ifBlank { "—" }, rightX, top)
         drawRightLabelValue(
             "Data wystawienia",
             document.issueDate.ifBlank { "—" },
             rightX,
-            cursorY + 24f,
+            top + 24f,
         )
-        cursorY += 30f
-
-        if (ksefReferenceNumber.isNotBlank()) {
-            canvas.drawText("Numer KSeF: $ksefReferenceNumber", MARGIN, cursorY + 10f, labelPaint)
-            cursorY += 14f
+        var rightBottom = top + 44f
+        if (document.saleDate.isNotBlank()) {
+            drawRightLabelValue("Data sprzedaży", document.saleDate, rightX, top + 48f)
+            rightBottom = top + 68f
         }
-        cursorY += 6f
+
+        var leftBottom = top + 30f
+        if (ksefReferenceNumber.isNotBlank()) {
+            canvas.drawText(
+                "Numer KSeF: $ksefReferenceNumber",
+                MARGIN,
+                leftBottom + 10f,
+                labelPaint,
+            )
+            leftBottom += 14f
+        }
+
+        cursorY = maxOf(leftBottom, rightBottom) + 6f
         canvas.drawLine(MARGIN, cursorY, PAGE_WIDTH - MARGIN, cursorY, rulePaint)
         cursorY += SECTION_GAP
     }
@@ -167,6 +175,45 @@ internal class AndroidInvoicePdfRenderer {
                 drawTableHeader()
             }
             drawTableRow(item, nameLines, rowHeight)
+        }
+    }
+
+    /** Draws the right-aligned VAT breakdown table (stawka / netto / VAT / brutto). */
+    private fun drawVatSummary(document: InvoiceDocument) {
+        if (document.vatSummary.isEmpty()) return
+        val tableWidth = VAT_COLUMNS.sumOf { it.width.toDouble() }.toFloat()
+        val rowsHeight = TABLE_HEADER_HEIGHT + document.vatSummary.size * ROW_HEIGHT
+        ensureSpace(rowsHeight + SECTION_GAP)
+        cursorY += SECTION_GAP
+
+        val left = PAGE_WIDTH - MARGIN - tableWidth
+
+        // Header band.
+        fillPaint.color = ACCENT
+        canvas.drawRect(left, cursorY, left + tableWidth, cursorY + TABLE_HEADER_HEIGHT, fillPaint)
+        var x = left
+        VAT_COLUMNS.forEach { column ->
+            drawCell(column.title, x, cursorY + 13f, column, tableHeaderPaint)
+            x += column.width
+        }
+        cursorY += TABLE_HEADER_HEIGHT
+
+        document.vatSummary.forEach { line ->
+            val top = cursorY
+            canvas.drawRect(left, top, left + tableWidth, top + ROW_HEIGHT, rulePaint)
+            val values =
+                listOf(
+                    vatLabel(line.rate),
+                    money(line.net, document.currency),
+                    money(line.vat, document.currency),
+                    money(line.gross, document.currency),
+                )
+            var cellX = left
+            VAT_COLUMNS.forEachIndexed { index, column ->
+                drawCell(values[index], cellX, top + 13f, column, cellPaint)
+                cellX += column.width
+            }
+            cursorY = top + ROW_HEIGHT
         }
     }
 
@@ -537,6 +584,14 @@ internal class AndroidInvoicePdfRenderer {
                 Column("Cena netto", 68f, Align.RIGHT),
                 Column("Wartość netto", 76f, Align.RIGHT),
                 Column("VAT", 58f, Align.CENTER),
+            )
+
+        val VAT_COLUMNS =
+            listOf(
+                Column("Stawka VAT", 80f, Align.CENTER),
+                Column("Netto", 78f, Align.RIGHT),
+                Column("VAT", 70f, Align.RIGHT),
+                Column("Brutto", 80f, Align.RIGHT),
             )
     }
 }

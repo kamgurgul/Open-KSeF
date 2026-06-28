@@ -25,19 +25,16 @@ import androidx.compose.runtime.Composable
  * Shows a vertical scrollbar overlay for the given [listState] on desktop, aligned to the trailing
  * edge of the enclosing [BoxScope]. No-op on touch platforms (Android, iOS).
  */
-@Composable
-expect fun BoxScope.PlatformVerticalScrollbar(listState: LazyListState)
+@Composable expect fun BoxScope.PlatformVerticalScrollbar(listState: LazyListState)
 
 /**
  * Shows a vertical scrollbar overlay for the given [scrollState] on desktop, aligned to the
  * trailing edge of the enclosing [BoxScope]. No-op on touch platforms (Android, iOS).
  */
-@Composable
-expect fun BoxScope.PlatformVerticalScrollbar(scrollState: ScrollState)
+@Composable expect fun BoxScope.PlatformVerticalScrollbar(scrollState: ScrollState)
 
 /**
  * Shows a horizontal scrollbar overlay for the given [scrollState] on desktop, aligned to the
  * bottom edge of the enclosing [BoxScope]. No-op on touch platforms (Android, iOS).
  */
-@Composable
-expect fun BoxScope.PlatformHorizontalScrollbar(scrollState: ScrollState)
+@Composable expect fun BoxScope.PlatformHorizontalScrollbar(scrollState: ScrollState)

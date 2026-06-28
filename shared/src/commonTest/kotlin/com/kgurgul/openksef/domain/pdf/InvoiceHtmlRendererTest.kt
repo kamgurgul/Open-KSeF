@@ -37,6 +37,24 @@ class InvoiceHtmlRendererTest {
     }
 
     @Test
+    fun render_includesSaleDateAndVatBreakdown() {
+        val html = InvoiceHtmlRenderer.render(fullDocument(), "")
+
+        assertTrue(html.contains("Data sprzedaży"))
+        assertTrue(html.contains("2026-05-18"))
+        // The per-rate VAT summary table is mandatory under art. 106e of the VAT Act.
+        assertTrue(html.contains("Stawka VAT"))
+        assertTrue(html.contains("23%"))
+    }
+
+    @Test
+    fun render_omitsSaleDateWhenBlank() {
+        val html = InvoiceHtmlRenderer.render(minimalDocument(), "")
+
+        assertFalse(html.contains("Data sprzedaży"))
+    }
+
+    @Test
     fun render_escapesHtmlSpecialCharacters() {
         val document = fullDocument().copy(seller = InvoiceDocumentParty("A & <B>", "1", ""))
 
@@ -101,6 +119,8 @@ class InvoiceHtmlRendererTest {
                             vatRate = "23",
                         )
                     ),
+                saleDate = "2026-05-18",
+                vatSummary = listOf(InvoiceVatRateSummary("23", "100.00", "23.00", "123.00")),
                 totalNet = "100.00",
                 totalVat = "23.00",
                 totalGross = "123.00",

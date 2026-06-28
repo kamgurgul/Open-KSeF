@@ -58,9 +58,9 @@ class AndroidSecureTokenStorage(context: Context) : SecureTokenStorage {
         withContext(Dispatchers.IO) {
             val stored = ciphertextPrefs.getString(TOKEN_KEY, null) ?: return@withContext null
             runCatching {
-                    val ciphertext = Base64.decode(stored, Base64.NO_WRAP)
-                    aead.decrypt(ciphertext, ASSOCIATED_DATA).decodeToString()
-                }
+                val ciphertext = Base64.decode(stored, Base64.NO_WRAP)
+                aead.decrypt(ciphertext, ASSOCIATED_DATA).decodeToString()
+            }
                 .getOrNull()
         }
 

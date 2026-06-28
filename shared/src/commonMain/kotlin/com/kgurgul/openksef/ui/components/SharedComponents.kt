@@ -25,10 +25,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.kgurgul.openksef.domain.date.DateFormatter
 import com.kgurgul.openksef.domain.model.InvoiceSummary
@@ -128,7 +128,9 @@ fun InvoiceCard(invoice: InvoiceSummary, onClick: () -> Unit, modifier: Modifier
                 Text(
                     text = DateFormatter.format(invoice.invoicingDate),
                     style =
-                        MaterialTheme.typography.labelSmall.copy(fontFamily = jetBrainsMonoFamily()),
+                        MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = jetBrainsMonoFamily()
+                        ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -142,8 +144,14 @@ fun InvoiceCard(invoice: InvoiceSummary, onClick: () -> Unit, modifier: Modifier
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                AmountColumn(stringResource(Res.string.invoice_card_net), invoice.net.toFormattedString())
-                AmountColumn(stringResource(Res.string.invoice_card_vat), invoice.vat.toFormattedString())
+                AmountColumn(
+                    stringResource(Res.string.invoice_card_net),
+                    invoice.net.toFormattedString(),
+                )
+                AmountColumn(
+                    stringResource(Res.string.invoice_card_vat),
+                    invoice.vat.toFormattedString(),
+                )
                 AmountColumn(
                     label = stringResource(Res.string.invoice_card_gross),
                     value = invoice.gross.toFormattedString(),
@@ -201,9 +209,7 @@ private fun InvoiceAvatar(name: String) {
     val colors = avatarPalette[initials.colorIndex(avatarPalette.size)]
     Box(
         modifier =
-            Modifier.size(44.dp)
-                .clip(RoundedCornerShape(11.dp))
-                .background(colors.container),
+            Modifier.size(44.dp).clip(RoundedCornerShape(11.dp)).background(colors.container),
         contentAlignment = Alignment.Center,
     ) {
         Text(

@@ -24,8 +24,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface SellerConfigDao {
 
-    @Query("SELECT * FROM seller_config WHERE id = 0 LIMIT 1")
-    fun get(): Flow<SellerConfigEntity?>
+    @Query("SELECT * FROM seller_config WHERE id = 0 LIMIT 1") fun get(): Flow<SellerConfigEntity?>
 
     @Upsert suspend fun upsert(config: SellerConfigEntity)
 }

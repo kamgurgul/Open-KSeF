@@ -44,6 +44,30 @@ class InvoiceXmlParserTest {
     }
 
     @Test
+    fun parse_extractsSaleDateWhenDifferentFromIssueDate() {
+        val document = InvoiceXmlParser.parse(FA2_INVOICE)
+
+        assertEquals("2026-05-18", document.saleDate)
+    }
+
+    @Test
+    fun parse_dropsSaleDateEqualToIssueDate() {
+        val sameDates = FA2_INVOICE.replace("<P_6>2026-05-18</P_6>", "<P_6>2026-05-20</P_6>")
+
+        assertEquals("", InvoiceXmlParser.parse(sameDates).saleDate)
+    }
+
+    @Test
+    fun parse_buildsVatSummaryGroupedByRate() {
+        val summary = InvoiceXmlParser.parse(FA2_INVOICE).vatSummary
+
+        // Two rates, sorted by descending numeric rate.
+        assertEquals(2, summary.size)
+        assertEquals(InvoiceVatRateSummary("23", "100.00", "23.00", "123.00"), summary[0])
+        assertEquals(InvoiceVatRateSummary("8", "30.00", "2.40", "32.40"), summary[1])
+    }
+
+    @Test
     fun parse_extractsLineItems() {
         val document = InvoiceXmlParser.parse(FA2_INVOICE)
 
@@ -172,6 +196,7 @@ class InvoiceXmlParserTest {
               <Fa>
                 <KodWaluty>PLN</KodWaluty>
                 <P_1>2026-05-20</P_1>
+                <P_6>2026-05-18</P_6>
                 <P_2>FV/2026/05/1</P_2>
                 <P_13_1>100.00</P_13_1>
                 <P_14_1>23.00</P_14_1>

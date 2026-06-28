@@ -48,6 +48,7 @@ import com.kgurgul.openksef.common.asString
 import com.kgurgul.openksef.domain.date.DateFormatter
 import com.kgurgul.openksef.domain.model.InvoiceSubjectType
 import com.kgurgul.openksef.ui.components.InvoiceCard
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
@@ -73,7 +74,6 @@ import openksef.shared.generated.resources.invoices_tab_issued
 import openksef.shared.generated.resources.invoices_tab_received
 import openksef.shared.generated.resources.invoices_title
 import org.jetbrains.compose.resources.stringResource
-import kotlin.time.Instant
 
 @Composable
 fun InvoiceListScreen(
@@ -305,7 +305,7 @@ fun InvoiceListScreen(
                                 Text(
                                     text =
                                         "${DateFormatter.format(uiState.dateFrom)} — " +
-                                                DateFormatter.format(uiState.dateTo),
+                                            DateFormatter.format(uiState.dateTo),
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
@@ -475,9 +475,10 @@ fun InvoiceListScreen(
     }
 }
 
-private fun String.toEpochMillis(): Long? =
-    runCatching { LocalDate.parse(this).atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds() }
-        .getOrNull()
+private fun String.toEpochMillis(): Long? = runCatching {
+    LocalDate.parse(this).atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()
+}
+    .getOrNull()
 
 private fun Long.toLocalDateString(): String =
     Instant.fromEpochMilliseconds(this).toLocalDateTime(TimeZone.UTC).date.toString()

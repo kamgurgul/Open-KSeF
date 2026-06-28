@@ -31,6 +31,7 @@ object InvoiceHtmlRenderer {
         appendHeader(document, ksefReferenceNumber)
         appendParties(document)
         appendItems(document)
+        appendVatSummary(document)
         appendTotals(document)
         appendPayment(document.payment)
         appendBulletSection("Adnotacje", document.annotations)
@@ -50,6 +51,9 @@ object InvoiceHtmlRenderer {
         append("</td><td class=\"right\">")
         appendField("Numer faktury", document.invoiceNumber.ifBlank { "—" })
         appendField("Data wystawienia", document.issueDate.ifBlank { "—" })
+        if (document.saleDate.isNotBlank()) {
+            appendField("Data sprzedaży", document.saleDate)
+        }
         append("</td></tr></table><div class=\"rule\"></div>")
     }
 
@@ -104,6 +108,22 @@ object InvoiceHtmlRenderer {
         if (cssClass == null) append("<td>")
         else append("<td class=\"").append(cssClass).append("\">")
         append(esc(text)).append("</td>")
+    }
+
+    private fun StringBuilder.appendVatSummary(document: InvoiceDocument) {
+        if (document.vatSummary.isEmpty()) return
+        append("<table class=\"items vat\"><thead><tr>")
+        for (header in VAT_SUMMARY_HEADERS) append("<th>").append(esc(header)).append("</th>")
+        append("</tr></thead><tbody>")
+        for (line in document.vatSummary) {
+            append("<tr>")
+            cell(vatLabel(line.rate), "center")
+            cell(money(line.net, document.currency), "num")
+            cell(money(line.vat, document.currency), "num")
+            cell(money(line.gross, document.currency), "num")
+            append("</tr>")
+        }
+        append("</tbody></table>")
     }
 
     private fun StringBuilder.appendTotals(document: InvoiceDocument) {
@@ -200,6 +220,8 @@ object InvoiceHtmlRenderer {
     private val ITEM_HEADERS =
         listOf("Lp.", "Nazwa", "Ilość", "j.m.", "Cena netto", "Wartość netto", "VAT")
 
+    private val VAT_SUMMARY_HEADERS = listOf("Stawka VAT", "Netto", "VAT", "Brutto")
+
     private val CSS =
         """
         @page { margin: 0; }
@@ -227,6 +249,7 @@ object InvoiceHtmlRenderer {
                          vertical-align: top; }
         .num { text-align: right; }
         .center { text-align: center; }
+        table.vat { width: 280px; margin-left: auto; margin-top: 12px; }
         table.totals { margin-top: 12px; margin-left: auto; width: 230px;
                        border: 1px solid #BDC1C6; border-collapse: collapse; }
         table.totals td { padding: 3px 10px; }
