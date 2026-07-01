@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Theme applied once the splash screen is dismissed. DayNight via values-night. -->
+    <style name="Theme.OpenKSeF" parent="@android:style/Theme.Material.Light.NoActionBar" />
+
+    <!-- Splash screen theme. Uses core-splashscreen so it renders consistently on API 24+. -->
+    <style name="Theme.OpenKSeF.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.OpenKSeF</item>
+    </style>
+</resources>

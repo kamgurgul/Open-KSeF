@@ -21,6 +21,8 @@ import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefCrypto
 import com.kgurgul.openksef.data.repository.KsefRepository
 import com.kgurgul.openksef.domain.pdf.InvoicePdfExporter
+import com.kgurgul.openksef.domain.pdf.InvoicePdfSharer
+import com.kgurgul.openksef.domain.pdf.KsefWebPdfRenderer
 import com.kgurgul.openksef.domain.pdf.PdfExportResult
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -38,6 +40,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -145,6 +148,115 @@ class InvoiceDetailViewModelTest {
     }
 
     @Test
+    fun uiState_canPreviewPdf_reflectsSupportedWebRenderer() = runTest {
+        val viewModel =
+            createViewModel(
+                ksefRef = "KSEF-1",
+                responseStatus = HttpStatusCode.OK,
+                responseBody = "<Faktura/>",
+                webRenderer = FakeKsefWebPdfRenderer(isSupported = true),
+            )
+
+        val state = viewModel.uiState.first { !it.isLoading }
+
+        assertEquals(true, state.canPreviewPdf)
+    }
+
+    @Test
+    fun uiState_canPreviewPdf_falseForUnsupportedWebRenderer() = runTest {
+        val viewModel =
+            createViewModel(
+                ksefRef = "KSEF-1",
+                responseStatus = HttpStatusCode.OK,
+                responseBody = "<Faktura/>",
+                webRenderer = FakeKsefWebPdfRenderer(isSupported = false),
+            )
+
+        val state = viewModel.uiState.first { !it.isLoading }
+
+        assertEquals(false, state.canPreviewPdf)
+    }
+
+    @Test
+    fun load_renderSuccess_setsPdfBytes() = runTest {
+        val bytes = byteArrayOf(1, 2, 3)
+        val viewModel =
+            createViewModel(
+                ksefRef = "KSEF-1",
+                responseStatus = HttpStatusCode.OK,
+                responseBody = "<Faktura/>",
+                webRenderer = FakeKsefWebPdfRenderer(isSupported = true, result = bytes),
+            )
+        backgroundScope.launch { viewModel.uiState.collect {} }
+
+        val state = viewModel.uiState.first { it.pdfBytes != null }
+
+        assertEquals(false, state.isPdfLoading)
+        assertEquals(false, state.isPdfError)
+        assertTrue(state.canDownload)
+        assertEquals(bytes.toList(), state.pdfBytes?.toList())
+    }
+
+    @Test
+    fun load_renderFailure_setsPdfErrorAndEmitsEvent() = runTest {
+        val viewModel =
+            createViewModel(
+                ksefRef = "KSEF-1",
+                responseStatus = HttpStatusCode.OK,
+                responseBody = "<Faktura/>",
+                webRenderer =
+                    FakeKsefWebPdfRenderer(
+                        isSupported = true,
+                        error = IllegalStateException("render boom"),
+                    ),
+            )
+        backgroundScope.launch { viewModel.uiState.collect {} }
+
+        val event = viewModel.events.first()
+        assertTrue(event is InvoiceDetailEvent.ShowError)
+
+        val state = viewModel.uiState.first { it.isPdfError }
+        assertNull(state.pdfBytes)
+        assertEquals(false, state.isPdfLoading)
+    }
+
+    @Test
+    fun onDownloadClick_success_emitsPdfSaved() = runTest {
+        val viewModel =
+            createViewModel(
+                ksefRef = "KSEF-1",
+                responseStatus = HttpStatusCode.OK,
+                responseBody = "<Faktura/>",
+                webRenderer = FakeKsefWebPdfRenderer(isSupported = true, result = byteArrayOf(9)),
+                sharer = FakeInvoicePdfSharer(PdfExportResult.Success("invoice.pdf")),
+            )
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.uiState.first { it.pdfBytes != null }
+
+        viewModel.onDownloadClick()
+
+        assertEquals(InvoiceDetailEvent.PdfSaved, viewModel.events.first())
+    }
+
+    @Test
+    fun onDownloadClick_failure_emitsShowError() = runTest {
+        val viewModel =
+            createViewModel(
+                ksefRef = "KSEF-1",
+                responseStatus = HttpStatusCode.OK,
+                responseBody = "<Faktura/>",
+                webRenderer = FakeKsefWebPdfRenderer(isSupported = true, result = byteArrayOf(9)),
+                sharer = FakeInvoicePdfSharer(PdfExportResult.Failure("disk full")),
+            )
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.uiState.first { it.pdfBytes != null }
+
+        viewModel.onDownloadClick()
+
+        assertTrue(viewModel.events.first() is InvoiceDetailEvent.ShowError)
+    }
+
+    @Test
     fun onExportPdfClick_success_emitsPdfExportedEvent() = runTest {
         val viewModel =
             createViewModel(
@@ -183,6 +295,8 @@ class InvoiceDetailViewModelTest {
         responseStatus: HttpStatusCode,
         responseBody: String,
         exporter: InvoicePdfExporter = FakeInvoicePdfExporter(),
+        webRenderer: KsefWebPdfRenderer = FakeKsefWebPdfRenderer(isSupported = false),
+        sharer: InvoicePdfSharer = FakeInvoicePdfSharer(),
     ): InvoiceDetailViewModel {
         val engine = MockEngine { _ ->
             respond(
@@ -216,7 +330,7 @@ class InvoiceDetailViewModelTest {
                 override fun aesCbcEncrypt(data: ByteArray, key: ByteArray, iv: ByteArray) = data
             }
         val repository = KsefRepository(api, sessionHolder, crypto)
-        return InvoiceDetailViewModel(ksefRef, repository, exporter)
+        return InvoiceDetailViewModel(ksefRef, repository, exporter, webRenderer, sharer)
     }
 
     private class FakeInvoicePdfExporter(
@@ -225,6 +339,26 @@ class InvoiceDetailViewModelTest {
     ) : InvoicePdfExporter {
         override suspend fun export(
             invoiceXml: String,
+            ksefReferenceNumber: String,
+        ): PdfExportResult = result
+    }
+
+    private class FakeKsefWebPdfRenderer(
+        override val isSupported: Boolean = true,
+        private val result: ByteArray = ByteArray(0),
+        private val error: Throwable? = null,
+    ) : KsefWebPdfRenderer {
+        override suspend fun render(invoiceXml: String, ksefReferenceNumber: String): ByteArray {
+            error?.let { throw it }
+            return result
+        }
+    }
+
+    private class FakeInvoicePdfSharer(
+        private val result: PdfExportResult = PdfExportResult.Success("invoice.pdf")
+    ) : InvoicePdfSharer {
+        override suspend fun share(
+            pdfBytes: ByteArray,
             ksefReferenceNumber: String,
         ): PdfExportResult = result
     }

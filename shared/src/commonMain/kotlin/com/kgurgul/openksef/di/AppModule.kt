@@ -33,7 +33,11 @@ import com.kgurgul.openksef.data.repository.RoomInvoiceTemplateRepository
 import com.kgurgul.openksef.data.repository.RoomSellerConfigRepository
 import com.kgurgul.openksef.data.repository.SellerConfigRepository
 import com.kgurgul.openksef.domain.pdf.InvoicePdfExporter
+import com.kgurgul.openksef.domain.pdf.InvoicePdfSharer
+import com.kgurgul.openksef.domain.pdf.KsefWebPdfRenderer
 import com.kgurgul.openksef.domain.pdf.defaultInvoicePdfExporter
+import com.kgurgul.openksef.domain.pdf.defaultInvoicePdfSharer
+import com.kgurgul.openksef.domain.pdf.defaultKsefWebPdfRenderer
 import com.kgurgul.openksef.ui.invoicedetail.InvoiceDetailViewModel
 import com.kgurgul.openksef.ui.invoices.InvoiceListViewModel
 import com.kgurgul.openksef.ui.login.LoginViewModel
@@ -73,12 +77,14 @@ val appModule = module {
 
     // Domain
     single<InvoicePdfExporter> { defaultInvoicePdfExporter() }
+    single<KsefWebPdfRenderer> { defaultKsefWebPdfRenderer() }
+    single<InvoicePdfSharer> { defaultInvoicePdfSharer() }
 
     // ViewModels
     viewModelOf(::MainViewModel)
     viewModelOf(::LoginViewModel)
     viewModelOf(::InvoiceListViewModel)
-    viewModel { params -> InvoiceDetailViewModel(params.get(), get(), get()) }
+    viewModel { params -> InvoiceDetailViewModel(params.get(), get(), get(), get(), get()) }
     viewModelOf(::SendInvoiceViewModel)
     viewModelOf(::SellerConfigViewModel)
 }

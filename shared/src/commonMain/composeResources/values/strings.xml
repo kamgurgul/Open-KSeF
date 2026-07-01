@@ -37,9 +37,17 @@
     <string name="invoices_empty_description">No invoices found in the selected date range</string>
 
     <!-- Invoice detail -->
+    <string name="invoice_detail_tab_pdf">PDF</string>
+    <string name="invoice_detail_tab_xml">XML</string>
     <string name="invoice_detail_xml_title">Invoice content (XML)</string>
     <string name="action_export_pdf">Export PDF</string>
     <string name="pdf_export_success">Invoice PDF exported</string>
+
+    <!-- Invoice PDF preview -->
+    <string name="action_download_pdf">Download</string>
+    <string name="action_retry">Retry</string>
+    <string name="pdf_preview_error">Could not generate the PDF</string>
+    <string name="pdf_saved_success">Invoice PDF saved</string>
 
     <!-- Send invoice -->
     <string name="send_invoice_title">Send invoice</string>
@@ -100,4 +108,5 @@
     <string name="error_items_required">Add at least 1 item</string>
     <string name="error_send_invoice">Failed to send invoice</string>
     <string name="error_export_pdf">Failed to export PDF</string>
+    <string name="error_render_pdf">Failed to render PDF</string>
 </resources>

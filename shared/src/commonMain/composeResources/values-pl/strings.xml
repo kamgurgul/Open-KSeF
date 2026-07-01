@@ -37,9 +37,17 @@
     <string name="invoices_empty_description">Nie znaleziono faktur w wybranym zakresie dat</string>
 
     <!-- Invoice detail -->
+    <string name="invoice_detail_tab_pdf">PDF</string>
+    <string name="invoice_detail_tab_xml">XML</string>
     <string name="invoice_detail_xml_title">Treść faktury (XML)</string>
     <string name="action_export_pdf">Eksportuj PDF</string>
     <string name="pdf_export_success">Faktura PDF wyeksportowana</string>
+
+    <!-- Invoice PDF preview -->
+    <string name="action_download_pdf">Pobierz</string>
+    <string name="action_retry">Ponów</string>
+    <string name="pdf_preview_error">Nie udało się wygenerować PDF</string>
+    <string name="pdf_saved_success">Faktura PDF zapisana</string>
 
     <!-- Send invoice -->
     <string name="send_invoice_title">Wyślij fakturę</string>
@@ -100,4 +108,5 @@
     <string name="error_items_required">Dodaj min. 1 pozycję</string>
     <string name="error_send_invoice">Błąd wysyłania faktury</string>
     <string name="error_export_pdf">Nie udało się wyeksportować PDF</string>
+    <string name="error_render_pdf">Nie udało się wygenerować PDF</string>
 </resources>
