@@ -76,6 +76,7 @@ kotlin {
 
             // Navigation 3
             implementation(libs.navigation3.ui)
+            implementation(libs.lifecycle.viewmodel.navigation3)
 
             // Kotlinx
             implementation(libs.kotlinx.serialization.json)

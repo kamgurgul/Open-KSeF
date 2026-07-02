@@ -18,15 +18,13 @@ package com.kgurgul.openksef.ui.invoicedetail
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.interop.UIKitView
+import androidx.compose.ui.viewinterop.UIKitInteropProperties
+import androidx.compose.ui.viewinterop.UIKitView
 import com.kgurgul.openksef.common.toNSData
-import kotlinx.cinterop.ExperimentalForeignApi
 import platform.PDFKit.PDFDocument
 import platform.PDFKit.PDFView
 
-@OptIn(ExperimentalForeignApi::class, ExperimentalComposeUiApi::class)
 @Composable
 actual fun PdfDocumentView(pdfBytes: ByteArray, modifier: Modifier) {
     val pdfDocument = remember(pdfBytes) { PDFDocument(data = pdfBytes.toNSData()) }
@@ -37,7 +35,11 @@ actual fun PdfDocumentView(pdfBytes: ByteArray, modifier: Modifier) {
                 document = pdfDocument
             }
         },
-        update = { view -> view.document = pdfDocument },
         modifier = modifier,
+        update = { view -> view.document = pdfDocument },
+        properties = UIKitInteropProperties(
+            isInteractive = true,
+            isNativeAccessibilityEnabled = true
+        )
     )
 }
