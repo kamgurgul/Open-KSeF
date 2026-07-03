@@ -18,15 +18,18 @@ package com.kgurgul.openksef.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.kgurgul.openksef.data.repository.SellerConfigRepository
 import com.kgurgul.openksef.domain.invoice.SellerConfig
+import com.kgurgul.openksef.domain.observable.SellerConfigObservable
+import com.kgurgul.openksef.domain.observe
+import com.kgurgul.openksef.domain.result.SaveSellerConfigInteractor
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -37,35 +40,43 @@ sealed interface SellerConfigEvent {
     data object Saved : SellerConfigEvent
 }
 
-class SellerConfigViewModel(private val repository: SellerConfigRepository) : ViewModel() {
+class SellerConfigViewModel(
+    sellerConfigObservable: SellerConfigObservable,
+    private val saveSellerConfigInteractor: SaveSellerConfigInteractor,
+) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SellerConfigUiState())
-    val uiState: StateFlow<SellerConfigUiState> = _uiState.asStateFlow()
+    /** User edits; `null` fields fall back to the persisted config. */
+    private val edits = MutableStateFlow(Edits())
+
+    val uiState: StateFlow<SellerConfigUiState> =
+        combine(edits, sellerConfigObservable.observe()) { edits, config ->
+                SellerConfigUiState(
+                    name = edits.name ?: config?.name ?: "",
+                    address = edits.address ?: config?.address ?: "",
+                )
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SellerConfigUiState())
 
     private val eventChannel = Channel<SellerConfigEvent>(Channel.BUFFERED)
     val events: Flow<SellerConfigEvent> = eventChannel.receiveAsFlow()
 
-    init {
-        viewModelScope.launch {
-            repository.config.first()?.let { config ->
-                _uiState.update { it.copy(name = config.name, address = config.address) }
-            }
-        }
-    }
-
     fun onNameChanged(name: String) {
-        _uiState.update { it.copy(name = name) }
+        edits.update { it.copy(name = name) }
     }
 
     fun onAddressChanged(address: String) {
-        _uiState.update { it.copy(address = address) }
+        edits.update { it.copy(address = address) }
     }
 
     fun onSaveClicked() {
-        val state = _uiState.value
+        val state = uiState.value
         viewModelScope.launch {
-            repository.save(SellerConfig(name = state.name.trim(), address = state.address.trim()))
+            saveSellerConfigInteractor(
+                SellerConfig(name = state.name.trim(), address = state.address.trim())
+            )
             eventChannel.send(SellerConfigEvent.Saved)
         }
     }
+
+    private data class Edits(val name: String? = null, val address: String? = null)
 }

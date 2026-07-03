@@ -73,19 +73,23 @@ class IosKsefWebPdfRenderer : KsefWebPdfRenderer {
                     }
                 controller.addScriptMessageHandler(handler, BRIDGE_NAME)
 
-                webView.navigationDelegate =
+                val delegate =
                     GenerateNavigationDelegate(invoiceXml, ksefReferenceNumber) { onLoadError ->
                         if (settled) return@GenerateNavigationDelegate
                         settled = true
                         teardown()
                         cont.resumeWith(Result.failure(IllegalStateException(onLoadError)))
                     }
+                webView.navigationDelegate = delegate
 
                 cont.invokeOnCancellation {
                     if (!settled) {
                         settled = true
                         teardown()
                     }
+                    // navigationDelegate is weak; keep the delegate alive until the
+                    // continuation settles or WebKit never calls back.
+                    @Suppress("UNUSED_EXPRESSION") delegate
                 }
 
                 webView.loadHTMLString(html, baseURL = null)

@@ -19,11 +19,11 @@ package com.kgurgul.openksef.ui.invoicedetail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kgurgul.openksef.common.UiText
-import com.kgurgul.openksef.data.repository.KsefRepository
 import com.kgurgul.openksef.domain.pdf.InvoicePdfExporter
 import com.kgurgul.openksef.domain.pdf.InvoicePdfSharer
 import com.kgurgul.openksef.domain.pdf.KsefWebPdfRenderer
 import com.kgurgul.openksef.domain.pdf.PdfExportResult
+import com.kgurgul.openksef.domain.result.GetInvoiceInteractor
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -95,7 +95,7 @@ sealed interface InvoiceDetailEvent {
 
 class InvoiceDetailViewModel(
     private val ksefReferenceNumber: String,
-    private val repository: KsefRepository,
+    private val getInvoiceInteractor: GetInvoiceInteractor,
     private val pdfExporter: InvoicePdfExporter,
     private val webPdfRenderer: KsefWebPdfRenderer,
     private val pdfSharer: InvoicePdfSharer,
@@ -197,8 +197,7 @@ class InvoiceDetailViewModel(
         invoiceLoad.value = InvoiceLoad(isLoading = true)
         pdfState.value = PdfState(isLoading = webPdfRenderer.isSupported)
         viewModelScope.launch {
-            repository
-                .getInvoice(ksefReferenceNumber)
+            getInvoiceInteractor(ksefReferenceNumber)
                 .onSuccess { xml ->
                     invoiceLoad.value = InvoiceLoad(isLoading = false, invoiceXml = xml)
                     if (webPdfRenderer.isSupported) renderPdf(xml)

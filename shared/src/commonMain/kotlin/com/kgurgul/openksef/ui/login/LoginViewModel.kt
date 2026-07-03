@@ -20,15 +20,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kgurgul.openksef.common.KsefLogger
 import com.kgurgul.openksef.common.UiText
-import com.kgurgul.openksef.data.local.TokenStore
-import com.kgurgul.openksef.data.repository.KsefRepository
+import com.kgurgul.openksef.domain.invoke
 import com.kgurgul.openksef.domain.model.KsefEnvironment
+import com.kgurgul.openksef.domain.result.GetSavedCredentialsInteractor
+import com.kgurgul.openksef.domain.result.InitSessionInteractor
+import com.kgurgul.openksef.domain.result.PersistCredentialsInteractor
+import com.kgurgul.openksef.domain.result.SetEnvironmentInteractor
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -51,8 +53,12 @@ sealed interface LoginEvent {
     data object LoginSuccess : LoginEvent
 }
 
-class LoginViewModel(private val repository: KsefRepository, private val tokenStore: TokenStore) :
-    ViewModel() {
+class LoginViewModel(
+    private val initSessionInteractor: InitSessionInteractor,
+    private val setEnvironmentInteractor: SetEnvironmentInteractor,
+    private val getSavedCredentialsInteractor: GetSavedCredentialsInteractor,
+    private val persistCredentialsInteractor: PersistCredentialsInteractor,
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
@@ -66,16 +72,14 @@ class LoginViewModel(private val repository: KsefRepository, private val tokenSt
 
     private fun loadSavedCredentials() {
         viewModelScope.launch {
-            val savedNip = tokenStore.getNip().first()
-            val savedToken = tokenStore.getToken()
-            val savedEnv = tokenStore.getEnvironment().first()
+            val saved = getSavedCredentialsInteractor()
 
             _uiState.update { state ->
                 state.copy(
-                    nip = savedNip ?: "",
-                    token = savedToken ?: "",
-                    environment = savedEnv,
-                    rememberCredentials = savedNip != null,
+                    nip = saved.nip ?: "",
+                    token = saved.token ?: "",
+                    environment = saved.environment,
+                    rememberCredentials = saved.nip != null,
                 )
             }
         }
@@ -91,7 +95,7 @@ class LoginViewModel(private val repository: KsefRepository, private val tokenSt
 
     fun onEnvironmentChanged(environment: KsefEnvironment) {
         _uiState.update { it.copy(environment = environment) }
-        repository.setEnvironmentBaseUrl(environment.baseUrl)
+        viewModelScope.launch { setEnvironmentInteractor(environment) }
     }
 
     fun onRememberChanged(remember: Boolean) {
@@ -115,17 +119,17 @@ class LoginViewModel(private val repository: KsefRepository, private val tokenSt
         _uiState.update { it.copy(isLoading = true, error = null) }
 
         viewModelScope.launch {
-            repository.setEnvironmentBaseUrl(state.environment.baseUrl)
-            repository
-                .initSession(nip, token)
+            setEnvironmentInteractor(state.environment)
+            initSessionInteractor(InitSessionInteractor.Params(nip = nip, ksefToken = token))
                 .onSuccess {
-                    if (state.rememberCredentials) {
-                        tokenStore.saveNip(nip)
-                        tokenStore.saveToken(token)
-                        tokenStore.saveEnvironment(state.environment)
-                    } else {
-                        tokenStore.clear()
-                    }
+                    persistCredentialsInteractor(
+                        PersistCredentialsInteractor.Params(
+                            nip = nip,
+                            token = token,
+                            environment = state.environment,
+                            remember = state.rememberCredentials,
+                        )
+                    )
                     _uiState.update { it.copy(isLoading = false) }
                     eventChannel.send(LoginEvent.LoginSuccess)
                 }

@@ -16,10 +16,13 @@
 
 package com.kgurgul.openksef.ui.main
 
+import com.kgurgul.openksef.common.TestDispatchersProvider
 import com.kgurgul.openksef.data.SessionEventBus
+import com.kgurgul.openksef.domain.observable.SessionExpiredObservable
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 
@@ -28,7 +31,7 @@ class MainViewModelTest {
     @Test
     fun sessionExpired_emitsSessionExpiredEvent() = runTest {
         val sessionEventBus = SessionEventBus()
-        val viewModel = MainViewModel(sessionEventBus)
+        val viewModel = createViewModel(sessionEventBus)
 
         sessionEventBus.notifySessionExpired()
 
@@ -41,7 +44,7 @@ class MainViewModelTest {
         val sessionEventBus = SessionEventBus()
         sessionEventBus.notifySessionExpired()
 
-        val viewModel = MainViewModel(sessionEventBus)
+        val viewModel = createViewModel(sessionEventBus)
 
         assertIs<MainEvent.SessionExpired>(viewModel.events.first())
     }
@@ -49,11 +52,19 @@ class MainViewModelTest {
     @Test
     fun multipleSessionExpired_signalsEmitMultipleEvents() = runTest {
         val sessionEventBus = SessionEventBus()
-        val viewModel = MainViewModel(sessionEventBus)
+        val viewModel = createViewModel(sessionEventBus)
 
         sessionEventBus.notifySessionExpired()
         val event = viewModel.events.first()
 
         assertEquals(MainEvent.SessionExpired, event)
     }
+
+    private fun createViewModel(sessionEventBus: SessionEventBus): MainViewModel =
+        MainViewModel(
+            SessionExpiredObservable(
+                TestDispatchersProvider(Dispatchers.Unconfined),
+                sessionEventBus,
+            )
+        )
 }

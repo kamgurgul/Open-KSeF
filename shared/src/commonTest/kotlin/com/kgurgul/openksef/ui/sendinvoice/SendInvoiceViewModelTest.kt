@@ -16,6 +16,7 @@
 
 package com.kgurgul.openksef.ui.sendinvoice
 
+import com.kgurgul.openksef.common.TestDispatchersProvider
 import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefCrypto
@@ -25,6 +26,12 @@ import com.kgurgul.openksef.data.repository.SellerConfigRepository
 import com.kgurgul.openksef.domain.invoice.InvoiceTemplate
 import com.kgurgul.openksef.domain.invoice.SellerConfig
 import com.kgurgul.openksef.domain.money.Money
+import com.kgurgul.openksef.domain.observable.InvoiceTemplatesObservable
+import com.kgurgul.openksef.domain.observable.SellerConfigObservable
+import com.kgurgul.openksef.domain.result.DeleteInvoiceTemplateInteractor
+import com.kgurgul.openksef.domain.result.GetSessionNipInteractor
+import com.kgurgul.openksef.domain.result.SaveInvoiceTemplateInteractor
+import com.kgurgul.openksef.domain.result.SendInvoiceInteractor
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -46,7 +53,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -70,7 +79,7 @@ class SendInvoiceViewModelTest {
     @Test
     fun initialState_prefillsSellerNip() = runTest {
         val viewModel = createViewModel()
-        testDispatcher.scheduler.advanceUntilIdle()
+        collectUiState(viewModel)
 
         assertEquals("9999999999", viewModel.uiState.value.sellerNip)
     }
@@ -79,7 +88,7 @@ class SendInvoiceViewModelTest {
     fun initialState_prefillsSellerConfig() = runTest {
         val viewModel =
             createViewModel(SellerConfig(name = "ACME Sp. z o.o.", address = "ul. Testowa 1"))
-        testDispatcher.scheduler.advanceUntilIdle()
+        collectUiState(viewModel)
 
         assertEquals("ACME Sp. z o.o.", viewModel.uiState.value.sellerName)
         assertEquals("ul. Testowa 1", viewModel.uiState.value.sellerAddress)
@@ -88,11 +97,12 @@ class SendInvoiceViewModelTest {
     @Test
     fun addItem_increasesItemCount() = runTest {
         val viewModel = createViewModel()
-        testDispatcher.scheduler.advanceUntilIdle()
+        collectUiState(viewModel)
 
         assertEquals(1, viewModel.uiState.value.items.size)
 
         viewModel.addItem()
+        testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(2, viewModel.uiState.value.items.size)
     }
@@ -100,30 +110,33 @@ class SendInvoiceViewModelTest {
     @Test
     fun removeItem_decreasesItemCount() = runTest {
         val viewModel = createViewModel()
-        testDispatcher.scheduler.advanceUntilIdle()
+        collectUiState(viewModel)
 
         viewModel.addItem()
+        testDispatcher.scheduler.advanceUntilIdle()
         assertEquals(2, viewModel.uiState.value.items.size)
 
         viewModel.removeItem(0)
+        testDispatcher.scheduler.advanceUntilIdle()
         assertEquals(1, viewModel.uiState.value.items.size)
     }
 
     @Test
     fun removeItem_cannotRemoveLastItem() = runTest {
         val viewModel = createViewModel()
-        testDispatcher.scheduler.advanceUntilIdle()
+        collectUiState(viewModel)
 
         assertEquals(1, viewModel.uiState.value.items.size)
 
         viewModel.removeItem(0)
+        testDispatcher.scheduler.advanceUntilIdle()
         assertEquals(1, viewModel.uiState.value.items.size)
     }
 
     @Test
     fun send_emptyFields_setsValidationErrors() = runTest {
         val viewModel = createViewModel()
-        testDispatcher.scheduler.advanceUntilIdle()
+        collectUiState(viewModel)
 
         viewModel.send()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -139,11 +152,12 @@ class SendInvoiceViewModelTest {
     @Test
     fun updateItem_calculatesNetAndGross() = runTest {
         val viewModel = createViewModel()
-        testDispatcher.scheduler.advanceUntilIdle()
+        collectUiState(viewModel)
 
         val item =
             InvoiceLineItemUi(description = "Test", quantity = "2", unitPrice = "100", vatRate = 23)
         viewModel.updateItem(0, item)
+        testDispatcher.scheduler.advanceUntilIdle()
 
         val updated = viewModel.uiState.value.items[0]
         assertEquals(Money.fromMajorUnits(200), updated.netValue)
@@ -153,7 +167,7 @@ class SendInvoiceViewModelTest {
     @Test
     fun initialState_hasNoTemplates() = runTest {
         val viewModel = createViewModel()
-        testDispatcher.scheduler.advanceUntilIdle()
+        collectUiState(viewModel)
 
         assertTrue(viewModel.uiState.value.templates.isEmpty())
         assertEquals(null, viewModel.uiState.value.selectedTemplateId)
@@ -162,7 +176,7 @@ class SendInvoiceViewModelTest {
     @Test
     fun onSaveTemplate_persistsCurrentForm() = runTest {
         val viewModel = createViewModel()
-        testDispatcher.scheduler.advanceUntilIdle()
+        collectUiState(viewModel)
 
         viewModel.onBuyerNipChanged("2222222222")
         viewModel.onBuyerNameChanged("Firma XYZ")
@@ -175,6 +189,7 @@ class SendInvoiceViewModelTest {
                 unitPrice = "100",
             ),
         )
+        testDispatcher.scheduler.advanceUntilIdle()
         viewModel.onSaveTemplate("My template")
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -190,7 +205,7 @@ class SendInvoiceViewModelTest {
     @Test
     fun onSaveTemplate_blankName_doesNothing() = runTest {
         val viewModel = createViewModel()
-        testDispatcher.scheduler.advanceUntilIdle()
+        collectUiState(viewModel)
 
         viewModel.onSaveTemplate("  ")
         testDispatcher.scheduler.advanceUntilIdle()
@@ -201,7 +216,7 @@ class SendInvoiceViewModelTest {
     @Test
     fun onTemplateSelected_prefillsItemsAndCalculatesValues() = runTest {
         val viewModel = createViewModel()
-        testDispatcher.scheduler.advanceUntilIdle()
+        collectUiState(viewModel)
 
         viewModel.updateItem(
             0,
@@ -212,13 +227,16 @@ class SendInvoiceViewModelTest {
                 unitPrice = "150",
             ),
         )
+        testDispatcher.scheduler.advanceUntilIdle()
         viewModel.onSaveTemplate("Software")
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Reset the form, then re-apply the saved template.
         viewModel.updateItem(0, InvoiceLineItemUi())
+        testDispatcher.scheduler.advanceUntilIdle()
         val template = viewModel.uiState.value.templates.first { it.name == "Software" }
         viewModel.onTemplateSelected(template)
+        testDispatcher.scheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
         assertEquals(template.id, state.selectedTemplateId)
@@ -236,7 +254,7 @@ class SendInvoiceViewModelTest {
     @Test
     fun onDeleteTemplate_removesTemplate() = runTest {
         val viewModel = createViewModel()
-        testDispatcher.scheduler.advanceUntilIdle()
+        collectUiState(viewModel)
 
         viewModel.onSaveTemplate("Temp")
         testDispatcher.scheduler.advanceUntilIdle()
@@ -251,13 +269,20 @@ class SendInvoiceViewModelTest {
     @Test
     fun updateItem_keepsUnit() = runTest {
         val viewModel = createViewModel()
-        testDispatcher.scheduler.advanceUntilIdle()
+        collectUiState(viewModel)
 
         val item =
             InvoiceLineItemUi(description = "Test", quantity = "2", unit = "kg", unitPrice = "100")
         viewModel.updateItem(0, item)
+        testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals("kg", viewModel.uiState.value.items[0].unit)
+    }
+
+    /** Keeps [SendInvoiceViewModel.uiState] hot for `value` reads and runs pending init work. */
+    private fun TestScope.collectUiState(viewModel: SendInvoiceViewModel) {
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        testDispatcher.scheduler.advanceUntilIdle()
     }
 
     private fun createViewModel(sellerConfig: SellerConfig? = null): SendInvoiceViewModel {
@@ -301,11 +326,19 @@ class SendInvoiceViewModelTest {
             }
         val repository = KsefRepository(api, sessionHolder, crypto)
 
+        val dispatchers = TestDispatchersProvider(testDispatcher)
+        val templateRepository = FakeInvoiceTemplateRepository()
+        val sellerConfigRepository = FakeSellerConfigRepository(sellerConfig)
         return SendInvoiceViewModel(
-            repository,
-            sessionHolder,
-            FakeInvoiceTemplateRepository(),
-            FakeSellerConfigRepository(sellerConfig),
+            sendInvoiceInteractor = SendInvoiceInteractor(dispatchers, repository),
+            getSessionNipInteractor = GetSessionNipInteractor(dispatchers, sessionHolder),
+            invoiceTemplatesObservable =
+                InvoiceTemplatesObservable(dispatchers, templateRepository),
+            sellerConfigObservable = SellerConfigObservable(dispatchers, sellerConfigRepository),
+            saveInvoiceTemplateInteractor =
+                SaveInvoiceTemplateInteractor(dispatchers, templateRepository),
+            deleteInvoiceTemplateInteractor =
+                DeleteInvoiceTemplateInteractor(dispatchers, templateRepository),
         )
     }
 

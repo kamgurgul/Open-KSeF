@@ -18,7 +18,8 @@ package com.kgurgul.openksef.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.kgurgul.openksef.data.SessionEventBus
+import com.kgurgul.openksef.domain.observable.SessionExpiredObservable
+import com.kgurgul.openksef.domain.observe
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.launchIn
@@ -32,16 +33,17 @@ sealed interface MainEvent {
 
 /**
  * Root-screen [ViewModel]. It owns the single, app-wide reaction to session expiry: it observes
- * [SessionEventBus] and emits a [MainEvent.SessionExpired] event through a buffered channel so the
- * navigation host can react via `ObserveAsEvents` without missing the signal.
+ * [SessionExpiredObservable] and emits a [MainEvent.SessionExpired] event through a buffered
+ * channel so the navigation host can react via `ObserveAsEvents` without missing the signal.
  */
-class MainViewModel(sessionEventBus: SessionEventBus) : ViewModel() {
+class MainViewModel(sessionExpiredObservable: SessionExpiredObservable) : ViewModel() {
 
     private val eventChannel = Channel<MainEvent>(Channel.BUFFERED)
     val events: Flow<MainEvent> = eventChannel.receiveAsFlow()
 
     init {
-        sessionEventBus.sessionExpired
+        sessionExpiredObservable
+            .observe()
             .onEach { eventChannel.send(MainEvent.SessionExpired) }
             .launchIn(viewModelScope)
     }

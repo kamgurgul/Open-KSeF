@@ -16,10 +16,13 @@
 
 package com.kgurgul.openksef.ui.invoices
 
+import com.kgurgul.openksef.common.TestDispatchersProvider
 import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefCrypto
 import com.kgurgul.openksef.data.repository.KsefRepository
+import com.kgurgul.openksef.domain.result.CloseSessionInteractor
+import com.kgurgul.openksef.domain.result.GetInvoicesInteractor
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -254,7 +257,11 @@ class InvoiceListViewModelTest {
                 override fun aesCbcEncrypt(data: ByteArray, key: ByteArray, iv: ByteArray) = data
             }
         val repository = KsefRepository(KsefApi(client), sessionHolder, crypto)
-        return InvoiceListViewModel(repository)
+        val dispatchers = TestDispatchersProvider(testDispatcher)
+        return InvoiceListViewModel(
+            getInvoicesInteractor = GetInvoicesInteractor(dispatchers, repository),
+            closeSessionInteractor = CloseSessionInteractor(dispatchers, repository),
+        )
     }
 
     /** Mirrors the Auth-plugin + validator setup of KsefApiClient. */

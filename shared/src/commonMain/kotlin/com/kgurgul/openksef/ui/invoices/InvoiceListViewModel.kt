@@ -19,9 +19,11 @@ package com.kgurgul.openksef.ui.invoices
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kgurgul.openksef.common.UiText
-import com.kgurgul.openksef.data.repository.KsefRepository
+import com.kgurgul.openksef.domain.invoke
 import com.kgurgul.openksef.domain.model.InvoiceSubjectType
 import com.kgurgul.openksef.domain.model.InvoiceSummary
+import com.kgurgul.openksef.domain.result.CloseSessionInteractor
+import com.kgurgul.openksef.domain.result.GetInvoicesInteractor
 import kotlin.time.Clock
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -60,7 +62,10 @@ sealed interface InvoiceListEvent {
     data object SessionEnded : InvoiceListEvent
 }
 
-class InvoiceListViewModel(private val repository: KsefRepository) : ViewModel() {
+class InvoiceListViewModel(
+    private val getInvoicesInteractor: GetInvoicesInteractor,
+    private val closeSessionInteractor: CloseSessionInteractor,
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(initialState())
     private val _searchQuery = MutableStateFlow("")
@@ -98,13 +103,14 @@ class InvoiceListViewModel(private val repository: KsefRepository) : ViewModel()
         _uiState.update { it.copy(isLoading = true) }
 
         viewModelScope.launch {
-            repository
-                .getInvoices(
-                    dateFrom = state.dateFrom,
-                    dateTo = state.dateTo,
-                    pageSize = PAGE_SIZE,
-                    pageOffset = nextPage * PAGE_SIZE,
-                    subjectType = state.subjectType,
+            getInvoicesInteractor(
+                    GetInvoicesInteractor.Params(
+                        dateFrom = state.dateFrom,
+                        dateTo = state.dateTo,
+                        pageSize = PAGE_SIZE,
+                        pageOffset = nextPage * PAGE_SIZE,
+                        subjectType = state.subjectType,
+                    )
                 )
                 .onSuccess { result ->
                     _uiState.update {
@@ -144,7 +150,7 @@ class InvoiceListViewModel(private val repository: KsefRepository) : ViewModel()
 
     fun onLogoutClicked() {
         viewModelScope.launch {
-            repository.closeSession()
+            closeSessionInteractor()
             eventChannel.send(InvoiceListEvent.SessionEnded)
         }
     }
@@ -154,13 +160,14 @@ class InvoiceListViewModel(private val repository: KsefRepository) : ViewModel()
 
         viewModelScope.launch {
             val state = _uiState.value
-            repository
-                .getInvoices(
-                    dateFrom = state.dateFrom,
-                    dateTo = state.dateTo,
-                    pageSize = PAGE_SIZE,
-                    pageOffset = 0,
-                    subjectType = state.subjectType,
+            getInvoicesInteractor(
+                    GetInvoicesInteractor.Params(
+                        dateFrom = state.dateFrom,
+                        dateTo = state.dateTo,
+                        pageSize = PAGE_SIZE,
+                        pageOffset = 0,
+                        subjectType = state.subjectType,
+                    )
                 )
                 .onSuccess { result ->
                     _uiState.update {

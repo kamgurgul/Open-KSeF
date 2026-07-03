@@ -16,6 +16,7 @@
 
 package com.kgurgul.openksef.ui.invoicedetail
 
+import com.kgurgul.openksef.common.TestDispatchersProvider
 import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefCrypto
@@ -24,6 +25,7 @@ import com.kgurgul.openksef.domain.pdf.InvoicePdfExporter
 import com.kgurgul.openksef.domain.pdf.InvoicePdfSharer
 import com.kgurgul.openksef.domain.pdf.KsefWebPdfRenderer
 import com.kgurgul.openksef.domain.pdf.PdfExportResult
+import com.kgurgul.openksef.domain.result.GetInvoiceInteractor
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -330,7 +332,9 @@ class InvoiceDetailViewModelTest {
                 override fun aesCbcEncrypt(data: ByteArray, key: ByteArray, iv: ByteArray) = data
             }
         val repository = KsefRepository(api, sessionHolder, crypto)
-        return InvoiceDetailViewModel(ksefRef, repository, exporter, webRenderer, sharer)
+        val getInvoiceInteractor =
+            GetInvoiceInteractor(TestDispatchersProvider(testDispatcher), repository)
+        return InvoiceDetailViewModel(ksefRef, getInvoiceInteractor, exporter, webRenderer, sharer)
     }
 
     private class FakeInvoicePdfExporter(

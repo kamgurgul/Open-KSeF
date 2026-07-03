@@ -19,23 +19,26 @@ package com.kgurgul.openksef.ui.sendinvoice
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kgurgul.openksef.common.UiText
-import com.kgurgul.openksef.data.SessionHolder
-import com.kgurgul.openksef.data.repository.InvoiceTemplateRepository
-import com.kgurgul.openksef.data.repository.KsefRepository
-import com.kgurgul.openksef.data.repository.SellerConfigRepository
 import com.kgurgul.openksef.domain.invoice.InvoiceBuilder
 import com.kgurgul.openksef.domain.invoice.InvoiceData
 import com.kgurgul.openksef.domain.invoice.InvoiceLineItem
 import com.kgurgul.openksef.domain.invoice.InvoiceTemplate
 import com.kgurgul.openksef.domain.invoice.InvoiceTemplateItem
+import com.kgurgul.openksef.domain.invoke
 import com.kgurgul.openksef.domain.money.Money
+import com.kgurgul.openksef.domain.observable.InvoiceTemplatesObservable
+import com.kgurgul.openksef.domain.observable.SellerConfigObservable
+import com.kgurgul.openksef.domain.observe
+import com.kgurgul.openksef.domain.result.DeleteInvoiceTemplateInteractor
+import com.kgurgul.openksef.domain.result.GetSessionNipInteractor
+import com.kgurgul.openksef.domain.result.SaveInvoiceTemplateInteractor
+import com.kgurgul.openksef.domain.result.SendInvoiceInteractor
 import kotlin.time.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
@@ -77,68 +80,75 @@ data class SendInvoiceUiState(
 )
 
 class SendInvoiceViewModel(
-    private val repository: KsefRepository,
-    private val sessionHolder: SessionHolder,
-    private val templateRepository: InvoiceTemplateRepository,
-    private val sellerConfigRepository: SellerConfigRepository,
+    private val sendInvoiceInteractor: SendInvoiceInteractor,
+    getSessionNipInteractor: GetSessionNipInteractor,
+    invoiceTemplatesObservable: InvoiceTemplatesObservable,
+    sellerConfigObservable: SellerConfigObservable,
+    private val saveInvoiceTemplateInteractor: SaveInvoiceTemplateInteractor,
+    private val deleteInvoiceTemplateInteractor: DeleteInvoiceTemplateInteractor,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SendInvoiceUiState())
-    val uiState: StateFlow<SendInvoiceUiState> = _uiState.asStateFlow()
+    private val formState =
+        MutableStateFlow(
+            SendInvoiceUiState(
+                issueDate = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
+            )
+        )
+
+    /** Seller edits; `null` fields fall back to the persisted seller config. */
+    private val sellerEdits = MutableStateFlow(SellerEdits())
+    private val sessionNip = MutableStateFlow("")
+
+    val uiState: StateFlow<SendInvoiceUiState> =
+        combine(
+                formState,
+                sellerEdits,
+                sessionNip,
+                invoiceTemplatesObservable.observe(),
+                sellerConfigObservable.observe(),
+            ) { form, edits, nip, templates, config ->
+                form.copy(
+                    sellerNip = nip,
+                    sellerName = edits.name ?: config?.name ?: "",
+                    sellerAddress = edits.address ?: config?.address ?: "",
+                    templates = templates,
+                    selectedTemplateId =
+                        form.selectedTemplateId.takeIf { id -> templates.any { it.id == id } },
+                )
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SendInvoiceUiState())
 
     init {
-        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-        _uiState.update {
-            it.copy(sellerNip = sessionHolder.nip ?: "", issueDate = today.toString())
-        }
-        viewModelScope.launch {
-            sellerConfigRepository.config.first()?.let { config ->
-                _uiState.update {
-                    it.copy(sellerName = config.name, sellerAddress = config.address)
-                }
-            }
-        }
-        templateRepository.templates
-            .onEach { templates ->
-                _uiState.update { state ->
-                    val stillExists = templates.any { it.id == state.selectedTemplateId }
-                    state.copy(
-                        templates = templates,
-                        selectedTemplateId = state.selectedTemplateId.takeIf { stillExists },
-                    )
-                }
-            }
-            .launchIn(viewModelScope)
+        viewModelScope.launch { sessionNip.value = getSessionNipInteractor() ?: "" }
     }
 
     fun onSellerNameChanged(name: String) {
-        _uiState.update {
-            it.copy(sellerName = name, validationErrors = it.validationErrors - FIELD_SELLER_NAME)
-        }
+        sellerEdits.update { it.copy(name = name) }
+        formState.update { it.copy(validationErrors = it.validationErrors - FIELD_SELLER_NAME) }
     }
 
     fun onSellerAddressChanged(address: String) {
-        _uiState.update { it.copy(sellerAddress = address) }
+        sellerEdits.update { it.copy(address = address) }
     }
 
     fun onBuyerNipChanged(nip: String) {
-        _uiState.update {
+        formState.update {
             it.copy(buyerNip = nip, validationErrors = it.validationErrors - FIELD_BUYER_NIP)
         }
     }
 
     fun onBuyerNameChanged(name: String) {
-        _uiState.update {
+        formState.update {
             it.copy(buyerName = name, validationErrors = it.validationErrors - FIELD_BUYER_NAME)
         }
     }
 
     fun onBuyerAddressChanged(address: String) {
-        _uiState.update { it.copy(buyerAddress = address) }
+        formState.update { it.copy(buyerAddress = address) }
     }
 
     fun onInvoiceNumberChanged(number: String) {
-        _uiState.update {
+        formState.update {
             it.copy(
                 invoiceNumber = number,
                 validationErrors = it.validationErrors - FIELD_INVOICE_NUMBER,
@@ -147,15 +157,15 @@ class SendInvoiceViewModel(
     }
 
     fun onIssueDateChanged(date: String) {
-        _uiState.update { it.copy(issueDate = date) }
+        formState.update { it.copy(issueDate = date) }
     }
 
     fun addItem() {
-        _uiState.update { it.copy(items = it.items + InvoiceLineItemUi()) }
+        formState.update { it.copy(items = it.items + InvoiceLineItemUi()) }
     }
 
     fun removeItem(index: Int) {
-        _uiState.update { state ->
+        formState.update { state ->
             if (state.items.size > 1) {
                 state.copy(items = state.items.toMutableList().apply { removeAt(index) })
             } else state
@@ -165,7 +175,7 @@ class SendInvoiceViewModel(
     fun updateItem(index: Int, item: InvoiceLineItemUi) {
         val updated = withCalculatedValues(item)
 
-        _uiState.update { state ->
+        formState.update { state ->
             state.copy(
                 items = state.items.toMutableList().apply { set(index, updated) },
                 validationErrors = state.validationErrors - FIELD_ITEMS,
@@ -182,12 +192,11 @@ class SendInvoiceViewModel(
                         quantity = templateItem.quantity,
                         unit = templateItem.unit,
                         unitPrice = templateItem.unitPrice,
-                        vatRate = templateItem.vatRate,
                     )
                 )
             }
 
-        _uiState.update { state ->
+        formState.update { state ->
             state.copy(
                 selectedTemplateId = template.id,
                 buyerNip = template.buyerNip.ifBlank { state.buyerNip },
@@ -202,7 +211,7 @@ class SendInvoiceViewModel(
     fun onSaveTemplate(name: String) {
         val trimmedName = name.trim()
         if (trimmedName.isBlank()) return
-        val state = _uiState.value
+        val state = uiState.value
         val template =
             InvoiceTemplate(
                 id = Clock.System.now().toEpochMilliseconds().toString(),
@@ -221,11 +230,11 @@ class SendInvoiceViewModel(
                         )
                     },
             )
-        viewModelScope.launch { templateRepository.save(template) }
+        viewModelScope.launch { saveInvoiceTemplateInteractor(template) }
     }
 
     fun onDeleteTemplate(id: String) {
-        viewModelScope.launch { templateRepository.delete(id) }
+        viewModelScope.launch { deleteInvoiceTemplateInteractor(id) }
     }
 
     private fun withCalculatedValues(item: InvoiceLineItemUi): InvoiceLineItemUi {
@@ -237,7 +246,7 @@ class SendInvoiceViewModel(
     }
 
     fun send() {
-        val state = _uiState.value
+        val state = uiState.value
         val errors = mutableMapOf<String, UiText>()
 
         if (state.sellerName.isBlank()) {
@@ -257,11 +266,11 @@ class SendInvoiceViewModel(
         }
 
         if (errors.isNotEmpty()) {
-            _uiState.update { it.copy(validationErrors = errors) }
+            formState.update { it.copy(validationErrors = errors) }
             return
         }
 
-        _uiState.update { it.copy(isLoading = true, error = null) }
+        formState.update { it.copy(isLoading = true, error = null) }
 
         viewModelScope.launch {
             val invoiceData =
@@ -292,10 +301,9 @@ class SendInvoiceViewModel(
                 )
 
             val xml = InvoiceBuilder.buildXml(invoiceData)
-            repository
-                .sendInvoice(xml)
+            sendInvoiceInteractor(xml)
                 .onSuccess { result ->
-                    _uiState.update {
+                    formState.update {
                         it.copy(
                             isLoading = false,
                             isSent = true,
@@ -304,7 +312,7 @@ class SendInvoiceViewModel(
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update {
+                    formState.update {
                         it.copy(
                             isLoading = false,
                             error =
@@ -317,8 +325,10 @@ class SendInvoiceViewModel(
     }
 
     fun clearError() {
-        _uiState.update { it.copy(error = null) }
+        formState.update { it.copy(error = null) }
     }
+
+    private data class SellerEdits(val name: String? = null, val address: String? = null)
 
     companion object {
         const val FIELD_SELLER_NAME = "sellerName"

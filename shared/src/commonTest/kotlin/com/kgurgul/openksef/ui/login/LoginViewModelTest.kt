@@ -17,6 +17,7 @@
 package com.kgurgul.openksef.ui.login
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import com.kgurgul.openksef.common.TestDispatchersProvider
 import com.kgurgul.openksef.common.UiText
 import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.local.SecureTokenStorage
@@ -25,6 +26,10 @@ import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefCrypto
 import com.kgurgul.openksef.data.repository.KsefRepository
 import com.kgurgul.openksef.domain.model.KsefEnvironment
+import com.kgurgul.openksef.domain.result.GetSavedCredentialsInteractor
+import com.kgurgul.openksef.domain.result.InitSessionInteractor
+import com.kgurgul.openksef.domain.result.PersistCredentialsInteractor
+import com.kgurgul.openksef.domain.result.SetEnvironmentInteractor
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -252,7 +257,13 @@ class LoginViewModelTest {
         val dataStore = PreferenceDataStoreFactory.createWithPath(produceFile = { tmpPath })
         val tokenStore = TokenStore(dataStore, InMemorySecureTokenStorage())
 
-        return LoginViewModel(repository, tokenStore)
+        val dispatchers = TestDispatchersProvider(testDispatcher)
+        return LoginViewModel(
+            initSessionInteractor = InitSessionInteractor(dispatchers, repository),
+            setEnvironmentInteractor = SetEnvironmentInteractor(dispatchers, repository),
+            getSavedCredentialsInteractor = GetSavedCredentialsInteractor(dispatchers, tokenStore),
+            persistCredentialsInteractor = PersistCredentialsInteractor(dispatchers, tokenStore),
+        )
     }
 
     private class InMemorySecureTokenStorage : SecureTokenStorage {

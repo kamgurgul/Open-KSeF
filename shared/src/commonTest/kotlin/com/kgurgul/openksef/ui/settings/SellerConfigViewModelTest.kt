@@ -16,8 +16,11 @@
 
 package com.kgurgul.openksef.ui.settings
 
+import com.kgurgul.openksef.common.TestDispatchersProvider
 import com.kgurgul.openksef.data.repository.SellerConfigRepository
 import com.kgurgul.openksef.domain.invoice.SellerConfig
+import com.kgurgul.openksef.domain.observable.SellerConfigObservable
+import com.kgurgul.openksef.domain.result.SaveSellerConfigInteractor
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -27,6 +30,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -48,30 +52,54 @@ class SellerConfigViewModelTest {
     }
 
     @Test
-    fun init_prefillsExistingConfig() = runTest {
+    fun uiState_prefillsExistingConfig() = runTest {
         val repository = FakeSellerConfigRepository(SellerConfig(name = "ACME", address = "ul. 1"))
-        val viewModel = SellerConfigViewModel(repository)
-        testDispatcher.scheduler.advanceUntilIdle()
+        val viewModel = createViewModel(repository)
 
-        val state = viewModel.uiState.value
+        val state = viewModel.uiState.first { it.name.isNotEmpty() }
+
         assertEquals("ACME", state.name)
         assertEquals("ul. 1", state.address)
     }
 
     @Test
+    fun edits_overridePersistedConfig() = runTest {
+        val repository =
+            FakeSellerConfigRepository(SellerConfig(name = "Old", address = "ul. Stara 1"))
+        val viewModel = createViewModel(repository)
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.uiState.first { it.name == "Old" }
+
+        viewModel.onNameChanged("New")
+
+        val state = viewModel.uiState.first { it.name == "New" }
+        assertEquals("ul. Stara 1", state.address)
+    }
+
+    @Test
     fun onSaveClicked_persistsTrimmedConfigAndEmitsSaved() = runTest {
         val repository = FakeSellerConfigRepository()
-        val viewModel = SellerConfigViewModel(repository)
+        val viewModel = createViewModel(repository)
+        backgroundScope.launch { viewModel.uiState.collect {} }
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onNameChanged("  ACME  ")
         viewModel.onAddressChanged("  ul. Testowa 1  ")
+        viewModel.uiState.first { it.name == "  ACME  " && it.address == "  ul. Testowa 1  " }
         viewModel.onSaveClicked()
         testDispatcher.scheduler.advanceUntilIdle()
 
         val saved = repository.config.first()
         assertEquals(SellerConfig(name = "ACME", address = "ul. Testowa 1"), saved)
         assertEquals(SellerConfigEvent.Saved, viewModel.events.first())
+    }
+
+    private fun createViewModel(repository: SellerConfigRepository): SellerConfigViewModel {
+        val dispatchers = TestDispatchersProvider(testDispatcher)
+        return SellerConfigViewModel(
+            sellerConfigObservable = SellerConfigObservable(dispatchers, repository),
+            saveSellerConfigInteractor = SaveSellerConfigInteractor(dispatchers, repository),
+        )
     }
 
     private class FakeSellerConfigRepository(initial: SellerConfig? = null) :
