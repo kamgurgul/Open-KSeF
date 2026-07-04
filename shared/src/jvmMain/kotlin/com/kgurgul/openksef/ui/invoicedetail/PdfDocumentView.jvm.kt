@@ -20,5 +20,4 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 /** The PDF preview flow is mobile-only; desktop exports via [InvoicePdfExporter] instead. */
-@Composable
-actual fun PdfDocumentView(pdfBytes: ByteArray, modifier: Modifier) = Unit
+@Composable actual fun PdfDocumentView(pdfBytes: ByteArray, modifier: Modifier) = Unit

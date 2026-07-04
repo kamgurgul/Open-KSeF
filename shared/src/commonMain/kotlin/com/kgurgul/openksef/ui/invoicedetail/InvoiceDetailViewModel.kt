@@ -54,20 +54,21 @@ data class InvoiceDetailUiState(
     val canDownload: Boolean
         get() = pdfBytes != null && !isDownloading
 
-    // ByteArray needs structural equality so StateFlow does not treat identical content as a change.
+    // ByteArray needs structural equality so StateFlow does not treat identical content as a
+    // change.
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is InvoiceDetailUiState) return false
         return ksefReferenceNumber == other.ksefReferenceNumber &&
-                invoiceXml == other.invoiceXml &&
-                isLoading == other.isLoading &&
-                canPreviewPdf == other.canPreviewPdf &&
-                canExportPdf == other.canExportPdf &&
-                isPdfLoading == other.isPdfLoading &&
-                isPdfError == other.isPdfError &&
-                isExportingPdf == other.isExportingPdf &&
-                isDownloading == other.isDownloading &&
-                pdfBytes.contentEquals(other.pdfBytes)
+            invoiceXml == other.invoiceXml &&
+            isLoading == other.isLoading &&
+            canPreviewPdf == other.canPreviewPdf &&
+            canExportPdf == other.canExportPdf &&
+            isPdfLoading == other.isPdfLoading &&
+            isPdfError == other.isPdfError &&
+            isExportingPdf == other.isExportingPdf &&
+            isDownloading == other.isDownloading &&
+            pdfBytes.contentEquals(other.pdfBytes)
     }
 
     override fun hashCode(): Int {
@@ -110,10 +111,11 @@ class InvoiceDetailViewModel(
     private val isDownloading = MutableStateFlow(false)
 
     val uiState: StateFlow<InvoiceDetailUiState> =
-        combine(invoiceLoad, pdfState, isExportingPdf, isDownloading) { load,
-                                                                        pdf,
-                                                                        exporting,
-                                                                        downloading ->
+        combine(invoiceLoad, pdfState, isExportingPdf, isDownloading) {
+                load,
+                pdf,
+                exporting,
+                downloading ->
                 InvoiceDetailUiState(
                     ksefReferenceNumber = ksefReferenceNumber,
                     invoiceXml = load.invoiceXml,
@@ -254,8 +256,8 @@ class InvoiceDetailViewModel(
             if (this === other) return true
             if (other !is PdfState) return false
             return isLoading == other.isLoading &&
-                    isError == other.isError &&
-                    pdfBytes.contentEquals(other.pdfBytes)
+                isError == other.isError &&
+                pdfBytes.contentEquals(other.pdfBytes)
         }
 
         override fun hashCode(): Int {

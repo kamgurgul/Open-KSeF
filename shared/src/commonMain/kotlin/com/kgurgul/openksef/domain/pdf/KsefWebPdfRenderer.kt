@@ -23,8 +23,8 @@ import kotlinx.serialization.json.Json
 import openksef.shared.generated.resources.Res
 
 /**
- * Renders a KSeF invoice into PDF bytes using the official Ministry of Finance visualization library
- * ([CIRFMF/ksef-pdf-generator]) executed inside a headless web view.
+ * Renders a KSeF invoice into PDF bytes using the official Ministry of Finance visualization
+ * library ([CIRFMF/ksef-pdf-generator]) executed inside a headless web view.
  *
  * Unlike [InvoicePdfExporter] (which saves/opens the file directly), this returns the raw bytes so
  * the caller can both preview and download them. It is available on Android and iOS; desktop keeps
@@ -47,8 +47,9 @@ expect fun defaultKsefWebPdfRenderer(): KsefWebPdfRenderer
  *
  * The bundle exposes the UMD global `window["ksef-fe-invoice-converter"]`. The injected
  * `window.__ksefGenerate(xml, nrKSeF, qrCode)` bridge calls `generateInvoice(...)` and forwards the
- * resulting base64 PDF (or an error) to platform-defined `window.__ksefResult` / `window.__ksefError`
- * callbacks. Each platform installs those two callbacks before invoking `__ksefGenerate`.
+ * resulting base64 PDF (or an error) to platform-defined `window.__ksefResult` /
+ * `window.__ksefError` callbacks. Each platform installs those two callbacks before invoking
+ * `__ksefGenerate`.
  */
 internal object KsefPdfHtml {
 
@@ -58,7 +59,9 @@ internal object KsefPdfHtml {
 
     @OptIn(ExperimentalEncodingApi::class)
     suspend fun build(): String {
-        cached?.let { return it }
+        cached?.let {
+            return it
+        }
         val js = Res.readBytes(BUNDLE_PATH).decodeToString()
         // Guard against an accidental `</script>` inside a JS string literal closing the tag early.
         val safeJs = js.replace("</script", "<\\/script")

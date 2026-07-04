@@ -37,9 +37,10 @@ actual fun PdfDocumentView(pdfBytes: ByteArray, modifier: Modifier) {
         },
         modifier = modifier,
         update = { view -> view.document = pdfDocument },
-        properties = UIKitInteropProperties(
-            isInteractive = true,
-            isNativeAccessibilityEnabled = true
-        )
+        properties =
+            UIKitInteropProperties(
+                isInteractive = true,
+                isNativeAccessibilityEnabled = true,
+            ),
     )
 }

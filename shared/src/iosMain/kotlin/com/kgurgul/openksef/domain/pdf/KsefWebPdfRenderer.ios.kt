@@ -16,7 +16,6 @@
 
 package com.kgurgul.openksef.domain.pdf
 
-import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.ObjCSignatureOverride
 import kotlinx.coroutines.Dispatchers
@@ -57,20 +56,21 @@ class IosKsefWebPdfRenderer : KsefWebPdfRenderer {
                     controller.removeScriptMessageHandlerForName(BRIDGE_NAME)
                 }
 
-                val handler =
-                    BridgeMessageHandler { type, data ->
-                        if (settled) return@BridgeMessageHandler
-                        settled = true
-                        teardown()
-                        if (type == "result") {
-                            val bytes = runCatching { decodePdfBase64(data) }
-                            cont.resumeWith(bytes)
-                        } else {
-                            cont.resumeWith(
-                                Result.failure(IllegalStateException(data.ifBlank { "PDF render failed" }))
+                val handler = BridgeMessageHandler { type, data ->
+                    if (settled) return@BridgeMessageHandler
+                    settled = true
+                    teardown()
+                    if (type == "result") {
+                        val bytes = runCatching { decodePdfBase64(data) }
+                        cont.resumeWith(bytes)
+                    } else {
+                        cont.resumeWith(
+                            Result.failure(
+                                IllegalStateException(data.ifBlank { "PDF render failed" })
                             )
-                        }
+                        )
                     }
+                }
                 controller.addScriptMessageHandler(handler, BRIDGE_NAME)
 
                 val delegate =
@@ -132,8 +132,8 @@ private class GenerateNavigationDelegate(
         webView.evaluateJavaScript(GLUE_JS, null)
         val script =
             "window.__ksefGenerate(" +
-                    "${jsStringLiteral(invoiceXml)}," +
-                    "${jsStringLiteral(ksefReferenceNumber)},null);"
+                "${jsStringLiteral(invoiceXml)}," +
+                "${jsStringLiteral(ksefReferenceNumber)},null);"
         webView.evaluateJavaScript(script, null)
     }
 
@@ -159,8 +159,8 @@ private class GenerateNavigationDelegate(
 /** JS installed after page load so the bundle can post results back through the native bridge. */
 private const val GLUE_JS =
     "window.__ksefResult=function(b){" +
-            "window.webkit.messageHandlers.ksefBridge.postMessage({type:'result',data:b});};" +
-            "window.__ksefError=function(m){" +
-            "window.webkit.messageHandlers.ksefBridge.postMessage({type:'error',data:m});};"
+        "window.webkit.messageHandlers.ksefBridge.postMessage({type:'result',data:b});};" +
+        "window.__ksefError=function(m){" +
+        "window.webkit.messageHandlers.ksefBridge.postMessage({type:'error',data:m});};"
 
 actual fun defaultKsefWebPdfRenderer(): KsefWebPdfRenderer = IosKsefWebPdfRenderer()

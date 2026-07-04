@@ -24,5 +24,4 @@ import androidx.compose.ui.Modifier
  * - Android rasterizes pages with `PdfRenderer` and shows them in a scrollable list,
  * - iOS embeds a PDFKit `PDFView`.
  */
-@Composable
-expect fun PdfDocumentView(pdfBytes: ByteArray, modifier: Modifier)
+@Composable expect fun PdfDocumentView(pdfBytes: ByteArray, modifier: Modifier)

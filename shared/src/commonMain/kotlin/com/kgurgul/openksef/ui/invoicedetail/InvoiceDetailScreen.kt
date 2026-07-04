@@ -131,9 +131,9 @@ fun InvoiceDetailScreen(
         bottomBar = {
             val showDownload =
                 uiState.canPreviewPdf &&
-                        uiState.invoiceXml != null &&
-                        selectedTab == PDF_TAB &&
-                        uiState.pdfBytes != null
+                    uiState.invoiceXml != null &&
+                    selectedTab == PDF_TAB &&
+                    uiState.pdfBytes != null
             val showExport =
                 !uiState.canPreviewPdf && uiState.invoiceXml != null && uiState.canExportPdf
             when {
@@ -256,9 +256,7 @@ private fun XmlContent(invoiceXml: String, modifier: Modifier = Modifier) {
         Card(
             modifier = Modifier.fillMaxSize(),
             colors =
-                CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
+                CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 Box(
@@ -294,11 +292,7 @@ private fun BottomActionBar(
         Button(
             onClick = onClick,
             enabled = enabled,
-            modifier =
-                Modifier.fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(16.dp)
-                    .height(52.dp),
+            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp).height(52.dp),
             shape = MaterialTheme.shapes.medium,
         ) {
             if (loading) {

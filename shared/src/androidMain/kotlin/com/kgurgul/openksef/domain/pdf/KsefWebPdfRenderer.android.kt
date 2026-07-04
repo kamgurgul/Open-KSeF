@@ -57,13 +57,14 @@ class AndroidKsefWebPdfRenderer(private val context: Context) : KsefWebPdfRender
                         @JavascriptInterface
                         fun onResult(base64: String) {
                             if (!resumed.compareAndSet(false, true)) return
-                            val bytes =
-                                runCatching { decodePdfBase64(base64) }
-                                    .getOrElse {
-                                        finish {}
-                                        cont.resumeWith(Result.failure(it))
-                                        return
-                                    }
+                            val bytes = runCatching {
+                                decodePdfBase64(base64)
+                            }
+                                .getOrElse {
+                                    finish {}
+                                    cont.resumeWith(Result.failure(it))
+                                    return
+                                }
                             finish {}
                             cont.resumeWith(Result.success(bytes))
                         }
@@ -86,8 +87,8 @@ class AndroidKsefWebPdfRenderer(private val context: Context) : KsefWebPdfRender
                                     view.evaluateJavascript(GLUE_JS, null)
                                     val script =
                                         "window.__ksefGenerate(" +
-                                                "${jsStringLiteral(invoiceXml)}," +
-                                                "${jsStringLiteral(ksefReferenceNumber)},null);"
+                                            "${jsStringLiteral(invoiceXml)}," +
+                                            "${jsStringLiteral(ksefReferenceNumber)},null);"
                                     view.evaluateJavascript(script, null)
                                 }
                             }
@@ -106,7 +107,7 @@ class AndroidKsefWebPdfRenderer(private val context: Context) : KsefWebPdfRender
         const val BRIDGE_NAME = "AndroidKsefBridge"
         const val GLUE_JS =
             "window.__ksefResult=function(b){$BRIDGE_NAME.onResult(b);};" +
-                    "window.__ksefError=function(m){$BRIDGE_NAME.onError(m);};"
+                "window.__ksefError=function(m){$BRIDGE_NAME.onError(m);};"
     }
 }
 

@@ -28,6 +28,5 @@ class GetInvoiceInteractor(
 
     override val dispatcher = dispatchersProvider.io
 
-    override suspend fun doWork(params: String): Result<String> =
-        ksefRepository.getInvoice(params)
+    override suspend fun doWork(params: String): Result<String> = ksefRepository.getInvoice(params)
 }

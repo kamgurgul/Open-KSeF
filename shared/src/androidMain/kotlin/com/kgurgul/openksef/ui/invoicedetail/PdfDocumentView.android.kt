@@ -40,9 +40,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -56,9 +56,9 @@ import kotlinx.coroutines.withContext
 actual fun PdfDocumentView(pdfBytes: ByteArray, modifier: Modifier) {
     val context = LocalContext.current
     val pages by
-    produceState(initialValue = emptyList<ImageBitmap>(), pdfBytes) {
-        value = withContext(Dispatchers.IO) { renderPdfToImages(context, pdfBytes) }
-    }
+        produceState(initialValue = emptyList<ImageBitmap>(), pdfBytes) {
+            value = withContext(Dispatchers.IO) { renderPdfToImages(context, pdfBytes) }
+        }
 
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
@@ -83,7 +83,7 @@ actual fun PdfDocumentView(pdfBytes: ByteArray, modifier: Modifier) {
             modifier
                 .clipToBounds()
                 .onSizeChanged { containerSize = it }
-                .transformable(transformableState),
+                .transformable(transformableState)
     ) {
         LazyColumn(
             modifier =
@@ -92,7 +92,7 @@ actual fun PdfDocumentView(pdfBytes: ByteArray, modifier: Modifier) {
                     scaleY = scale
                     translationX = offset.x
                     translationY = offset.y
-                },
+                }
         ) {
             items(pages) { page ->
                 Image(

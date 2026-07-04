@@ -18,7 +18,8 @@ package com.kgurgul.openksef.domain.pdf
 
 /**
  * Desktop does not use the web-based renderer; it keeps the Apache FOP based [InvoicePdfExporter].
- * This stub reports the feature as unavailable so the mobile preview flow is never shown on desktop.
+ * This stub reports the feature as unavailable so the mobile preview flow is never shown on
+ * desktop.
  */
 class JvmKsefWebPdfRenderer : KsefWebPdfRenderer {
 

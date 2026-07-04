@@ -30,7 +30,7 @@ fun defaultInvoicePdfSharer(): InvoicePdfSharer =
     InvoicePdfSharer { pdfBytes, ksefReferenceNumber ->
         shareInvoicePdf(
             pdfBytes,
-            ksefReferenceNumber
+            ksefReferenceNumber,
         )
     }
 

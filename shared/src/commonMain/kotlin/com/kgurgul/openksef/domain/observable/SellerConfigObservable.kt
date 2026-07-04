@@ -30,6 +30,5 @@ class SellerConfigObservable(
 
     override val dispatcher = dispatchersProvider.io
 
-    override fun createObservable(params: Unit): Flow<SellerConfig?> =
-        sellerConfigRepository.config
+    override fun createObservable(params: Unit): Flow<SellerConfig?> = sellerConfigRepository.config
 }

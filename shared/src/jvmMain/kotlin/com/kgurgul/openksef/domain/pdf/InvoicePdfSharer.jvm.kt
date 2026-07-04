@@ -16,7 +16,9 @@
 
 package com.kgurgul.openksef.domain.pdf
 
-/** Desktop uses [InvoicePdfExporter] directly; the mobile preview/share flow is unavailable here. */
+/**
+ * Desktop uses [InvoicePdfExporter] directly; the mobile preview/share flow is unavailable here.
+ */
 actual suspend fun shareInvoicePdf(
     pdfBytes: ByteArray,
     ksefReferenceNumber: String,
