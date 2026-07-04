@@ -23,18 +23,30 @@ import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -48,17 +60,51 @@ actual fun PdfDocumentView(pdfBytes: ByteArray, modifier: Modifier) {
         value = withContext(Dispatchers.IO) { renderPdfToImages(context, pdfBytes) }
     }
 
-    LazyColumn(modifier = modifier) {
-        items(pages) { page ->
-            Image(
-                bitmap = page,
-                contentDescription = null,
-                contentScale = ContentScale.FillWidth,
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 6.dp)
-                        .background(androidx.compose.ui.graphics.Color.White),
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
+    val transformableState = rememberTransformableState { centroid, zoomChange, panChange, _ ->
+        val newScale = (scale * zoomChange).coerceIn(MIN_ZOOM, MAX_ZOOM)
+        val appliedZoom = newScale / scale
+        val center = Offset(containerSize.width / 2f, containerSize.height / 2f)
+        val maxX = containerSize.width * (newScale - 1f) / 2f
+        val maxY = containerSize.height * (newScale - 1f) / 2f
+        val zoomedOffset = (centroid - center) * (1f - appliedZoom) + offset * appliedZoom
+        scale = newScale
+        offset =
+            Offset(
+                x = (zoomedOffset.x + panChange.x).coerceIn(-maxX, maxX),
+                y = (zoomedOffset.y + panChange.y).coerceIn(-maxY, maxY),
             )
+    }
+
+    Box(
+        modifier =
+            modifier
+                .clipToBounds()
+                .onSizeChanged { containerSize = it }
+                .transformable(transformableState),
+    ) {
+        LazyColumn(
+            modifier =
+                Modifier.matchParentSize().graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    translationX = offset.x
+                    translationY = offset.y
+                },
+        ) {
+            items(pages) { page ->
+                Image(
+                    bitmap = page,
+                    contentDescription = null,
+                    contentScale = ContentScale.FillWidth,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                            .background(androidx.compose.ui.graphics.Color.White),
+                )
+            }
         }
     }
 }
@@ -89,3 +135,5 @@ private fun renderPdfToImages(context: Context, pdfBytes: ByteArray): List<Image
 }
 
 private const val TARGET_WIDTH_PX = 1240
+private const val MIN_ZOOM = 1f
+private const val MAX_ZOOM = 5f
