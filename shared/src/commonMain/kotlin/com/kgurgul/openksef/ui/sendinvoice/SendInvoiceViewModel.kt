@@ -75,6 +75,7 @@ data class SendInvoiceUiState(
     val isLoading: Boolean = false,
     val isSent: Boolean = false,
     val sentReferenceNumber: String = "",
+    val sentKsefNumber: String = "",
     val error: UiText? = null,
     val validationErrors: Map<String, UiText> = emptyMap(),
 )
@@ -129,6 +130,7 @@ class SendInvoiceViewModel(
 
     fun onSellerAddressChanged(address: String) {
         sellerEdits.update { it.copy(address = address) }
+        formState.update { it.copy(validationErrors = it.validationErrors - FIELD_SELLER_ADDRESS) }
     }
 
     fun onBuyerNipChanged(nip: String) {
@@ -252,6 +254,10 @@ class SendInvoiceViewModel(
         if (state.sellerName.isBlank()) {
             errors[FIELD_SELLER_NAME] = UiText.Resource(Res.string.error_required)
         }
+        // FA(3) requires the seller address element.
+        if (state.sellerAddress.isBlank()) {
+            errors[FIELD_SELLER_ADDRESS] = UiText.Resource(Res.string.error_required)
+        }
         if (state.buyerNip.length != 10 || !state.buyerNip.all { it.isDigit() }) {
             errors[FIELD_BUYER_NIP] = UiText.Resource(Res.string.error_nip_invalid)
         }
@@ -308,6 +314,7 @@ class SendInvoiceViewModel(
                             isLoading = false,
                             isSent = true,
                             sentReferenceNumber = result.referenceNumber,
+                            sentKsefNumber = result.ksefNumber ?: "",
                         )
                     }
                 }
@@ -332,6 +339,7 @@ class SendInvoiceViewModel(
 
     companion object {
         const val FIELD_SELLER_NAME = "sellerName"
+        const val FIELD_SELLER_ADDRESS = "sellerAddress"
         const val FIELD_BUYER_NIP = "buyerNip"
         const val FIELD_BUYER_NAME = "buyerName"
         const val FIELD_INVOICE_NUMBER = "invoiceNumber"

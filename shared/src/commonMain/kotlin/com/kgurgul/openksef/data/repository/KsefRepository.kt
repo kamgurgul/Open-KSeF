@@ -141,6 +141,10 @@ class KsefRepository(
      * and IV are generated, the key is wrapped with the Ministry of Finance public key (RSA-OAEP)
      * to open the session, and the invoice XML is encrypted with AES-256-CBC before upload. A new
      * session is opened per send, so the caller never has to manage session lifecycle.
+     *
+     * The upload only returns 202 Accepted; processing (schema validation, duplicate check, KSeF
+     * number assignment) is asynchronous, so the invoice status is polled until it reaches a
+     * terminal state and a rejection surfaces as a failed [Result].
      */
     @OptIn(ExperimentalEncodingApi::class)
     suspend fun sendInvoice(invoiceXml: String): Result<SendInvoiceResult> = runCatching {
@@ -164,11 +168,43 @@ class KsefRepository(
                     ),
             )
 
-        SendInvoiceResult(referenceNumber = response.referenceNumber)
+        val status = waitForInvoiceProcessing(sessionRef, response.referenceNumber)
+
+        SendInvoiceResult(
+            referenceNumber = response.referenceNumber,
+            ksefNumber = status.ksefNumber,
+        )
     }
 
     /**
-     * Opens an online session for the FA(2) schema. [aesKey] is wrapped with the symmetric-key
+     * Polls GET /sessions/{ref}/invoices/{invoiceRef} until KSeF finishes processing the invoice.
+     * Status codes below 200 mean the invoice is still being processed, 200 means it was accepted
+     * (and got a KSeF number); anything else is a rejection.
+     */
+    private suspend fun waitForInvoiceProcessing(
+        sessionReferenceNumber: String,
+        invoiceReferenceNumber: String,
+    ): SessionInvoiceStatusResponse {
+        repeat(MAX_INVOICE_POLL_ATTEMPTS) {
+            val response =
+                api.getSessionInvoiceStatus(sessionReferenceNumber, invoiceReferenceNumber)
+            when {
+                response.status.code == INVOICE_STATUS_SUCCESS -> return response
+                response.status.code < INVOICE_STATUS_SUCCESS -> delay(INVOICE_POLL_DELAY_MS)
+                else -> {
+                    val details = response.status.details.orEmpty().joinToString(" ")
+                    error(
+                        "Invoice rejected: ${response.status.description}" +
+                                if (details.isBlank()) "" else " $details"
+                    )
+                }
+            }
+        }
+        error("Timed out waiting for invoice processing")
+    }
+
+    /**
+     * Opens an online session for the FA(3) schema. [aesKey] is wrapped with the symmetric-key
      * encryption certificate from `/security/public-key-certificates`; [iv] is sent in the clear as
      * required by the spec. Returns the new session reference number (also stored on the session).
      */
@@ -183,7 +219,7 @@ class KsefRepository(
         val response =
             api.openOnlineSession(
                 OpenOnlineSessionRequest(
-                    formCode = FA2_FORM_CODE,
+                    formCode = FA3_FORM_CODE,
                     encryption =
                         EncryptionInfo(
                             encryptedSymmetricKey = encryptedSymmetricKey,
@@ -264,14 +300,18 @@ class KsefRepository(
         private const val MAX_AUTH_POLL_ATTEMPTS = 30
         private const val AUTH_POLL_DELAY_MS = 1_000L
 
+        private const val INVOICE_STATUS_SUCCESS = 200
+        private const val MAX_INVOICE_POLL_ATTEMPTS = 60
+        private const val INVOICE_POLL_DELAY_MS = 1_000L
+
         private const val AES_KEY_SIZE_BYTES = 32
         private const val AES_IV_SIZE_BYTES = 16
 
         private const val CERT_USAGE_KSEF_TOKEN_ENCRYPTION = "KsefTokenEncryption"
         private const val CERT_USAGE_SYMMETRIC_KEY_ENCRYPTION = "SymmetricKeyEncryption"
 
-        /** Form code for the FA(2) invoice schema produced by InvoiceBuilder. */
-        private val FA2_FORM_CODE =
-            FormCode(systemCode = "FA (2)", schemaVersion = "1-0E", value = "FA")
+        /** Form code for the FA(3) invoice schema produced by InvoiceBuilder. */
+        private val FA3_FORM_CODE =
+            FormCode(systemCode = "FA (3)", schemaVersion = "1-0E", value = "FA")
     }
 }

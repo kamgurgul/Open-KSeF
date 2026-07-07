@@ -53,6 +53,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -147,6 +148,30 @@ class SendInvoiceViewModelTest {
         assertTrue(errors.containsKey("buyerName"))
         assertTrue(errors.containsKey("invoiceNumber"))
         assertFalse(viewModel.uiState.value.isLoading)
+    }
+
+    @Test
+    fun send_success_setsSentStateWithKsefNumber() = runTest {
+        val viewModel =
+            createViewModel(SellerConfig(name = "ACME Sp. z o.o.", address = "ul. Testowa 1"))
+        collectUiState(viewModel)
+
+        viewModel.onBuyerNipChanged("2222222222")
+        viewModel.onBuyerNameChanged("Firma XYZ")
+        viewModel.onInvoiceNumberChanged("FV/2024/001")
+        viewModel.updateItem(
+            0,
+            InvoiceLineItemUi(description = "Usługa", quantity = "1", unitPrice = "100"),
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.send()
+        val state = viewModel.uiState.first { it.isSent || it.error != null }
+
+        assertTrue(state.isSent, "Expected isSent, error: ${state.error}")
+        assertEquals("R-001", state.sentReferenceNumber)
+        assertEquals("KSEF-NUM-001", state.sentKsefNumber)
+        assertFalse(state.isLoading)
     }
 
     @Test
@@ -286,13 +311,48 @@ class SendInvoiceViewModelTest {
     }
 
     private fun createViewModel(sellerConfig: SellerConfig? = null): SendInvoiceViewModel {
-        val engine = MockEngine { _ ->
-            respond(
-                content = """{"referenceNumber":"R-001"}""",
-                status = HttpStatusCode.Accepted,
-                headers =
-                    headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-            )
+        val jsonHeaders =
+            headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        val engine = MockEngine { request ->
+            val path = request.url.encodedPath
+            when {
+                path.endsWith("/security/public-key-certificates") ->
+                    respond(
+                        content =
+                            """[{"certificate":"AAAA","validFrom":"2024-01-01T00:00:00Z","validTo":"2099-01-01T00:00:00Z","usage":["SymmetricKeyEncryption"]}]""",
+                        status = HttpStatusCode.OK,
+                        headers = jsonHeaders,
+                    )
+
+                path.endsWith("/sessions/online") ->
+                    respond(
+                        content =
+                            """{"referenceNumber":"session-ref","validUntil":"2099-01-01T00:00:00Z"}""",
+                        status = HttpStatusCode.OK,
+                        headers = jsonHeaders,
+                    )
+
+                path.endsWith("/sessions/online/session-ref/invoices") ->
+                    respond(
+                        content = """{"referenceNumber":"R-001"}""",
+                        status = HttpStatusCode.Accepted,
+                        headers = jsonHeaders,
+                    )
+
+                path.endsWith("/sessions/session-ref/invoices/R-001") ->
+                    respond(
+                        content =
+                            """{"referenceNumber":"R-001","ksefNumber":"KSEF-NUM-001","status":{"code":200,"description":"Sukces"}}""",
+                        status = HttpStatusCode.OK,
+                        headers = jsonHeaders,
+                    )
+
+                else -> respond(
+                    content = "{}",
+                    status = HttpStatusCode.NotFound,
+                    headers = jsonHeaders
+                )
+            }
         }
         val mockClient =
             HttpClient(engine) {

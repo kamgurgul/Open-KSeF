@@ -50,4 +50,4 @@ enum class InvoiceSubjectType(val apiValue: String) {
     RECEIVED("Subject2"),
 }
 
-data class SendInvoiceResult(val referenceNumber: String)
+data class SendInvoiceResult(val referenceNumber: String, val ksefNumber: String? = null)

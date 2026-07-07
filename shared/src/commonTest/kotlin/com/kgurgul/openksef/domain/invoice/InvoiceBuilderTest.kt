@@ -23,7 +23,7 @@ import kotlin.test.assertTrue
 class InvoiceBuilderTest {
 
     @Test
-    fun buildXml_generatesValidFA2Structure() {
+    fun buildXml_generatesValidFA3Structure() {
         val data =
             InvoiceData(
                 invoiceNumber = "FV/2024/001",
@@ -53,8 +53,17 @@ class InvoiceBuilderTest {
 
         assertTrue(xml.contains("<?xml version=\"1.0\""))
         assertTrue(xml.contains("<P_8A>godz.</P_8A>"))
-        assertTrue(xml.contains("<Faktura"))
-        assertTrue(xml.contains("FA (2)"))
+        assertTrue(xml.contains("<Faktura xmlns=\"http://crd.gov.pl/wzor/2025/06/25/13775/\">"))
+        assertTrue(xml.contains("FA (3)"))
+        assertTrue(xml.contains("<WariantFormularza>3</WariantFormularza>"))
+        assertTrue(xml.contains("<P_19N>1</P_19N>"))
+        assertTrue(xml.contains("<P_22N>1</P_22N>"))
+        assertTrue(xml.contains("<P_23>2</P_23>"))
+        assertTrue(xml.contains("<P_PMarzyN>1</P_PMarzyN>"))
+        assertTrue(xml.contains("<RodzajFaktury>VAT</RodzajFaktury>"))
+        assertTrue(xml.contains("<JST>2</JST>"))
+        assertTrue(xml.contains("<GV>2</GV>"))
+        assertTrue(xml.contains("<AdresL1>ul. Testowa 1, Warszawa</AdresL1>"))
         assertTrue(xml.contains("<NIP>1111111111</NIP>"))
         assertTrue(xml.contains("<NIP>2222222222</NIP>"))
         assertTrue(xml.contains("<Nazwa>Firma ABC</Nazwa>"))

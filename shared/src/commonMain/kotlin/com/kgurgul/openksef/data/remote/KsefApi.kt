@@ -113,6 +113,18 @@ class KsefApi(private val client: HttpClient) {
             .post("$baseUrl/sessions/online/$sessionReferenceNumber/invoices") { setBody(request) }
             .body()
 
+    /**
+     * GET /sessions/{referenceNumber}/invoices/{invoiceReferenceNumber} — retrieves the processing
+     * status of a single invoice sent in a session.
+     */
+    suspend fun getSessionInvoiceStatus(
+        sessionReferenceNumber: String,
+        invoiceReferenceNumber: String,
+    ): SessionInvoiceStatusResponse =
+        client
+            .get("$baseUrl/sessions/$sessionReferenceNumber/invoices/$invoiceReferenceNumber")
+            .body()
+
     /** POST /sessions/online/{referenceNumber}/close — closes an online session. Returns 204. */
     suspend fun closeOnlineSession(sessionReferenceNumber: String) {
         client.post("$baseUrl/sessions/online/$sessionReferenceNumber/close")

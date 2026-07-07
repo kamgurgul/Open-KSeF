@@ -109,6 +109,18 @@ data class SendInvoiceRequest(
 
 @Serializable data class SendInvoiceResponse(val referenceNumber: String)
 
+@Serializable
+data class SessionInvoiceStatusResponse(
+    val referenceNumber: String,
+    val ordinalNumber: Int? = null,
+    val invoiceNumber: String? = null,
+    val ksefNumber: String? = null,
+    val invoicingDate: String? = null,
+    val acquisitionDate: String? = null,
+    val upoDownloadUrl: String? = null,
+    val status: StatusInfo,
+)
+
 // ---------- Session status ----------
 
 @Serializable

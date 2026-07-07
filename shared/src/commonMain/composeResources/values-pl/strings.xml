@@ -54,6 +54,7 @@
     <string name="send_invoice_sent_title">Faktura wysłana</string>
     <string name="send_invoice_sent_message">Faktura została wysłana do KSeF.</string>
     <string name="send_invoice_reference_number_label">Nr referencyjny:</string>
+    <string name="send_invoice_ksef_number_label">Numer KSeF:</string>
     <string name="send_invoice_seller">Sprzedawca</string>
     <string name="send_invoice_buyer">Nabywca</string>
     <string name="send_invoice_details">Dane faktury</string>

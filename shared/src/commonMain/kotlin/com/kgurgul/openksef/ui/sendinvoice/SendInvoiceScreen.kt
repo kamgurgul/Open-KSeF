@@ -53,6 +53,7 @@ import openksef.shared.generated.resources.send_invoice_gross_value
 import openksef.shared.generated.resources.send_invoice_issue_date
 import openksef.shared.generated.resources.send_invoice_item_index
 import openksef.shared.generated.resources.send_invoice_items
+import openksef.shared.generated.resources.send_invoice_ksef_number_label
 import openksef.shared.generated.resources.send_invoice_name
 import openksef.shared.generated.resources.send_invoice_net_value
 import openksef.shared.generated.resources.send_invoice_number
@@ -160,6 +161,18 @@ fun SendInvoiceScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
                     )
+                    if (uiState.sentKsefNumber.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(Res.string.send_invoice_ksef_number_label),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                        Text(
+                            text = uiState.sentKsefNumber,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
                 }
             },
             confirmButton = {
@@ -246,6 +259,14 @@ fun SendInvoiceScreen(
                 OutlinedTextField(
                     value = uiState.sellerAddress,
                     onValueChange = onSellerAddressChanged,
+                    isError =
+                        uiState.validationErrors.containsKey(
+                            SendInvoiceViewModel.FIELD_SELLER_ADDRESS
+                        ),
+                    supportingText =
+                        uiState.validationErrors[SendInvoiceViewModel.FIELD_SELLER_ADDRESS]?.let {
+                            { Text(it.asString()) }
+                        },
                     label = { Text(stringResource(Res.string.send_invoice_address)) },
                     modifier = Modifier.fillMaxWidth(),
                 )

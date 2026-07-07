@@ -279,10 +279,16 @@ class KsefRepositoryTest {
         assertEquals(Money.fromMajorUnits(1000), invoice.net)
     }
 
-    @Test
-    fun sendInvoice_opensOnlineSessionThenReturnsReferenceNumber() = runTest {
-        var openSessionCalled = false
-        val engine = MockEngine { request ->
+    /**
+     * MockEngine for the full send-invoice flow; [invoiceStatusResponses] are returned by the
+     * status endpoint one by one (the last one repeats for any further polls).
+     */
+    private fun sendInvoiceEngine(
+        vararg invoiceStatusResponses: String,
+        onOpenSession: () -> Unit = {},
+    ): MockEngine {
+        var statusCallCount = 0
+        return MockEngine { request ->
             val path = request.url.encodedPath
             when {
                 path.endsWith("/security/public-key-certificates") ->
@@ -294,7 +300,7 @@ class KsefRepositoryTest {
                     )
 
                 path.endsWith("/sessions/online") -> {
-                    openSessionCalled = true
+                    onOpenSession()
                     respond(
                         content =
                             """{"referenceNumber":"session-ref","validUntil":"2099-01-01T00:00:00Z"}""",
@@ -310,10 +316,30 @@ class KsefRepositoryTest {
                         headers = jsonHeaders,
                     )
 
+                path.endsWith("/sessions/session-ref/invoices/INV-REF-001") -> {
+                    val index = statusCallCount.coerceAtMost(invoiceStatusResponses.lastIndex)
+                    statusCallCount++
+                    respond(
+                        content = invoiceStatusResponses[index],
+                        status = HttpStatusCode.OK,
+                        headers = jsonHeaders,
+                    )
+                }
+
                 else ->
                     respond(content = "{}", status = HttpStatusCode.NotFound, headers = jsonHeaders)
             }
         }
+    }
+
+    @Test
+    fun sendInvoice_opensOnlineSessionThenReturnsKsefNumber() = runTest {
+        var openSessionCalled = false
+        val engine =
+            sendInvoiceEngine(
+                """{"referenceNumber":"INV-REF-001","ksefNumber":"1111111111-20240115-ABCDEF-12","status":{"code":200,"description":"Sukces"}}""",
+                onOpenSession = { openSessionCalled = true },
+            )
         val sessionHolder = SessionHolder().apply { update(accessToken = "active-token") }
         val client = buildTestClient(engine, sessionHolder)
         val api = KsefApi(client)
@@ -330,5 +356,46 @@ class KsefRepositoryTest {
         val sendResult = result.getOrNull()
         assertNotNull(sendResult)
         assertEquals("INV-REF-001", sendResult.referenceNumber)
+        assertEquals("1111111111-20240115-ABCDEF-12", sendResult.ksefNumber)
+    }
+
+    @Test
+    fun sendInvoice_pollsUntilProcessingFinishes() = runTest {
+        val engine =
+            sendInvoiceEngine(
+                """{"referenceNumber":"INV-REF-001","status":{"code":100,"description":"Przetwarzanie"}}""",
+                """{"referenceNumber":"INV-REF-001","status":{"code":100,"description":"Przetwarzanie"}}""",
+                """{"referenceNumber":"INV-REF-001","ksefNumber":"1111111111-20240115-ABCDEF-12","status":{"code":200,"description":"Sukces"}}""",
+            )
+        val sessionHolder = SessionHolder().apply { update(accessToken = "active-token") }
+        val client = buildTestClient(engine, sessionHolder)
+        val api = KsefApi(client)
+        val repository = KsefRepository(api, sessionHolder, FakeCrypto)
+
+        val result = repository.sendInvoice("<Faktura>test</Faktura>")
+
+        assertTrue(
+            result.isSuccess,
+            "Expected success but got: ${result.exceptionOrNull()?.message}",
+        )
+        assertEquals("1111111111-20240115-ABCDEF-12", result.getOrNull()?.ksefNumber)
+    }
+
+    @Test
+    fun sendInvoice_rejectedInvoice_returnsErrorWithDescription() = runTest {
+        val engine =
+            sendInvoiceEngine(
+                """{"referenceNumber":"INV-REF-001","status":{"code":440,"description":"Duplikat faktury","details":["Faktura o numerze KSeF: X została już przesłana"]}}"""
+            )
+        val sessionHolder = SessionHolder().apply { update(accessToken = "active-token") }
+        val client = buildTestClient(engine, sessionHolder)
+        val api = KsefApi(client)
+        val repository = KsefRepository(api, sessionHolder, FakeCrypto)
+
+        val result = repository.sendInvoice("<Faktura>test</Faktura>")
+
+        assertTrue(result.isFailure)
+        val message = result.exceptionOrNull()?.message.orEmpty()
+        assertTrue(message.contains("Duplikat faktury"), "Unexpected message: $message")
     }
 }

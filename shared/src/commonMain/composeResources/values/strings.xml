@@ -54,6 +54,7 @@
     <string name="send_invoice_sent_title">Invoice sent</string>
     <string name="send_invoice_sent_message">Invoice has been sent to KSeF.</string>
     <string name="send_invoice_reference_number_label">Reference number:</string>
+    <string name="send_invoice_ksef_number_label">KSeF number:</string>
     <string name="send_invoice_seller">Seller</string>
     <string name="send_invoice_buyer">Buyer</string>
     <string name="send_invoice_details">Invoice details</string>

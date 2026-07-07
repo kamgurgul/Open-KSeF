@@ -28,12 +28,12 @@ object InvoiceBuilder {
 
         return buildString {
             appendLine("""<?xml version="1.0" encoding="UTF-8"?>""")
-            appendLine("""<Faktura xmlns="http://crd.gov.pl/wzor/2023/06/29/12648/">""")
+            appendLine("""<Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">""")
             appendLine("""  <Naglowek>""")
             appendLine(
-                """    <KodFormularza kodSystemowy="FA (2)" wersjaSchemy="1-0E">FA</KodFormularza>"""
+                """    <KodFormularza kodSystemowy="FA (3)" wersjaSchemy="1-0E">FA</KodFormularza>"""
             )
-            appendLine("""    <WariantFormularza>2</WariantFormularza>""")
+            appendLine("""    <WariantFormularza>3</WariantFormularza>""")
             appendLine("""    <DataWytworzeniaFa>${data.issueDate}T00:00:00</DataWytworzeniaFa>""")
             appendLine("""    <SystemInfo>Open KSeF</SystemInfo>""")
             appendLine("""  </Naglowek>""")
@@ -42,12 +42,11 @@ object InvoiceBuilder {
             appendLine("""      <NIP>${data.sellerNip}</NIP>""")
             appendLine("""      <Nazwa>${escapeXml(data.sellerName)}</Nazwa>""")
             appendLine("""    </DaneIdentyfikacyjne>""")
-            if (data.sellerAddress.isNotBlank()) {
-                appendLine("""    <Adres>""")
-                appendLine("""      <KodKraju>PL</KodKraju>""")
-                appendLine("""      <AdresL1>${escapeXml(data.sellerAddress)}</AdresL1>""")
-                appendLine("""    </Adres>""")
-            }
+            // FA(3) requires the seller address.
+            appendLine("""    <Adres>""")
+            appendLine("""      <KodKraju>PL</KodKraju>""")
+            appendLine("""      <AdresL1>${escapeXml(data.sellerAddress)}</AdresL1>""")
+            appendLine("""    </Adres>""")
             appendLine("""  </Podmiot1>""")
             appendLine("""  <Podmiot2>""")
             appendLine("""    <DaneIdentyfikacyjne>""")
@@ -60,6 +59,10 @@ object InvoiceBuilder {
                 appendLine("""      <AdresL1>${escapeXml(data.buyerAddress)}</AdresL1>""")
                 appendLine("""    </Adres>""")
             }
+            // FA(3) markers: 2 = the buyer is neither a subordinate JST unit nor a VAT group
+            // member.
+            appendLine("""    <JST>2</JST>""")
+            appendLine("""    <GV>2</GV>""")
             appendLine("""  </Podmiot2>""")
             appendLine("""  <Fa>""")
             appendLine("""    <KodWaluty>${data.currency}</KodWaluty>""")
@@ -68,12 +71,25 @@ object InvoiceBuilder {
             appendLine("""    <P_13_1>${totalNet.toPlainString()}</P_13_1>""")
             appendLine("""    <P_14_1>${totalVat.toPlainString()}</P_14_1>""")
             appendLine("""    <P_15>${totalGross.toPlainString()}</P_15>""")
+            // Adnotacje requires the full set of markers; a plain domestic VAT invoice negates
+            // them all (2 = "no", 1 in the *N variants = "does not apply").
             appendLine("""    <Adnotacje>""")
             appendLine("""      <P_16>2</P_16>""")
             appendLine("""      <P_17>2</P_17>""")
             appendLine("""      <P_18>2</P_18>""")
             appendLine("""      <P_18A>2</P_18A>""")
+            appendLine("""      <Zwolnienie>""")
+            appendLine("""        <P_19N>1</P_19N>""")
+            appendLine("""      </Zwolnienie>""")
+            appendLine("""      <NoweSrodkiTransportu>""")
+            appendLine("""        <P_22N>1</P_22N>""")
+            appendLine("""      </NoweSrodkiTransportu>""")
+            appendLine("""      <P_23>2</P_23>""")
+            appendLine("""      <PMarzy>""")
+            appendLine("""        <P_PMarzyN>1</P_PMarzyN>""")
+            appendLine("""      </PMarzy>""")
             appendLine("""    </Adnotacje>""")
+            appendLine("""    <RodzajFaktury>VAT</RodzajFaktury>""")
 
             data.items.forEachIndexed { index, item ->
                 appendLine("""    <FaWiersz>""")
