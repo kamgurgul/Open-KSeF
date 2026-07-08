@@ -48,6 +48,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -147,7 +148,51 @@ class SendInvoiceViewModelTest {
         assertTrue(errors.containsKey("buyerNip"))
         assertTrue(errors.containsKey("buyerName"))
         assertTrue(errors.containsKey("invoiceNumber"))
+        assertNotNull(viewModel.uiState.value.error)
         assertFalse(viewModel.uiState.value.isLoading)
+    }
+
+    @Test
+    fun send_invalidIssueDate_setsValidationErrorAndSkipsSending() = runTest {
+        val viewModel =
+            createViewModel(SellerConfig(name = "ACME Sp. z o.o.", address = "ul. Testowa 1"))
+        collectUiState(viewModel)
+
+        viewModel.onBuyerNipChanged("2222222222")
+        viewModel.onBuyerNameChanged("Firma XYZ")
+        viewModel.onInvoiceNumberChanged("FV/2024/001")
+        viewModel.updateItem(
+            0,
+            InvoiceLineItemUi(description = "Usługa", quantity = "1", unitPrice = "100"),
+        )
+        viewModel.onIssueDateChanged("08.07.2026")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.send()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.validationErrors.containsKey("issueDate"))
+        assertNotNull(state.error)
+        assertFalse(state.isSent)
+        assertFalse(state.isLoading)
+    }
+
+    @Test
+    fun onIssueDateChanged_clearsIssueDateValidationError() = runTest {
+        val viewModel = createViewModel()
+        collectUiState(viewModel)
+
+        viewModel.onIssueDateChanged("not-a-date")
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.send()
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.validationErrors.containsKey("issueDate"))
+
+        viewModel.onIssueDateChanged("2026-07-08")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.validationErrors.containsKey("issueDate"))
     }
 
     @Test

@@ -107,6 +107,8 @@
     <string name="error_load_invoice">Failed to load invoice</string>
     <string name="error_required">Required</string>
     <string name="error_items_required">Add at least 1 item</string>
+    <string name="error_issue_date_invalid">Enter the date in YYYY-MM-DD format</string>
+    <string name="error_form_invalid">Cannot send the invoice — correct the highlighted fields</string>
     <string name="error_send_invoice">Failed to send invoice</string>
     <string name="error_export_pdf">Failed to export PDF</string>
     <string name="error_render_pdf">Failed to render PDF</string>

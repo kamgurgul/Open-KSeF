@@ -41,9 +41,12 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import openksef.shared.generated.resources.Res
+import openksef.shared.generated.resources.error_form_invalid
+import openksef.shared.generated.resources.error_issue_date_invalid
 import openksef.shared.generated.resources.error_items_required
 import openksef.shared.generated.resources.error_nip_invalid
 import openksef.shared.generated.resources.error_required
@@ -159,7 +162,9 @@ class SendInvoiceViewModel(
     }
 
     fun onIssueDateChanged(date: String) {
-        formState.update { it.copy(issueDate = date) }
+        formState.update {
+            it.copy(issueDate = date, validationErrors = it.validationErrors - FIELD_ISSUE_DATE)
+        }
     }
 
     fun addItem() {
@@ -267,12 +272,21 @@ class SendInvoiceViewModel(
         if (state.invoiceNumber.isBlank()) {
             errors[FIELD_INVOICE_NUMBER] = UiText.Resource(Res.string.error_required)
         }
+        // FA(3) requires ISO-8601 dates (YYYY-MM-DD) in P_1 and DataWytworzeniaFa.
+        if (!isValidIsoDate(state.issueDate)) {
+            errors[FIELD_ISSUE_DATE] = UiText.Resource(Res.string.error_issue_date_invalid)
+        }
         if (state.items.all { it.description.isBlank() }) {
             errors[FIELD_ITEMS] = UiText.Resource(Res.string.error_items_required)
         }
 
         if (errors.isNotEmpty()) {
-            formState.update { it.copy(validationErrors = errors) }
+            formState.update {
+                it.copy(
+                    validationErrors = errors,
+                    error = UiText.Resource(Res.string.error_form_invalid),
+                )
+            }
             return
         }
 
@@ -335,6 +349,9 @@ class SendInvoiceViewModel(
         formState.update { it.copy(error = null) }
     }
 
+    private fun isValidIsoDate(date: String): Boolean =
+        runCatching { LocalDate.parse(date) }.isSuccess
+
     private data class SellerEdits(val name: String? = null, val address: String? = null)
 
     companion object {
@@ -343,6 +360,7 @@ class SendInvoiceViewModel(
         const val FIELD_BUYER_NIP = "buyerNip"
         const val FIELD_BUYER_NAME = "buyerName"
         const val FIELD_INVOICE_NUMBER = "invoiceNumber"
+        const val FIELD_ISSUE_DATE = "issueDate"
         const val FIELD_ITEMS = "items"
     }
 }

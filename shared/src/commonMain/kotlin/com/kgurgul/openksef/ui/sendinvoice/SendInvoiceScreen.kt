@@ -332,6 +332,14 @@ fun SendInvoiceScreen(
                     value = uiState.issueDate,
                     onValueChange = onIssueDateChanged,
                     label = { Text(stringResource(Res.string.send_invoice_issue_date)) },
+                    isError =
+                        uiState.validationErrors.containsKey(
+                            SendInvoiceViewModel.FIELD_ISSUE_DATE
+                        ),
+                    supportingText =
+                        uiState.validationErrors[SendInvoiceViewModel.FIELD_ISSUE_DATE]?.let {
+                            { Text(it.asString()) }
+                        },
                     modifier = Modifier.fillMaxWidth(),
                 )
 

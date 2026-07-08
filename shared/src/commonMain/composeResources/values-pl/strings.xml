@@ -107,6 +107,8 @@
     <string name="error_load_invoice">Błąd pobierania faktury</string>
     <string name="error_required">Wymagane</string>
     <string name="error_items_required">Dodaj min. 1 pozycję</string>
+    <string name="error_issue_date_invalid">Podaj datę w formacie RRRR-MM-DD</string>
+    <string name="error_form_invalid">Nie można wysłać faktury — popraw zaznaczone pola</string>
     <string name="error_send_invoice">Błąd wysyłania faktury</string>
     <string name="error_export_pdf">Nie udało się wyeksportować PDF</string>
     <string name="error_render_pdf">Nie udało się wygenerować PDF</string>
