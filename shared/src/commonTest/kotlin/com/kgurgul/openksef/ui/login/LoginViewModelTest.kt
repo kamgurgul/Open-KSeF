@@ -23,6 +23,7 @@ import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.local.SecureTokenStorage
 import com.kgurgul.openksef.data.local.TokenStore
 import com.kgurgul.openksef.data.remote.KsefApi
+import com.kgurgul.openksef.data.remote.KsefAuthenticator
 import com.kgurgul.openksef.data.remote.KsefCrypto
 import com.kgurgul.openksef.data.repository.KsefRepository
 import com.kgurgul.openksef.domain.model.KsefEnvironment
@@ -48,6 +49,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -140,6 +142,59 @@ class LoginViewModelTest {
     }
 
     @Test
+    fun autoLogin_withSavedCredentials_signsInAutomatically() = runTest {
+        val sessionHolder = SessionHolder()
+        val viewModel =
+            createViewModel(
+                autoLogin = true,
+                savedNip = "1234567890",
+                savedToken = "saved-token",
+                sessionHolder = sessionHolder,
+            )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertIs<LoginEvent.LoginSuccess>(viewModel.events.first())
+        assertEquals("access-token", sessionHolder.accessToken)
+    }
+
+    @Test
+    fun autoLogin_withoutSavedCredentials_staysOnForm() = runTest {
+        val sessionHolder = SessionHolder()
+        val viewModel =
+            createViewModel(
+                autoLogin = true,
+                savedEnvironment = KsefEnvironment.PRODUCTION,
+                sessionHolder = sessionHolder,
+            )
+
+        // The saved environment shows up once the credentials load finished.
+        val state = viewModel.uiState.first { it.environment == KsefEnvironment.PRODUCTION }
+
+        assertFalse(state.isLoading)
+        assertEquals(null, sessionHolder.accessToken)
+    }
+
+    @Test
+    fun savedCredentials_withoutAutoLogin_onlyPrefillForm() = runTest {
+        val sessionHolder = SessionHolder()
+        val viewModel =
+            createViewModel(
+                autoLogin = false,
+                savedNip = "1234567890",
+                savedToken = "saved-token",
+                sessionHolder = sessionHolder,
+            )
+
+        val state = viewModel.uiState.first { it.nip.isNotEmpty() }
+
+        assertEquals("1234567890", state.nip)
+        assertEquals("saved-token", state.token)
+        assertTrue(state.rememberCredentials)
+        assertFalse(state.isLoading)
+        assertEquals(null, sessionHolder.accessToken)
+    }
+
+    @Test
     fun onEnvironmentChanged_updatesState() = runTest {
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -149,7 +204,13 @@ class LoginViewModelTest {
         assertEquals(KsefEnvironment.PRODUCTION, viewModel.uiState.value.environment)
     }
 
-    private fun createViewModel(): LoginViewModel {
+    private suspend fun createViewModel(
+        autoLogin: Boolean = false,
+        savedNip: String? = null,
+        savedToken: String? = null,
+        savedEnvironment: KsefEnvironment? = null,
+        sessionHolder: SessionHolder = SessionHolder(),
+    ): LoginViewModel {
         val engine = MockEngine { request ->
             val path = request.url.encodedPath
             when {
@@ -240,7 +301,6 @@ class LoginViewModelTest {
                 expectSuccess = false
             }
 
-        val sessionHolder = SessionHolder()
         val api = KsefApi(mockClient)
         val crypto =
             object : KsefCrypto {
@@ -250,15 +310,20 @@ class LoginViewModelTest {
 
                 override fun aesCbcEncrypt(data: ByteArray, key: ByteArray, iv: ByteArray) = data
             }
-        val repository = KsefRepository(api, sessionHolder, crypto)
+        val authenticator = KsefAuthenticator(mockClient, crypto)
+        val repository = KsefRepository(api, sessionHolder, crypto, authenticator)
 
         val tmpDir = FileSystem.SYSTEM_TEMPORARY_DIRECTORY
         val tmpPath = tmpDir / "test_prefs_${Random.nextInt()}.preferences_pb"
         val dataStore = PreferenceDataStoreFactory.createWithPath(produceFile = { tmpPath })
         val tokenStore = TokenStore(dataStore, InMemorySecureTokenStorage())
+        savedNip?.let { tokenStore.saveNip(it) }
+        savedToken?.let { tokenStore.saveToken(it) }
+        savedEnvironment?.let { tokenStore.saveEnvironment(it) }
 
         val dispatchers = TestDispatchersProvider(testDispatcher)
         return LoginViewModel(
+            autoLogin = autoLogin,
             initSessionInteractor = InitSessionInteractor(dispatchers, repository),
             setEnvironmentInteractor = SetEnvironmentInteractor(dispatchers, repository),
             getSavedCredentialsInteractor = GetSavedCredentialsInteractor(dispatchers, tokenStore),

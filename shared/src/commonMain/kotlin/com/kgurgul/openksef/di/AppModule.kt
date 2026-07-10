@@ -28,6 +28,7 @@ import com.kgurgul.openksef.data.local.db.getRoomDatabase
 import com.kgurgul.openksef.data.local.defaultSecureTokenStorage
 import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefApiClient
+import com.kgurgul.openksef.data.remote.KsefAuthenticator
 import com.kgurgul.openksef.data.remote.defaultKsefCrypto
 import com.kgurgul.openksef.data.repository.InvoiceTemplateRepository
 import com.kgurgul.openksef.data.repository.KsefRepository
@@ -83,9 +84,18 @@ val appModule = module {
     singleOf(::TokenStore)
     singleOf(::SessionHolder)
     singleOf(::SessionEventBus)
-    single { KsefApiClient.create(get(), get(), get()) }
-    singleOf(::KsefApi)
     single { defaultKsefCrypto() }
+    single { KsefAuthenticator.create(json = get(), crypto = get()) }
+    single {
+        KsefApiClient.create(
+            sessionHolder = get(),
+            json = get(),
+            sessionEventBus = get(),
+            tokenStore = get(),
+            authenticator = get(),
+        )
+    }
+    singleOf(::KsefApi)
     singleOf(::KsefRepository)
     single { getRoomDatabase(getDatabaseBuilder()) }
     single { get<AppDatabase>().invoiceTemplateDao() }
@@ -116,7 +126,7 @@ val appModule = module {
 
     // ViewModels
     viewModelOf(::MainViewModel)
-    viewModelOf(::LoginViewModel)
+    viewModel { params -> LoginViewModel(params.get(), get(), get(), get(), get()) }
     viewModelOf(::InvoiceListViewModel)
     viewModel { params -> InvoiceDetailViewModel(params.get(), get(), get(), get(), get()) }
     viewModelOf(::SendInvoiceViewModel)

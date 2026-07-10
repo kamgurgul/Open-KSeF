@@ -54,6 +54,7 @@ sealed interface LoginEvent {
 }
 
 class LoginViewModel(
+    private val autoLogin: Boolean,
     private val initSessionInteractor: InitSessionInteractor,
     private val setEnvironmentInteractor: SetEnvironmentInteractor,
     private val getSavedCredentialsInteractor: GetSavedCredentialsInteractor,
@@ -81,6 +82,11 @@ class LoginViewModel(
                     environment = saved.environment,
                     rememberCredentials = saved.nip != null,
                 )
+            }
+            // Sign in automatically when the user opted to remember the credentials. Skipped for
+            // logout / session-expiry redirects (autoLogin is true only on app start).
+            if (autoLogin && saved.nip != null && saved.token != null) {
+                login()
             }
         }
     }

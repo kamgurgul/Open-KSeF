@@ -18,15 +18,14 @@ package com.kgurgul.openksef.data.repository
 
 import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.remote.KsefApi
+import com.kgurgul.openksef.data.remote.KsefAuthenticator
 import com.kgurgul.openksef.data.remote.KsefCrypto
 import com.kgurgul.openksef.data.remote.model.*
+import com.kgurgul.openksef.data.remote.pickCertificate
 import com.kgurgul.openksef.domain.model.*
 import com.kgurgul.openksef.domain.money.Money
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
-import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 import kotlinx.coroutines.delay
 import org.kotlincrypto.hash.sha2.SHA256
 
@@ -34,95 +33,35 @@ class KsefRepository(
     private val api: KsefApi,
     private val sessionHolder: SessionHolder,
     private val crypto: KsefCrypto,
+    private val authenticator: KsefAuthenticator,
 ) {
 
     /**
-     * Runs the full token-based authentication flow: GET /security/public-key-certificates → POST
-     * /auth/challenge → encrypt(`token|timestampMs`) → POST /auth/ksef-token → poll GET /auth/{ref}
-     * → POST /auth/token/redeem.
-     *
-     * The KSeF API requires the token payload to be encrypted with the Ministry of Finance public
-     * key (RSA-OAEP-SHA256). The encryption uses the certificate marked with usage
-     * `KsefTokenEncryption` returned by `/security/public-key-certificates`.
+     * Runs the full token-based authentication flow (see [KsefAuthenticator]) and stores the
+     * resulting tokens in the session.
      */
-    @OptIn(ExperimentalEncodingApi::class)
     suspend fun initSession(nip: String, ksefToken: String): Result<SessionInfo> = runCatching {
-        val certificate =
-            pickCertificate(api.getPublicKeyCertificates(), CERT_USAGE_KSEF_TOKEN_ENCRYPTION)
-        val challenge = api.requestChallenge()
-
-        val payload = "$ksefToken|${challenge.timestampMs}".encodeToByteArray()
-        val certificateDer = Base64.decode(certificate.certificate)
-        val encryptedToken = Base64.encode(crypto.rsaOaepSha256Encrypt(payload, certificateDer))
-
-        val initResponse =
-            api.initTokenAuthentication(
-                InitTokenAuthenticationRequest(
-                    challenge = challenge.challenge,
-                    contextIdentifier = AuthenticationContextIdentifier(type = "Nip", value = nip),
-                    encryptedToken = encryptedToken,
-                )
+        val result =
+            authenticator.authenticate(
+                baseUrl = sessionHolder.baseUrl,
+                nip = nip,
+                ksefToken = ksefToken,
             )
-
         sessionHolder.update(
-            authReferenceNumber = initResponse.referenceNumber,
-            accessToken = initResponse.authenticationToken.token,
-        )
-
-        val tokens = waitForRedeem(initResponse.referenceNumber)
-        sessionHolder.update(
-            accessToken = tokens.accessToken.token,
-            refreshToken = tokens.refreshToken.token,
+            accessToken = result.accessToken,
+            refreshToken = result.refreshToken,
+            authReferenceNumber = result.referenceNumber,
             nip = nip,
         )
-        // The Auth plugin cached the temporary authentication token while polling auth status;
-        // drop it so the permanent access token is sent on subsequent requests.
+        // The Auth plugin may still hold a token from a previous session; drop it so the new
+        // access token is sent on subsequent requests.
         api.clearTokenCache()
 
         SessionInfo(
-            accessToken = tokens.accessToken.token,
-            referenceNumber = initResponse.referenceNumber,
+            accessToken = result.accessToken,
+            referenceNumber = result.referenceNumber,
             nip = nip,
         )
-    }
-
-    @OptIn(ExperimentalTime::class)
-    private fun pickCertificate(
-        certs: List<PublicKeyCertificate>,
-        usage: String,
-    ): PublicKeyCertificate {
-        val now = Clock.System.now()
-        fun PublicKeyCertificate.hasUsage() = this.usage.any { it.equals(usage, ignoreCase = true) }
-        val candidates = certs.filter { cert ->
-            cert.hasUsage() &&
-                runCatching {
-                        Instant.parse(cert.validFrom) <= now && now <= Instant.parse(cert.validTo)
-                    }
-                    .getOrDefault(true)
-        }
-        return candidates.firstOrNull()
-            ?: certs.firstOrNull { it.hasUsage() }
-            ?: error("No $usage certificate returned by /security/public-key-certificates")
-    }
-
-    private suspend fun waitForRedeem(authReferenceNumber: String): AuthenticationTokensResponse {
-        repeat(MAX_AUTH_POLL_ATTEMPTS) {
-            val status = api.getAuthenticationStatus(authReferenceNumber)
-            when (status.status.code) {
-                AUTH_STATUS_SUCCESS ->
-                    return api.redeemAccessToken(
-                        sessionHolder.accessToken
-                            ?: error("Authentication token missing while redeeming")
-                    )
-
-                AUTH_STATUS_IN_PROGRESS -> delay(AUTH_POLL_DELAY_MS)
-                else ->
-                    error(
-                        "Authentication failed: ${status.status.code} ${status.status.description}"
-                    )
-            }
-        }
-        error("Timed out waiting for authentication to complete")
     }
 
     suspend fun closeSession(): Result<Unit> = runCatching {
@@ -295,11 +234,6 @@ class KsefRepository(
         )
 
     companion object {
-        private const val AUTH_STATUS_IN_PROGRESS = 100
-        private const val AUTH_STATUS_SUCCESS = 200
-        private const val MAX_AUTH_POLL_ATTEMPTS = 30
-        private const val AUTH_POLL_DELAY_MS = 1_000L
-
         private const val INVOICE_STATUS_SUCCESS = 200
         private const val MAX_INVOICE_POLL_ATTEMPTS = 60
         private const val INVOICE_POLL_DELAY_MS = 1_000L
@@ -307,7 +241,6 @@ class KsefRepository(
         private const val AES_KEY_SIZE_BYTES = 32
         private const val AES_IV_SIZE_BYTES = 16
 
-        private const val CERT_USAGE_KSEF_TOKEN_ENCRYPTION = "KsefTokenEncryption"
         private const val CERT_USAGE_SYMMETRIC_KEY_ENCRYPTION = "SymmetricKeyEncryption"
 
         /** Form code for the FA(3) invoice schema produced by InvoiceBuilder. */

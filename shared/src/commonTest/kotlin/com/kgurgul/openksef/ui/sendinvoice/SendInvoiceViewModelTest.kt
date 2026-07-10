@@ -19,6 +19,7 @@ package com.kgurgul.openksef.ui.sendinvoice
 import com.kgurgul.openksef.common.TestDispatchersProvider
 import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.remote.KsefApi
+import com.kgurgul.openksef.data.remote.KsefAuthenticator
 import com.kgurgul.openksef.data.remote.KsefCrypto
 import com.kgurgul.openksef.data.repository.InvoiceTemplateRepository
 import com.kgurgul.openksef.data.repository.KsefRepository
@@ -429,7 +430,8 @@ class SendInvoiceViewModelTest {
 
                 override fun aesCbcEncrypt(data: ByteArray, key: ByteArray, iv: ByteArray) = data
             }
-        val repository = KsefRepository(api, sessionHolder, crypto)
+        val repository =
+            KsefRepository(api, sessionHolder, crypto, KsefAuthenticator(mockClient, crypto))
 
         val dispatchers = TestDispatchersProvider(testDispatcher)
         val templateRepository = FakeInvoiceTemplateRepository()

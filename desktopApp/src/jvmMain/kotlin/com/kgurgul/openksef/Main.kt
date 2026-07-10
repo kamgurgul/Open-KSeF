@@ -16,9 +16,14 @@
 
 package com.kgurgul.openksef
 
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.kgurgul.openksef.di.appModule
+import org.jetbrains.skia.Image
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 
@@ -27,5 +32,13 @@ fun main() {
         startKoin { modules(appModule) }
     }
 
-    application { Window(onCloseRequest = ::exitApplication, title = "Open KSeF") { App() } }
+    application {
+        val icon = remember { loadAppIcon() }
+        Window(onCloseRequest = ::exitApplication, title = "Open KSeF", icon = icon) { App() }
+    }
+}
+
+private fun loadAppIcon(): Painter {
+    val bytes = requireNotNull(object {}.javaClass.getResourceAsStream("/icon.png")).readBytes()
+    return BitmapPainter(Image.makeFromEncoded(bytes).toComposeImageBitmap())
 }

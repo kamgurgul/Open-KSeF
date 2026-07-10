@@ -18,6 +18,7 @@ package com.kgurgul.openksef.data.repository
 
 import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.remote.KsefApi
+import com.kgurgul.openksef.data.remote.KsefAuthenticator
 import com.kgurgul.openksef.data.remote.KsefCrypto
 import com.kgurgul.openksef.domain.money.Money
 import io.ktor.client.HttpClient
@@ -188,7 +189,8 @@ class KsefRepositoryTest {
         val sessionHolder = SessionHolder()
         val client = buildTestClient(engine, sessionHolder)
         val api = KsefApi(client)
-        val repository = KsefRepository(api, sessionHolder, FakeCrypto)
+        val repository =
+            KsefRepository(api, sessionHolder, FakeCrypto, KsefAuthenticator(client, FakeCrypto))
 
         val result = repository.initSession("1234567890", "encrypted-token")
 
@@ -217,7 +219,8 @@ class KsefRepositoryTest {
         val sessionHolder = SessionHolder()
         val client = buildTestClient(engine, sessionHolder)
         val api = KsefApi(client)
-        val repository = KsefRepository(api, sessionHolder, FakeCrypto)
+        val repository =
+            KsefRepository(api, sessionHolder, FakeCrypto, KsefAuthenticator(client, FakeCrypto))
 
         val result = repository.initSession("1234567890", "encrypted-token")
 
@@ -262,7 +265,8 @@ class KsefRepositoryTest {
         val sessionHolder = SessionHolder().apply { update(accessToken = "active-token") }
         val client = buildTestClient(engine, sessionHolder)
         val api = KsefApi(client)
-        val repository = KsefRepository(api, sessionHolder, FakeCrypto)
+        val repository =
+            KsefRepository(api, sessionHolder, FakeCrypto, KsefAuthenticator(client, FakeCrypto))
 
         val result = repository.getInvoices("2024-01-01", "2024-01-31")
 
@@ -343,7 +347,8 @@ class KsefRepositoryTest {
         val sessionHolder = SessionHolder().apply { update(accessToken = "active-token") }
         val client = buildTestClient(engine, sessionHolder)
         val api = KsefApi(client)
-        val repository = KsefRepository(api, sessionHolder, FakeCrypto)
+        val repository =
+            KsefRepository(api, sessionHolder, FakeCrypto, KsefAuthenticator(client, FakeCrypto))
 
         val result = repository.sendInvoice("<Faktura>test</Faktura>")
 
@@ -370,7 +375,8 @@ class KsefRepositoryTest {
         val sessionHolder = SessionHolder().apply { update(accessToken = "active-token") }
         val client = buildTestClient(engine, sessionHolder)
         val api = KsefApi(client)
-        val repository = KsefRepository(api, sessionHolder, FakeCrypto)
+        val repository =
+            KsefRepository(api, sessionHolder, FakeCrypto, KsefAuthenticator(client, FakeCrypto))
 
         val result = repository.sendInvoice("<Faktura>test</Faktura>")
 
@@ -390,7 +396,8 @@ class KsefRepositoryTest {
         val sessionHolder = SessionHolder().apply { update(accessToken = "active-token") }
         val client = buildTestClient(engine, sessionHolder)
         val api = KsefApi(client)
-        val repository = KsefRepository(api, sessionHolder, FakeCrypto)
+        val repository =
+            KsefRepository(api, sessionHolder, FakeCrypto, KsefAuthenticator(client, FakeCrypto))
 
         val result = repository.sendInvoice("<Faktura>test</Faktura>")
 

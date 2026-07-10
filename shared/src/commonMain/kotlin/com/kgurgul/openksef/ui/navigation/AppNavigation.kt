@@ -43,7 +43,10 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 // Navigation keys
-@Serializable data object LoginKey : NavKey
+/** [autoLogin] is true only for the app-start entry, so remembered credentials sign in
+ * automatically once — logout and session-expiry redirects show the form instead. */
+@Serializable
+data class LoginKey(val autoLogin: Boolean = false) : NavKey
 
 @Serializable data object InvoiceListKey : NavKey
 
@@ -57,7 +60,7 @@ import org.koin.core.parameter.parametersOf
 
 @Composable
 fun AppNavigation() {
-    val backStack = remember { mutableStateListOf<Any>(LoginKey) }
+    val backStack = remember { mutableStateListOf<Any>(LoginKey(autoLogin = true)) }
 
     val mainViewModel = koinViewModel<MainViewModel>()
 
@@ -65,7 +68,7 @@ fun AppNavigation() {
         when (event) {
             MainEvent.SessionExpired -> {
                 backStack.clear()
-                backStack.add(LoginKey)
+                backStack.add(LoginKey())
             }
         }
     }
@@ -80,8 +83,9 @@ fun AppNavigation() {
             ),
         entryProvider =
             entryProvider {
-                entry<LoginKey> {
-                    val viewModel = koinViewModel<LoginViewModel>()
+                entry<LoginKey> { key ->
+                    val viewModel =
+                        koinViewModel<LoginViewModel> { parametersOf(key.autoLogin) }
                     LoginScreen(
                         viewModel = viewModel,
                         onLoginSuccess = {
@@ -100,7 +104,7 @@ fun AppNavigation() {
                         onSettingsClick = { backStack.add(SettingsKey) },
                         onLoggedOut = {
                             backStack.clear()
-                            backStack.add(LoginKey)
+                            backStack.add(LoginKey())
                         },
                     )
                 }

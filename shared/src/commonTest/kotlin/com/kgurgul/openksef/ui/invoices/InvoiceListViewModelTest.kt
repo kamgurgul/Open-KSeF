@@ -19,6 +19,7 @@ package com.kgurgul.openksef.ui.invoices
 import com.kgurgul.openksef.common.TestDispatchersProvider
 import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.remote.KsefApi
+import com.kgurgul.openksef.data.remote.KsefAuthenticator
 import com.kgurgul.openksef.data.remote.KsefCrypto
 import com.kgurgul.openksef.data.repository.KsefRepository
 import com.kgurgul.openksef.domain.result.CloseSessionInteractor
@@ -256,7 +257,13 @@ class InvoiceListViewModelTest {
 
                 override fun aesCbcEncrypt(data: ByteArray, key: ByteArray, iv: ByteArray) = data
             }
-        val repository = KsefRepository(KsefApi(client), sessionHolder, crypto)
+        val repository =
+            KsefRepository(
+                KsefApi(client),
+                sessionHolder,
+                crypto,
+                KsefAuthenticator(client, crypto),
+            )
         val dispatchers = TestDispatchersProvider(testDispatcher)
         return InvoiceListViewModel(
             getInvoicesInteractor = GetInvoicesInteractor(dispatchers, repository),
