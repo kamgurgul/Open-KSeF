@@ -24,10 +24,21 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.kgurgul.openksef"
+            packageName = "OpenKSeF"
             packageVersion = "1.0.0"
 
-            macOS { iconFile.set(project.file("icons/icon.icns")) }
+            macOS {
+                bundleID = "com.kgurgul.openksef"
+                iconFile.set(project.file("icons/icon.icns"))
+
+                val withNotarization = project.findProperty("macOsNotarization")
+                    .toString()
+                    .toBoolean()
+                signing {
+                    sign.set(withNotarization)
+                    identity.set("Kamil Gurgul")
+                }
+            }
             windows { iconFile.set(project.file("icons/icon.ico")) }
             linux { iconFile.set(project.file("icons/icon.png")) }
         }

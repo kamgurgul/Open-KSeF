@@ -135,9 +135,7 @@ fun LoginScreen(
                             imeAction = ImeAction.Next,
                         ),
                     keyboardActions =
-                        KeyboardActions(
-                            onNext = { focusManager.moveFocus(FocusDirection.Down) },
-                        ),
+                        KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
                     modifier = Modifier.fillMaxWidth(),
                 )
 
@@ -155,7 +153,7 @@ fun LoginScreen(
                             onDone = {
                                 focusManager.clearFocus()
                                 onLoginClick()
-                            },
+                            }
                         ),
                     modifier = Modifier.fillMaxWidth(),
                 )

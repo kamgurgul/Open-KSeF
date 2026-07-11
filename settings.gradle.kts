@@ -33,5 +33,6 @@ plugins {
 }
 
 include(":androidApp")
+include(":androidApp:baselineprofile")
 include(":desktopApp")
 include(":shared")

@@ -176,10 +176,10 @@ internal fun pickCertificate(
     fun PublicKeyCertificate.hasUsage() = this.usage.any { it.equals(usage, ignoreCase = true) }
     val candidates = certs.filter { cert ->
         cert.hasUsage() &&
-                runCatching {
+            runCatching {
                     Instant.parse(cert.validFrom) <= now && now <= Instant.parse(cert.validTo)
                 }
-                    .getOrDefault(true)
+                .getOrDefault(true)
     }
     return candidates.firstOrNull()
         ?: certs.firstOrNull { it.hasUsage() }

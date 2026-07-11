@@ -1,0 +1,278 @@
+name: Desktop release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version'
+        required: true
+
+jobs:
+  code_quality:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'corretto'
+          cache: gradle
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Unit tests
+        run: ./gradlew allTests
+      - name: Static checks
+        run: ./gradlew spotlessCheck
+  build_msi:
+    needs: code_quality
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'corretto'
+          cache: gradle
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Build MSI
+        run: |
+          ./gradlew :desktopApp:packageReleaseMsi
+      - name: Upload MSI
+        uses: actions/upload-artifact@v7
+        with:
+          name: OpenKSeF-${{ github.event.inputs.version }}.msi
+          path: desktopApp/build/compose/binaries/main-release/msi/*.msi
+      - name: Install MSIX Packaging Tool
+        run: |
+          winget install --id Microsoft.MSIXPackagingTool --accept-source-agreements --accept-package-agreements
+        shell: pwsh
+      - name: Create MSIX conversion template
+        run: |
+          $msiPath = (Get-ChildItem -Path "desktopApp/build/compose/binaries/main-release/msi/*.msi" | Select-Object -First 1).FullName
+          @"
+          <MsixPackagingToolTemplate
+            xmlns="http://schemas.microsoft.com/appx/msixpackagingtool/template/2018">
+            <Installer Path="$msiPath" />
+            <PackageInformation
+              PackageName="${{ secrets.MSIX_PACKAGE_NAME }}"
+              PackageDisplayName="${{ secrets.MSIX_PACKAGE_DISPLAY_NAME }}"
+              PublisherName="${{ secrets.MSIX_PUBLISHER_NAME }}"
+              PublisherDisplayName="${{ secrets.MSIX_PUBLISHER_DISPLAY_NAME }}"
+              Version="${{ github.event.inputs.version }}.0"
+            />
+            <SaveLocation PackagePath="${{ github.workspace }}\output" />
+          </MsixPackagingToolTemplate>
+          "@ | Out-File -FilePath template.xml -Encoding utf8
+        shell: pwsh
+      - name: Convert MSI to MSIX
+        id: convert_msix
+        timeout-minutes: 30
+        run: |
+          New-Item -ItemType Directory -Force -Path output
+          $attempts = 3
+          for ($i = 1; $i -le $attempts; $i++) {
+            MsixPackagingTool.exe create-package --template template.xml
+            if ($LASTEXITCODE -eq 0) { break }
+            if ($i -eq $attempts) {
+              Write-Error "MSIX conversion failed after $attempts attempts."
+              exit 1
+            }
+          }
+        shell: pwsh
+      - name: Show MSIX Packaging Tool logs on failure
+        if: failure()
+        run: |
+          $logPath = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.MSIXPackagingTool_8wekyb3d8bbwe\LocalState\DiagOutputDir\Logs\Log.txt"
+          if (Test-Path $logPath) {
+            Write-Host "MSIX Packaging Tool log: $logPath"
+            Get-Content $logPath -Tail 400
+          } else {
+            Write-Warning "MSIX Packaging Tool log not found at expected path: $logPath"
+          }
+        shell: pwsh
+      - name: Assert MSIX artifact exists
+        run: |
+          $msix = Get-ChildItem -Path "output/*.msix" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $msix) {
+            Write-Error "MSIX conversion finished without producing an .msix file."
+            exit 1
+          }
+        shell: pwsh
+      - name: Upload MSIX
+        uses: actions/upload-artifact@v7
+        with:
+          name: OpenKSeF-${{ github.event.inputs.version }}.msix
+          path: output/*.msix
+
+  build_linux_x64_uber_jar:
+    needs: code_quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'corretto'
+          cache: gradle
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Build Uber JAR
+        run: ./gradlew :desktopApp:packageReleaseUberJarForCurrentOS
+      - name: Upload Uber JAR
+        uses: actions/upload-artifact@v7
+        with:
+          name: OpenKSeF-linux-x64-${{ github.event.inputs.version }}-release.jar
+          path: desktopApp/build/compose/jars/*.jar
+
+  build_mac_uber_jar:
+    needs: code_quality
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'corretto'
+          cache: gradle
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Build Uber JAR
+        run: ./gradlew :desktopApp:packageReleaseUberJarForCurrentOS
+      - name: Upload Uber JAR
+        uses: actions/upload-artifact@v7
+        with:
+          name: OpenKSeF-macos-arm64-${{ github.event.inputs.version }}-release.jar
+          path: desktopApp/build/compose/jars/*.jar
+
+  build_mac_dmg:
+    needs: code_quality
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - runner: macos-26
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x64
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: set up JDK 18
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: 18
+          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-home-cache-cleanup: true
+          cache-encryption-key: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
+
+      - name: Cache KMP tooling
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.konan
+          key: ${{ runner.os }}-v1-${{ hashFiles('gradle/libs.versions.toml') }}
+
+      - name: Import certs
+        uses: apple-actions/import-codesign-certs@v7
+        with:
+          p12-file-base64: ${{ secrets.MAC_NOTARIZATION_CERT }}
+          p12-password: ${{ secrets.MAC_NOTARIZATION_CERT_PASS }}
+
+      - name: Create path variables
+        id: path_variables
+        run: |
+          name="OpenKSeF-${{ matrix.arch }}-${{ github.event.inputs.version }}.dmg"
+          path="desktopApp/build/compose/binaries/main-release/dmg/OpenKSeF-${{ github.event.inputs.version }}.dmg"
+          echo "RELEASE_NAME=$name" >> $GITHUB_ENV
+          echo "RELEASE_PATH=$path" >> $GITHUB_ENV
+
+      - name: Create and notarize DMG
+        run: |
+          ./gradlew desktopApp:notarizeReleaseDmg -PmacOsNotarization=true \
+          -Pcompose.desktop.mac.notarization.appleID=$MAC_NOTARIZATION_ID \
+          -Pcompose.desktop.mac.notarization.password=$MAC_NOTARIZATION_PWD \
+          -Pcompose.desktop.mac.notarization.teamID=$MAC_APPSTORE_TEAM_ID \
+          --no-configuration-cache
+        env:
+          MAC_NOTARIZATION_ID: ${{ secrets.MAC_NOTARIZATION_ID }}
+          MAC_NOTARIZATION_PWD: ${{ secrets.MAC_NOTARIZATION_PWD }}
+          MAC_APPSTORE_TEAM_ID: ${{ secrets.MAC_APPSTORE_TEAM_ID }}
+          RELEASE_PATH: ${{ env.RELEASE_PATH }}
+
+      - name: Show notarization logs on failure
+        if: failure()
+        run: |
+          echo "=== notarizeReleaseDmg stdout logs ==="
+          find desktopApp/build/compose/logs/notarizeReleaseDmg -name "*-out.txt" 2>/dev/null | sort | while read f; do
+            echo "--- $f ---"
+            cat "$f"
+          done
+          echo "=== notarizeReleaseDmg stderr logs ==="
+          find desktopApp/build/compose/logs/notarizeReleaseDmg -name "*-err.txt" 2>/dev/null | sort | while read f; do
+            echo "--- $f ---"
+            cat "$f"
+          done
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.RELEASE_NAME }}
+          path: ${{ env.RELEASE_PATH }}
+
+  tag_and_create_release:
+    needs: [ build_msi, build_linux_x64_uber_jar, build_mac_dmg, build_mac_uber_jar ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download MSI
+        uses: actions/download-artifact@v8
+        with:
+          name: OpenKSeF-${{ github.event.inputs.version }}.msi
+      - name: Download MSIX
+        uses: actions/download-artifact@v8
+        with:
+          name: OpenKSeF-${{ github.event.inputs.version }}.msix
+      - name: Download Linux x64 Uber JAR
+        uses: actions/download-artifact@v8
+        with:
+          name: OpenKSeF-linux-x64-${{ github.event.inputs.version }}-release.jar
+      - name: Download Mac x64 DMG
+        uses: actions/download-artifact@v8
+        with:
+          name: OpenKSeF-x64-${{ github.event.inputs.version }}.dmg
+      - name: Rename Mac x64 DMG file
+        run: mv OpenKSeF-${{ github.event.inputs.version }}.dmg OpenKSeF-macos-x64-${{ github.event.inputs.version }}.dmg
+      - name: Download Mac arm64 DMG
+        uses: actions/download-artifact@v8
+        with:
+          name: OpenKSeF-arm64-${{ github.event.inputs.version }}.dmg
+      - name: Rename Mac arm64 DMG file
+        run: mv OpenKSeF-${{ github.event.inputs.version }}.dmg OpenKSeF-macos-arm64-${{ github.event.inputs.version }}.dmg
+      - name: Download Mac OS Uber JAR
+        uses: actions/download-artifact@v8
+        with:
+          name: OpenKSeF-macos-arm64-${{ github.event.inputs.version }}-release.jar
+      - name: Tag Release
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag jvm-${{ github.event.inputs.version }}
+          git push origin jvm-${{ github.event.inputs.version }}
+      - name: Create Release
+        id: create_release
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          artifacts: "*.msi, *.msix, *.jar, *.dmg"
+          draft: true
+          name: "[JVM] ${{ github.event.inputs.version }}"
+          tag: jvm-${{ github.event.inputs.version }}

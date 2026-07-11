@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.kover)
     alias(libs.plugins.ksp)
     alias(libs.plugins.androidxRoom)
 }
@@ -100,6 +101,20 @@ kotlin {
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
+        }
+    }
+}
+
+kover {
+    reports {
+        total {
+            html {
+                htmlDir = layout.buildDirectory.dir("coverage-report/html")
+            }
+
+            xml {
+                xmlFile = layout.buildDirectory.file("coverage-report/result.xml")
+            }
         }
     }
 }

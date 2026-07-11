@@ -75,8 +75,7 @@ object KsefApiClient {
                                         contentType(ContentType.Application.Json)
                                     }
                                 if (response.status.isSuccess()) {
-                                    val tokens =
-                                        response.body<AuthenticationTokenRefreshResponse>()
+                                    val tokens = response.body<AuthenticationTokenRefreshResponse>()
                                     sessionHolder.update(accessToken = tokens.accessToken.token)
                                     return@refreshTokens BearerTokens(
                                         accessToken = tokens.accessToken.token,
@@ -98,9 +97,9 @@ object KsefApiClient {
 
     /**
      * Runs the full authentication flow again with the credentials remembered at login (the user
-     * ticked "remember"), so an expired refresh token signs the user back in transparently.
-     * Returns fresh tokens, or null — after clearing the session and signalling expiry — when
-     * nothing is remembered or the re-authentication itself fails.
+     * ticked "remember"), so an expired refresh token signs the user back in transparently. Returns
+     * fresh tokens, or null — after clearing the session and signalling expiry — when nothing is
+     * remembered or the re-authentication itself fails.
      */
     private suspend fun reauthenticate(
         sessionHolder: SessionHolder,

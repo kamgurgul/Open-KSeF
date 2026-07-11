@@ -134,7 +134,7 @@ class KsefRepository(
                     val details = response.status.details.orEmpty().joinToString(" ")
                     error(
                         "Invoice rejected: ${response.status.description}" +
-                                if (details.isBlank()) "" else " $details"
+                            if (details.isBlank()) "" else " $details"
                     )
                 }
             }

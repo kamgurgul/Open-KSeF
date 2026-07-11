@@ -349,8 +349,10 @@ class SendInvoiceViewModel(
         formState.update { it.copy(error = null) }
     }
 
-    private fun isValidIsoDate(date: String): Boolean =
-        runCatching { LocalDate.parse(date) }.isSuccess
+    private fun isValidIsoDate(date: String): Boolean = runCatching {
+        LocalDate.parse(date)
+    }
+        .isSuccess
 
     private data class SellerEdits(val name: String? = null, val address: String? = null)
 

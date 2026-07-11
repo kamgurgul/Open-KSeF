@@ -1,0 +1,192 @@
+name: Android release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version'
+        required: true
+
+jobs:
+  unit_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'corretto'
+          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Unit tests
+        run: ./gradlew allTests
+
+      - name: Generate code coverage
+        run: ./gradlew shared:koverXmlReport
+
+      - name: Upload test coverage
+        uses: actions/upload-artifact@v7
+        with:
+          name: code-coverage.xml
+          path: shared/build/coverage-report/result.xml
+
+      - name: Static checks
+        run: ./gradlew spotlessCheck
+  build:
+    needs: unit_tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        format: [
+          {
+            type: "apk",
+            command: "androidApp:assembleRelease
+            -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=BaselineProfile
+            -Pandroid.testoptions.manageddevices.emulator.gpu=\"swiftshader_indirect\"
+            -Pandroid.experimental.testOptions.managedDevices.emulator.showKernelLogging=true
+            -Pandroid.experimental.androidTest.numManagedDeviceShards=1
+            -Pandroid.experimental.testOptions.managedDevices.maxConcurrentDevices=1
+            --no-configuration-cache",
+            output: "apk"
+          },
+          {
+            type: "aab",
+            command: "androidApp:generateReleaseBaseline
+            -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=BaselineProfile
+            -Pandroid.testoptions.manageddevices.emulator.gpu=\"swiftshader_indirect\"
+            -Pandroid.experimental.testOptions.managedDevices.emulator.showKernelLogging=true
+            -Pandroid.experimental.androidTest.numManagedDeviceShards=1
+            -Pandroid.experimental.testOptions.managedDevices.maxConcurrentDevices=1
+            --no-configuration-cache
+            androidApp:bundleRelease",
+            output: "bundle"
+          }
+        ]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'corretto'
+          cache: gradle
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Clean GMD
+        run: ./gradlew cleanManagedDevices --unused-only
+
+      - name: Decode Keystore
+        env:
+          ENCODED_KEYSTORE: ${{ secrets.KEYSTORE_ENCODED }}
+        run: |
+          echo $ENCODED_KEYSTORE > keystore-b64.txt
+          base64 -d keystore-b64.txt > ./androidApp/keystore.jks
+
+      - name: Build release
+        env:
+          KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+          KEYSTORE_PATH: keystore.jks
+        run: ./gradlew ${{ matrix.format.command }}
+
+      - name: Upload Build
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-release.${{ matrix.format.type }}
+          path: androidApp/build/outputs/${{ matrix.format.output }}/release/*.${{ matrix.format.type }}
+
+      - name: Upload mapping folder
+        uses: actions/upload-artifact@v7
+        with:
+          name: mapping-${{ matrix.format.type }}
+          path: androidApp/build/outputs/mapping/
+
+      - name: Set up Ruby
+        if: matrix.format.type == 'aab'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.5'
+
+      - name: Install fastlane
+        if: matrix.format.type == 'aab'
+        run: gem install fastlane -NV
+
+      - name: Write Play Store service account JSON
+        if: matrix.format.type == 'aab'
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: echo "$GOOGLE_SERVICE_ACCOUNT_JSON" > play-service-account.json
+
+      - name: Upload AAB to Play Store internal track
+        if: matrix.format.type == 'aab'
+        run: |
+          AAB_PATH=$(ls androidApp/build/outputs/bundle/release/*.aab | head -n 1)
+          fastlane android internal aab:"$AAB_PATH" json_key:play-service-account.json
+
+  release:
+    needs: build
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Tag Release
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag android-${{ github.event.inputs.version }}
+          git push origin android-${{ github.event.inputs.version }}
+
+      - name: Download APK
+        uses: actions/download-artifact@v8
+        with:
+          name: app-release.apk
+
+      - name: Download APK mapping
+        uses: actions/download-artifact@v8
+        with:
+          name: mapping-apk
+          path: mapping-apk
+
+      - name: Zip APK mapping
+        run: |
+          zip -r mapping-apk.zip mapping-apk/
+
+      - name: Download AAB
+        uses: actions/download-artifact@v8
+        with:
+          name: app-release.aab
+
+      - name: Download AAB mapping
+        uses: actions/download-artifact@v8
+        with:
+          name: mapping-aab
+          path: mapping-aab
+
+      - name: Zip AAB mapping
+        run: |
+          zip -r mapping-aab.zip mapping-aab/
+
+      - name: Create Release
+        id: create_release
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          artifacts: "*.apk,*.aab,mapping-apk.zip,mapping-aab.zip"
+          draft: true
+          name: "[Android] ${{ github.event.inputs.version }}"
+          tag: android-${{ github.event.inputs.version }}

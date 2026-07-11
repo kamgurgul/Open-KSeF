@@ -5,6 +5,7 @@ import kotlin.apply
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.baselineprofile)
 }
 
 android {
@@ -63,12 +64,18 @@ android {
     }
 }
 
+baselineProfile {
+    saveInSrc = true
+}
+
 dependencies {
     implementation(projects.shared)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.profileinstaller)
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
+    "baselineProfile"(projects.androidApp.baselineprofile)
 }
 
 object AndroidSigningConfig {

@@ -393,11 +393,12 @@ class SendInvoiceViewModelTest {
                         headers = jsonHeaders,
                     )
 
-                else -> respond(
-                    content = "{}",
-                    status = HttpStatusCode.NotFound,
-                    headers = jsonHeaders
-                )
+                else ->
+                    respond(
+                        content = "{}",
+                        status = HttpStatusCode.NotFound,
+                        headers = jsonHeaders,
+                    )
             }
         }
         val mockClient =
