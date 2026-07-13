@@ -28,6 +28,10 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
+      - name: Create GoogleService-Info.plist
+        env:
+          IOS_FIREBASE_CONFIG: ${{ secrets.IOS_FIREBASE_CONFIG }}
+        run: echo "$IOS_FIREBASE_CONFIG" | base64 -d > iosApp/iosApp/GoogleService-Info.plist
       - name: set up JDK 17
         uses: actions/setup-java@v5
         with:

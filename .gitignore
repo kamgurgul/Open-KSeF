@@ -22,3 +22,8 @@ node_modules/
 shared/build
 androidApp/build
 desktopApp/build
+
+google-services.json
+GoogleService-Info.plist
+firebase-adminsdk*.json
+.firebaserc
