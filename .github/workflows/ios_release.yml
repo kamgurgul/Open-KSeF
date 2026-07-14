@@ -25,9 +25,30 @@ jobs:
         run: ./gradlew spotlessCheck
   build_and_release:
     needs: code_quality
+    permissions:
+      contents: write
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Tag release
+        id: tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          NEW_TAG="ios-${{ github.event.inputs.version }}"
+
+          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
+            echo "Tag $NEW_TAG already exists, skipping tagging but continuing the release."
+          else
+            git tag "$NEW_TAG"
+            git push origin "$NEW_TAG"
+          fi
+
+          HIGHEST_VERSION=$(git tag --list 'ios-*' | sed 's/^ios-//' | sort -V | tail -n 1)
+          echo "version=$HIGHEST_VERSION" >> "$GITHUB_OUTPUT"
       - name: Create GoogleService-Info.plist
         env:
           IOS_FIREBASE_CONFIG: ${{ secrets.IOS_FIREBASE_CONFIG }}
@@ -83,6 +104,8 @@ jobs:
             PRODUCT_BUNDLE_IDENTIFIER="${{ secrets.IOS_BUNDLE_ID }}" \
             CODE_SIGN_STYLE="Manual" \
             PROVISIONING_PROFILE_SPECIFIER="${{ secrets.IOS_DEV_PROVISIONING_PROFILE_NAME }}" \
+            MARKETING_VERSION="${{ steps.tag.outputs.version }}" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
             archive
       - name: "Generate ExportOptions.plist"
         run: |
@@ -130,9 +153,3 @@ jobs:
           issuer-id: ${{ secrets.IOS_APPSTORE_ISSUER_ID }}
           api-key-id: ${{ secrets.IOS_APPSTORE_KEY_ID }}
           api-private-key: ${{ secrets.IOS_APPSTORE_PRIVATE_KEY }}
-      - name: Tag Release
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git tag ios-${{ github.event.inputs.version }}
-          git push origin ios-${{ github.event.inputs.version }}
