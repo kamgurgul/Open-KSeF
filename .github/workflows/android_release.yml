@@ -17,7 +17,6 @@ jobs:
         with:
           java-version: '17'
           distribution: 'corretto'
-          cache: gradle
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
@@ -103,7 +102,6 @@ jobs:
         with:
           java-version: '17'
           distribution: 'corretto'
-          cache: gradle
 
       - name: Enable KVM
         run: |

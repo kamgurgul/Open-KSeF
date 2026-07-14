@@ -16,7 +16,6 @@ jobs:
         with:
           java-version: '17'
           distribution: 'corretto'
-          cache: gradle
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
       - name: Unit tests
@@ -33,7 +32,6 @@ jobs:
         with:
           java-version: '17'
           distribution: 'corretto'
-          cache: gradle
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
       - name: Build MSI
@@ -116,7 +114,6 @@ jobs:
         with:
           java-version: '17'
           distribution: 'corretto'
-          cache: gradle
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
       - name: Build Uber JAR
@@ -137,7 +134,6 @@ jobs:
         with:
           java-version: '17'
           distribution: 'corretto'
-          cache: gradle
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
       - name: Build Uber JAR
@@ -166,7 +162,6 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: 18
-          cache: gradle
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
