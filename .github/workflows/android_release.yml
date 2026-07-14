@@ -36,8 +36,37 @@ jobs:
 
       - name: Static checks
         run: ./gradlew spotlessCheck
-  build:
+  tag:
     needs: unit_tests
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Tag release
+        id: tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          NEW_TAG="android-${{ github.event.inputs.version }}"
+
+          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
+            echo "Tag $NEW_TAG already exists, skipping tagging but continuing the release."
+          else
+            git tag "$NEW_TAG"
+            git push origin "$NEW_TAG"
+          fi
+
+          HIGHEST_VERSION=$(git tag --list 'android-*' | sed 's/^android-//' | sort -V | tail -n 1)
+          echo "version=$HIGHEST_VERSION" >> "$GITHUB_OUTPUT"
+  build:
+    needs: tag
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -100,6 +129,8 @@ jobs:
           KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
           KEYSTORE_PATH: keystore.jks
+          VERSION_NAME: ${{ needs.tag.outputs.version }}
+          VERSION_CODE: ${{ github.run_number }}
         run: ./gradlew ${{ matrix.format.command }}
 
       - name: Upload Build
@@ -137,19 +168,12 @@ jobs:
           fastlane android internal aab:"$AAB_PATH" json_key:play-service-account.json
 
   release:
-    needs: build
+    needs: [tag, build]
     permissions:
       contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-
-      - name: Tag Release
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git tag android-${{ github.event.inputs.version }}
-          git push origin android-${{ github.event.inputs.version }}
 
       - name: Download APK
         uses: actions/download-artifact@v8
@@ -188,5 +212,5 @@ jobs:
           allowUpdates: true
           artifacts: "*.apk,*.aab,mapping-apk.zip,mapping-aab.zip"
           draft: true
-          name: "[Android] ${{ github.event.inputs.version }}"
-          tag: android-${{ github.event.inputs.version }}
+          name: "[Android] ${{ needs.tag.outputs.version }}"
+          tag: android-${{ needs.tag.outputs.version }}
