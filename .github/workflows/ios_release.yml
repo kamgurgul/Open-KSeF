@@ -123,7 +123,7 @@ jobs:
               <key>stripSwiftSymbols</key>
               <true/>
               <key>teamID</key>
-              <string>${{ secrets.IOS_APPSTORE_TEAM_ID }}</string>
+              <string>${{ secrets.IOS_APPSTORE_TEAM_ID_DIST }}</string>
               <key>uploadSymbols</key>
               <true/>
               <key>provisioningProfiles</key>
