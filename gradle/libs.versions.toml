@@ -1,5 +1,5 @@
 [versions]
-agp = "9.3.0"
+agp = "9.3.1"
 android-compileSdk = "37"
 android-minSdk = "24"
 android-targetSdk = "37"
@@ -12,7 +12,6 @@ androidx-lifecycle = "2.11.0"
 androidx-testExt = "1.3.0"
 baselineprofile = "1.5.0-alpha07"
 benchmarkMacroJunit4 = "1.4.1"
-composeHotReload = "1.1.1"
 composeMultiplatform = "1.11.1"
 junit = "4.13.2"
 kotlin = "2.4.10"
@@ -28,7 +27,7 @@ lifecycle-viewmodel-nav3 = "2.11.0"
 datastore = "1.2.1"
 room = "2.8.4"
 sqlite = "2.7.0"
-ksp = "2.3.9"
+ksp = "2.3.10"
 turbine = "1.2.1"
 kotlincrypto-sha2 = "0.8.0"
 kover = "0.9.9"
@@ -120,7 +119,6 @@ androidTest = { id = "com.android.test", version.ref = "agp" }
 baselineprofile = { id = "androidx.baselineprofile", version.ref = "baselineprofile" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 androidKotlinMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
-composeHotReload = { id = "org.jetbrains.compose.hot-reload", version.ref = "composeHotReload" }
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
