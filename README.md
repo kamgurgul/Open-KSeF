@@ -59,8 +59,7 @@ For iOS, open `iosApp/iosApp.xcodeproj` in Xcode and run the app.
 
 Work in progress — the app already fetches and displays a list of invoices.
 
-- [ ] Test and update sending invoices to KSeF
-- [ ] Unify PDF exporting
+- [ ] Test and update sending invoices to KSeF - will be disabled for initial release 
 
 ## License
 
