@@ -21,10 +21,14 @@ compose.desktop {
     application {
         mainClass = "com.kgurgul.openksef.MainKt"
 
+        buildTypes.release.proguard {
+            isEnabled.set(false)
+        }
+
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "OpenKSeF"
-            packageVersion = "1.0.0"
+            packageVersion = providers.gradleProperty("releaseVersion").getOrElse("1.0.0")
 
             macOS {
                 bundleID = "com.kgurgul.openksef"
