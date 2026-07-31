@@ -34,6 +34,7 @@ class PersistCredentialsInteractor(
             tokenStore.saveNip(params.nip)
             tokenStore.saveToken(params.token)
             tokenStore.saveEnvironment(params.environment)
+            tokenStore.saveRequireBiometrics(params.requireBiometrics)
         } else {
             tokenStore.clear()
         }
@@ -44,5 +45,6 @@ class PersistCredentialsInteractor(
         val token: String,
         val environment: KsefEnvironment,
         val remember: Boolean,
+        val requireBiometrics: Boolean = false,
     )
 }

@@ -35,11 +35,13 @@ class GetSavedCredentialsInteractor(
             nip = tokenStore.getNip().first(),
             token = tokenStore.getToken(),
             environment = tokenStore.getEnvironment().first(),
+            requireBiometrics = tokenStore.getRequireBiometrics().first(),
         )
 
     data class SavedCredentials(
         val nip: String?,
         val token: String?,
         val environment: KsefEnvironment,
+        val requireBiometrics: Boolean = false,
     )
 }

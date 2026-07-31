@@ -35,6 +35,8 @@ import com.kgurgul.openksef.data.repository.KsefRepository
 import com.kgurgul.openksef.data.repository.RoomInvoiceTemplateRepository
 import com.kgurgul.openksef.data.repository.RoomSellerConfigRepository
 import com.kgurgul.openksef.data.repository.SellerConfigRepository
+import com.kgurgul.openksef.domain.biometric.BiometricAuthenticator
+import com.kgurgul.openksef.domain.biometric.defaultBiometricAuthenticator
 import com.kgurgul.openksef.domain.observable.InvoiceTemplatesObservable
 import com.kgurgul.openksef.domain.observable.SellerConfigObservable
 import com.kgurgul.openksef.domain.observable.SessionExpiredObservable
@@ -44,6 +46,7 @@ import com.kgurgul.openksef.domain.pdf.KsefWebPdfRenderer
 import com.kgurgul.openksef.domain.pdf.defaultInvoicePdfExporter
 import com.kgurgul.openksef.domain.pdf.defaultInvoicePdfSharer
 import com.kgurgul.openksef.domain.pdf.defaultKsefWebPdfRenderer
+import com.kgurgul.openksef.domain.result.AuthenticateBiometricInteractor
 import com.kgurgul.openksef.domain.result.CloseSessionInteractor
 import com.kgurgul.openksef.domain.result.DeleteInvoiceTemplateInteractor
 import com.kgurgul.openksef.domain.result.GetInvoiceInteractor
@@ -51,6 +54,7 @@ import com.kgurgul.openksef.domain.result.GetInvoicesInteractor
 import com.kgurgul.openksef.domain.result.GetSavedCredentialsInteractor
 import com.kgurgul.openksef.domain.result.GetSessionNipInteractor
 import com.kgurgul.openksef.domain.result.InitSessionInteractor
+import com.kgurgul.openksef.domain.result.IsBiometricAvailableInteractor
 import com.kgurgul.openksef.domain.result.PersistCredentialsInteractor
 import com.kgurgul.openksef.domain.result.SaveInvoiceTemplateInteractor
 import com.kgurgul.openksef.domain.result.SaveSellerConfigInteractor
@@ -105,6 +109,7 @@ val appModule = module {
 
     // Domain
     single<IDispatchersProvider> { DefaultDispatchersProvider() }
+    single<BiometricAuthenticator> { defaultBiometricAuthenticator() }
     single<InvoicePdfExporter> { defaultInvoicePdfExporter() }
     single<KsefWebPdfRenderer> { defaultKsefWebPdfRenderer() }
     single<InvoicePdfSharer> { defaultInvoicePdfSharer() }
@@ -123,10 +128,12 @@ val appModule = module {
     factoryOf(::SaveInvoiceTemplateInteractor)
     factoryOf(::DeleteInvoiceTemplateInteractor)
     factoryOf(::GetSessionNipInteractor)
+    factoryOf(::IsBiometricAvailableInteractor)
+    factoryOf(::AuthenticateBiometricInteractor)
 
     // ViewModels
     viewModelOf(::MainViewModel)
-    viewModel { params -> LoginViewModel(params.get(), get(), get(), get(), get()) }
+    viewModel { params -> LoginViewModel(params.get(), get(), get(), get(), get(), get(), get()) }
     viewModelOf(::InvoiceListViewModel)
     viewModel { params -> InvoiceDetailViewModel(params.get(), get(), get(), get(), get()) }
     viewModelOf(::SendInvoiceViewModel)

@@ -20,12 +20,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kgurgul.openksef.common.KsefLogger
 import com.kgurgul.openksef.common.UiText
+import com.kgurgul.openksef.domain.biometric.BiometricPromptText
+import com.kgurgul.openksef.domain.biometric.BiometricResult
 import com.kgurgul.openksef.domain.invoke
 import com.kgurgul.openksef.domain.model.KsefEnvironment
+import com.kgurgul.openksef.domain.result.AuthenticateBiometricInteractor
 import com.kgurgul.openksef.domain.result.GetSavedCredentialsInteractor
 import com.kgurgul.openksef.domain.result.InitSessionInteractor
+import com.kgurgul.openksef.domain.result.IsBiometricAvailableInteractor
 import com.kgurgul.openksef.domain.result.PersistCredentialsInteractor
 import com.kgurgul.openksef.domain.result.SetEnvironmentInteractor
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,15 +40,24 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import openksef.shared.generated.resources.Res
+import openksef.shared.generated.resources.error_biometric_failed
+import openksef.shared.generated.resources.error_biometric_unavailable
 import openksef.shared.generated.resources.error_login_failed
 import openksef.shared.generated.resources.error_nip_invalid
 import openksef.shared.generated.resources.error_token_required
 
+/**
+ * [isLocked] is true when remembered credentials are guarded by biometrics - the form is replaced
+ * by the unlock screen until the user passes the check.
+ */
 data class LoginUiState(
     val nip: String = "",
     val token: String = "",
     val environment: KsefEnvironment = KsefEnvironment.TEST,
     val rememberCredentials: Boolean = false,
+    val biometricsAvailable: Boolean = false,
+    val requireBiometrics: Boolean = false,
+    val isLocked: Boolean = false,
     val isLoading: Boolean = false,
     val error: UiText? = null,
 )
@@ -59,6 +73,8 @@ class LoginViewModel(
     private val setEnvironmentInteractor: SetEnvironmentInteractor,
     private val getSavedCredentialsInteractor: GetSavedCredentialsInteractor,
     private val persistCredentialsInteractor: PersistCredentialsInteractor,
+    private val isBiometricAvailableInteractor: IsBiometricAvailableInteractor,
+    private val authenticateBiometricInteractor: AuthenticateBiometricInteractor,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -67,13 +83,19 @@ class LoginViewModel(
     private val eventChannel = Channel<LoginEvent>(Channel.BUFFERED)
     val events: Flow<LoginEvent> = eventChannel.receiveAsFlow()
 
+    private var biometricJob: Job? = null
+
     init {
         loadSavedCredentials()
     }
 
     private fun loadSavedCredentials() {
         viewModelScope.launch {
+            val biometricsAvailable = isBiometricAvailableInteractor()
             val saved = getSavedCredentialsInteractor()
+            val hasSavedCredentials = saved.nip != null && saved.token != null
+            // A device that lost its biometric enrollment must not lock the user out.
+            val requireBiometrics = saved.requireBiometrics && biometricsAvailable
 
             _uiState.update { state ->
                 state.copy(
@@ -81,14 +103,57 @@ class LoginViewModel(
                     token = saved.token ?: "",
                     environment = saved.environment,
                     rememberCredentials = saved.nip != null,
+                    biometricsAvailable = biometricsAvailable,
+                    requireBiometrics = requireBiometrics,
+                    isLocked = autoLogin && hasSavedCredentials && requireBiometrics,
                 )
             }
             // Sign in automatically when the user opted to remember the credentials. Skipped for
-            // logout / session-expiry redirects (autoLogin is true only on app start).
-            if (autoLogin && saved.nip != null && saved.token != null) {
+            // logout / session-expiry redirects (autoLogin is true only on app start) and when
+            // biometrics guard the credentials - then the unlock screen drives the login.
+            if (autoLogin && hasSavedCredentials && !requireBiometrics) {
                 login()
             }
         }
+    }
+
+    /** Runs the system biometric prompt and signs in with the remembered credentials on success. */
+    fun onBiometricUnlockClick(promptText: BiometricPromptText) {
+        if (!_uiState.value.isLocked) return
+        biometricJob?.cancel()
+        biometricJob = viewModelScope.launch {
+            when (val result = authenticateBiometricInteractor(promptText)) {
+                BiometricResult.Success -> {
+                    _uiState.update { it.copy(isLocked = false, error = null) }
+                    login()
+                }
+                // Dismissed by the user - stay locked so the prompt can be retried.
+                BiometricResult.Cancelled -> Unit
+                BiometricResult.Unavailable ->
+                    _uiState.update {
+                        it.copy(
+                            isLocked = false,
+                            biometricsAvailable = false,
+                            requireBiometrics = false,
+                            error = UiText.Resource(Res.string.error_biometric_unavailable),
+                        )
+                    }
+                is BiometricResult.Failed ->
+                    _uiState.update {
+                        it.copy(
+                            error =
+                                result.message?.let { msg -> UiText.Raw(msg) }
+                                    ?: UiText.Resource(Res.string.error_biometric_failed)
+                        )
+                    }
+            }
+        }
+    }
+
+    /** Leaves the unlock screen and shows the regular login form. */
+    fun onUseCredentialsClick() {
+        biometricJob?.cancel()
+        _uiState.update { it.copy(isLocked = false, error = null) }
     }
 
     fun onNipChanged(nip: String) {
@@ -105,7 +170,16 @@ class LoginViewModel(
     }
 
     fun onRememberChanged(remember: Boolean) {
-        _uiState.update { it.copy(rememberCredentials = remember) }
+        _uiState.update {
+            it.copy(
+                rememberCredentials = remember,
+                requireBiometrics = if (remember) it.requireBiometrics else false,
+            )
+        }
+    }
+
+    fun onRequireBiometricsChanged(required: Boolean) {
+        _uiState.update { it.copy(requireBiometrics = required) }
     }
 
     fun login() {
@@ -134,6 +208,8 @@ class LoginViewModel(
                             token = token,
                             environment = state.environment,
                             remember = state.rememberCredentials,
+                            requireBiometrics =
+                                state.requireBiometrics && state.biometricsAvailable,
                         )
                     )
                     _uiState.update { it.copy(isLoading = false) }

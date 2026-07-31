@@ -14,15 +14,12 @@
  * limitations under the License.
  */
 
-package com.kgurgul.openksef
+package com.kgurgul.openksef.domain.biometric
 
 import androidx.compose.runtime.Composable
-import com.kgurgul.openksef.domain.biometric.RegisterBiometricHost
-import com.kgurgul.openksef.ui.navigation.AppNavigation
-import com.kgurgul.openksef.ui.theme.OpenKsefTheme
 
-@Composable
-fun App() {
-    RegisterBiometricHost()
-    OpenKsefTheme { AppNavigation() }
-}
+/**
+ * Hands the [BiometricAuthenticator] whatever UI host it needs for the lifetime of the composition.
+ * Android binds `LocalActivity`, which `BiometricPrompt` requires; the other platforms do nothing.
+ */
+@Composable expect fun RegisterBiometricHost()

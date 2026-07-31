@@ -23,7 +23,16 @@
     <string name="login_token_label">Token autoryzacyjny</string>
     <string name="login_environment_label">Środowisko</string>
     <string name="login_remember_credentials">Zapamiętaj dane logowania</string>
+    <string name="login_require_biometrics">Odblokuj biometrią</string>
     <string name="login_sign_in">Zaloguj się</string>
+
+    <!-- Biometric unlock -->
+    <string name="biometric_lock_title">Aplikacja zablokowana</string>
+    <string name="biometric_lock_description">Potwierdź tożsamość, aby zalogować się zapamiętanymi danymi</string>
+    <string name="biometric_unlock">Odblokuj</string>
+    <string name="biometric_use_credentials">Zaloguj się tokenem</string>
+    <string name="biometric_prompt_title">Odblokuj Open KSeF</string>
+    <string name="biometric_prompt_subtitle">Potwierdź tożsamość, aby się zalogować</string>
 
     <!-- Invoice list -->
     <string name="invoices_title">Faktury</string>
@@ -103,6 +112,8 @@
     <string name="error_nip_invalid">NIP musi mieć 10 cyfr</string>
     <string name="error_token_required">Token jest wymagany</string>
     <string name="error_login_failed">Błąd logowania</string>
+    <string name="error_biometric_failed">Uwierzytelnianie biometryczne nie powiodło się</string>
+    <string name="error_biometric_unavailable">Uwierzytelnianie biometryczne jest niedostępne na tym urządzeniu</string>
     <string name="error_load_invoices">Błąd pobierania faktur</string>
     <string name="error_load_invoice">Błąd pobierania faktury</string>
     <string name="error_required">Wymagane</string>

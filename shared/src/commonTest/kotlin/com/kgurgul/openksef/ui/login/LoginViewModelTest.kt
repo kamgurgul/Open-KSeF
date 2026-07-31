@@ -26,9 +26,14 @@ import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefAuthenticator
 import com.kgurgul.openksef.data.remote.KsefCrypto
 import com.kgurgul.openksef.data.repository.KsefRepository
+import com.kgurgul.openksef.domain.biometric.BiometricAuthenticator
+import com.kgurgul.openksef.domain.biometric.BiometricPromptText
+import com.kgurgul.openksef.domain.biometric.BiometricResult
 import com.kgurgul.openksef.domain.model.KsefEnvironment
+import com.kgurgul.openksef.domain.result.AuthenticateBiometricInteractor
 import com.kgurgul.openksef.domain.result.GetSavedCredentialsInteractor
 import com.kgurgul.openksef.domain.result.InitSessionInteractor
+import com.kgurgul.openksef.domain.result.IsBiometricAvailableInteractor
 import com.kgurgul.openksef.domain.result.PersistCredentialsInteractor
 import com.kgurgul.openksef.domain.result.SetEnvironmentInteractor
 import io.ktor.client.HttpClient
@@ -60,6 +65,7 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.serialization.json.Json
 import okio.FileSystem
 import openksef.shared.generated.resources.Res
+import openksef.shared.generated.resources.error_biometric_unavailable
 import openksef.shared.generated.resources.error_nip_invalid
 import openksef.shared.generated.resources.error_token_required
 
@@ -67,6 +73,8 @@ import openksef.shared.generated.resources.error_token_required
 class LoginViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
+
+    private val promptText = BiometricPromptText("Unlock", "Confirm", "Cancel")
 
     @BeforeTest
     fun setup() {
@@ -204,11 +212,187 @@ class LoginViewModelTest {
         assertEquals(KsefEnvironment.PRODUCTION, viewModel.uiState.value.environment)
     }
 
+    @Test
+    fun autoLogin_withBiometricsRequired_locksInsteadOfSigningIn() = runTest {
+        val sessionHolder = SessionHolder()
+        val viewModel =
+            createViewModel(
+                autoLogin = true,
+                savedNip = "1234567890",
+                savedToken = "saved-token",
+                savedRequireBiometrics = true,
+                sessionHolder = sessionHolder,
+            )
+
+        // The lock engages once the saved credentials load finished.
+        val state = viewModel.uiState.first { it.isLocked }
+
+        assertTrue(state.requireBiometrics)
+        assertFalse(state.isLoading)
+        assertEquals(null, sessionHolder.accessToken)
+    }
+
+    @Test
+    fun biometricUnlock_success_signsIn() = runTest {
+        val sessionHolder = SessionHolder()
+        val viewModel =
+            createViewModel(
+                autoLogin = true,
+                savedNip = "1234567890",
+                savedToken = "saved-token",
+                savedRequireBiometrics = true,
+                sessionHolder = sessionHolder,
+            )
+        viewModel.uiState.first { it.isLocked }
+
+        viewModel.onBiometricUnlockClick(promptText)
+
+        assertIs<LoginEvent.LoginSuccess>(viewModel.events.first())
+        assertEquals("access-token", sessionHolder.accessToken)
+        assertFalse(viewModel.uiState.value.isLocked)
+    }
+
+    @Test
+    fun biometricUnlock_cancelled_staysLocked() = runTest {
+        val sessionHolder = SessionHolder()
+        val viewModel =
+            createViewModel(
+                autoLogin = true,
+                savedNip = "1234567890",
+                savedToken = "saved-token",
+                savedRequireBiometrics = true,
+                biometricResult = BiometricResult.Cancelled,
+                sessionHolder = sessionHolder,
+            )
+        viewModel.uiState.first { it.isLocked }
+
+        viewModel.onBiometricUnlockClick(promptText)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isLocked)
+        assertEquals(null, sessionHolder.accessToken)
+    }
+
+    @Test
+    fun biometricUnlock_failed_keepsLockAndShowsError() = runTest {
+        val viewModel =
+            createViewModel(
+                autoLogin = true,
+                savedNip = "1234567890",
+                savedToken = "saved-token",
+                savedRequireBiometrics = true,
+                biometricResult = BiometricResult.Failed("Too many attempts"),
+            )
+        viewModel.uiState.first { it.isLocked }
+
+        viewModel.onBiometricUnlockClick(promptText)
+
+        val state = viewModel.uiState.first { it.error != null }
+        assertTrue(state.isLocked)
+        assertEquals(UiText.Raw("Too many attempts"), state.error)
+    }
+
+    @Test
+    fun biometricUnlock_unavailable_fallsBackToForm() = runTest {
+        val viewModel =
+            createViewModel(
+                autoLogin = true,
+                savedNip = "1234567890",
+                savedToken = "saved-token",
+                savedRequireBiometrics = true,
+                biometricResult = BiometricResult.Unavailable,
+            )
+        viewModel.uiState.first { it.isLocked }
+
+        viewModel.onBiometricUnlockClick(promptText)
+
+        val state = viewModel.uiState.first { it.error != null }
+        assertFalse(state.isLocked)
+        assertFalse(state.requireBiometrics)
+        assertEquals(UiText.Resource(Res.string.error_biometric_unavailable), state.error)
+    }
+
+    @Test
+    fun onUseCredentialsClick_showsForm() = runTest {
+        val viewModel =
+            createViewModel(
+                autoLogin = true,
+                savedNip = "1234567890",
+                savedToken = "saved-token",
+                savedRequireBiometrics = true,
+            )
+        viewModel.uiState.first { it.isLocked }
+
+        viewModel.onUseCredentialsClick()
+
+        assertFalse(viewModel.uiState.value.isLocked)
+    }
+
+    @Test
+    fun autoLogin_withBiometricsRequiredButUnsupported_signsInAutomatically() = runTest {
+        val sessionHolder = SessionHolder()
+        val viewModel =
+            createViewModel(
+                autoLogin = true,
+                savedNip = "1234567890",
+                savedToken = "saved-token",
+                savedRequireBiometrics = true,
+                biometricsAvailable = false,
+                sessionHolder = sessionHolder,
+            )
+
+        assertIs<LoginEvent.LoginSuccess>(viewModel.events.first())
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLocked)
+        assertFalse(state.requireBiometrics)
+        assertEquals("access-token", sessionHolder.accessToken)
+    }
+
+    @Test
+    fun login_withBiometricsSelected_persistsTheFlag() = runTest {
+        val tokenStore = createTokenStore()
+        val viewModel = createViewModel(tokenStore = tokenStore)
+        viewModel.uiState.first { it.biometricsAvailable }
+
+        viewModel.onNipChanged("1234567890")
+        viewModel.onTokenChanged("token")
+        viewModel.onRememberChanged(true)
+        viewModel.onRequireBiometricsChanged(true)
+        viewModel.login()
+
+        assertIs<LoginEvent.LoginSuccess>(viewModel.events.first())
+        assertTrue(tokenStore.getRequireBiometrics().first())
+    }
+
+    @Test
+    fun onRememberChanged_disabled_clearsBiometricRequirement() = runTest {
+        val viewModel = createViewModel()
+        viewModel.uiState.first { it.biometricsAvailable }
+
+        viewModel.onRememberChanged(true)
+        viewModel.onRequireBiometricsChanged(true)
+        viewModel.onRememberChanged(false)
+
+        assertFalse(viewModel.uiState.value.requireBiometrics)
+    }
+
+    private fun createTokenStore(): TokenStore {
+        val tmpDir = FileSystem.SYSTEM_TEMPORARY_DIRECTORY
+        val tmpPath = tmpDir / "test_prefs_${Random.nextInt()}.preferences_pb"
+        val dataStore = PreferenceDataStoreFactory.createWithPath(produceFile = { tmpPath })
+        return TokenStore(dataStore, InMemorySecureTokenStorage())
+    }
+
     private suspend fun createViewModel(
         autoLogin: Boolean = false,
         savedNip: String? = null,
         savedToken: String? = null,
         savedEnvironment: KsefEnvironment? = null,
+        savedRequireBiometrics: Boolean = false,
+        biometricsAvailable: Boolean = true,
+        biometricResult: BiometricResult = BiometricResult.Success,
+        tokenStore: TokenStore = createTokenStore(),
         sessionHolder: SessionHolder = SessionHolder(),
     ): LoginViewModel {
         val engine = MockEngine { request ->
@@ -313,22 +497,38 @@ class LoginViewModelTest {
         val authenticator = KsefAuthenticator(mockClient, crypto)
         val repository = KsefRepository(api, sessionHolder, crypto, authenticator)
 
-        val tmpDir = FileSystem.SYSTEM_TEMPORARY_DIRECTORY
-        val tmpPath = tmpDir / "test_prefs_${Random.nextInt()}.preferences_pb"
-        val dataStore = PreferenceDataStoreFactory.createWithPath(produceFile = { tmpPath })
-        val tokenStore = TokenStore(dataStore, InMemorySecureTokenStorage())
         savedNip?.let { tokenStore.saveNip(it) }
         savedToken?.let { tokenStore.saveToken(it) }
         savedEnvironment?.let { tokenStore.saveEnvironment(it) }
+        if (savedRequireBiometrics) tokenStore.saveRequireBiometrics(true)
 
         val dispatchers = TestDispatchersProvider(testDispatcher)
+        val biometricAuthenticator =
+            FakeBiometricAuthenticator(
+                available = biometricsAvailable,
+                result = biometricResult,
+            )
         return LoginViewModel(
             autoLogin = autoLogin,
             initSessionInteractor = InitSessionInteractor(dispatchers, repository),
             setEnvironmentInteractor = SetEnvironmentInteractor(dispatchers, repository),
             getSavedCredentialsInteractor = GetSavedCredentialsInteractor(dispatchers, tokenStore),
             persistCredentialsInteractor = PersistCredentialsInteractor(dispatchers, tokenStore),
+            isBiometricAvailableInteractor =
+                IsBiometricAvailableInteractor(dispatchers, biometricAuthenticator),
+            authenticateBiometricInteractor =
+                AuthenticateBiometricInteractor(dispatchers, biometricAuthenticator),
         )
+    }
+
+    private class FakeBiometricAuthenticator(
+        private val available: Boolean,
+        private val result: BiometricResult,
+    ) : BiometricAuthenticator {
+
+        override suspend fun isAvailable(): Boolean = available
+
+        override suspend fun authenticate(promptText: BiometricPromptText): BiometricResult = result
     }
 
     private class InMemorySecureTokenStorage : SecureTokenStorage {

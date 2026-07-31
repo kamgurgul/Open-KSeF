@@ -18,6 +18,7 @@ package com.kgurgul.openksef.data.local
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.kgurgul.openksef.domain.model.KsefEnvironment
@@ -31,6 +32,7 @@ class TokenStore(
     private companion object {
         val NIP_KEY = stringPreferencesKey("ksef_nip")
         val ENVIRONMENT_KEY = stringPreferencesKey("ksef_environment")
+        val REQUIRE_BIOMETRICS_KEY = booleanPreferencesKey("ksef_require_biometrics")
     }
 
     suspend fun saveToken(token: String) {
@@ -62,6 +64,13 @@ class TokenStore(
                 KsefEnvironment.TEST
             }
         }
+
+    suspend fun saveRequireBiometrics(required: Boolean) {
+        dataStore.edit { prefs -> prefs[REQUIRE_BIOMETRICS_KEY] = required }
+    }
+
+    fun getRequireBiometrics(): Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[REQUIRE_BIOMETRICS_KEY] == true }
 
     suspend fun clear() {
         secureTokenStorage.clearToken()

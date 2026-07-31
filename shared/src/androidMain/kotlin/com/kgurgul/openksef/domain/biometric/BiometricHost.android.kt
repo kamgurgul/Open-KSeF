@@ -14,15 +14,21 @@
  * limitations under the License.
  */
 
-package com.kgurgul.openksef
+package com.kgurgul.openksef.domain.biometric
 
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
-import com.kgurgul.openksef.domain.biometric.RegisterBiometricHost
-import com.kgurgul.openksef.ui.navigation.AppNavigation
-import com.kgurgul.openksef.ui.theme.OpenKsefTheme
+import androidx.compose.runtime.DisposableEffect
+import org.koin.compose.koinInject
 
 @Composable
-fun App() {
-    RegisterBiometricHost()
-    OpenKsefTheme { AppNavigation() }
+actual fun RegisterBiometricHost() {
+    val authenticator = koinInject<BiometricAuthenticator>() as? AndroidBiometricAuthenticator
+    val activity = LocalActivity.current as? ComponentActivity
+
+    DisposableEffect(authenticator, activity) {
+        authenticator?.activity = activity
+        onDispose { authenticator?.activity = null }
+    }
 }

@@ -14,15 +14,9 @@
  * limitations under the License.
  */
 
-package com.kgurgul.openksef
+package com.kgurgul.openksef.domain.biometric
 
 import androidx.compose.runtime.Composable
-import com.kgurgul.openksef.domain.biometric.RegisterBiometricHost
-import com.kgurgul.openksef.ui.navigation.AppNavigation
-import com.kgurgul.openksef.ui.theme.OpenKsefTheme
 
-@Composable
-fun App() {
-    RegisterBiometricHost()
-    OpenKsefTheme { AppNavigation() }
-}
+/** `LAContext` presents its own prompt, so there is no UI host to bind. */
+@Composable actual fun RegisterBiometricHost() = Unit

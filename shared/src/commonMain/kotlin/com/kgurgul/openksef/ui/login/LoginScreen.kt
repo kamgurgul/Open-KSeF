@@ -36,15 +36,20 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kgurgul.openksef.common.ObserveAsEvents
 import com.kgurgul.openksef.common.asString
+import com.kgurgul.openksef.domain.biometric.BiometricPromptText
 import com.kgurgul.openksef.domain.model.KsefEnvironment
 import com.kgurgul.openksef.ui.components.LoadingOverlay
 import openksef.shared.generated.resources.Res
+import openksef.shared.generated.resources.action_cancel
 import openksef.shared.generated.resources.app_name
 import openksef.shared.generated.resources.app_subtitle
+import openksef.shared.generated.resources.biometric_prompt_subtitle
+import openksef.shared.generated.resources.biometric_prompt_title
 import openksef.shared.generated.resources.login_environment_label
 import openksef.shared.generated.resources.login_nip_label
 import openksef.shared.generated.resources.login_nip_placeholder
 import openksef.shared.generated.resources.login_remember_credentials
+import openksef.shared.generated.resources.login_require_biometrics
 import openksef.shared.generated.resources.login_sign_in
 import openksef.shared.generated.resources.login_token_label
 import org.jetbrains.compose.resources.stringResource
@@ -68,13 +73,29 @@ fun LoginScreen(viewModel: LoginViewModel, onLoginSuccess: () -> Unit) {
         }
     }
 
+    // The prompt copy is resolved here so the ViewModel stays free of resource lookups.
+    val promptText =
+        BiometricPromptText(
+            title = stringResource(Res.string.biometric_prompt_title),
+            subtitle = stringResource(Res.string.biometric_prompt_subtitle),
+            cancelLabel = stringResource(Res.string.action_cancel),
+        )
+    val onUnlockClick = { viewModel.onBiometricUnlockClick(promptText) }
+    // Show the system prompt as soon as the screen locks - the user can retry with the button.
+    LaunchedEffect(uiState.isLocked) {
+        if (uiState.isLocked) onUnlockClick()
+    }
+
     LoginScreen(
         uiState = uiState,
         onNipChanged = viewModel::onNipChanged,
         onTokenChanged = viewModel::onTokenChanged,
         onEnvironmentChanged = viewModel::onEnvironmentChanged,
         onRememberChanged = viewModel::onRememberChanged,
+        onRequireBiometricsChanged = viewModel::onRequireBiometricsChanged,
         onLoginClick = viewModel::login,
+        onUnlockClick = onUnlockClick,
+        onUseCredentialsClick = viewModel::onUseCredentialsClick,
         snackbarHostState = snackbarHostState,
     )
 }
@@ -86,12 +107,25 @@ fun LoginScreen(
     onTokenChanged: (String) -> Unit,
     onEnvironmentChanged: (KsefEnvironment) -> Unit,
     onRememberChanged: (Boolean) -> Unit,
+    onRequireBiometricsChanged: (Boolean) -> Unit,
     onLoginClick: () -> Unit,
+    onUnlockClick: () -> Unit,
+    onUseCredentialsClick: () -> Unit,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     val focusManager = LocalFocusManager.current
 
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
+        if (uiState.isLocked) {
+            BiometricLockContent(
+                isLoading = uiState.isLoading,
+                onUnlockClick = onUnlockClick,
+                onUseCredentialsClick = onUseCredentialsClick,
+                modifier = Modifier.fillMaxSize().padding(padding),
+            )
+            return@Scaffold
+        }
+
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier =
@@ -205,6 +239,24 @@ fun LoginScreen(
                         text = stringResource(Res.string.login_remember_credentials),
                         style = MaterialTheme.typography.bodyMedium,
                     )
+                }
+
+                // Only remembered credentials can be guarded, and only where the OS supports it
+                // (Android / iOS).
+                if (uiState.biometricsAvailable && uiState.rememberCredentials) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = uiState.requireBiometrics,
+                            onCheckedChange = onRequireBiometricsChanged,
+                        )
+                        Text(
+                            text = stringResource(Res.string.login_require_biometrics),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))

@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-package com.kgurgul.openksef
+package com.kgurgul.openksef.domain.biometric
 
-import androidx.compose.runtime.Composable
-import com.kgurgul.openksef.domain.biometric.RegisterBiometricHost
-import com.kgurgul.openksef.ui.navigation.AppNavigation
-import com.kgurgul.openksef.ui.theme.OpenKsefTheme
+/** Desktop has no OS biometric API integration, so the feature stays hidden there. */
+object NoopBiometricAuthenticator : BiometricAuthenticator {
 
-@Composable
-fun App() {
-    RegisterBiometricHost()
-    OpenKsefTheme { AppNavigation() }
+    override suspend fun isAvailable(): Boolean = false
+
+    override suspend fun authenticate(promptText: BiometricPromptText): BiometricResult =
+        BiometricResult.Unavailable
 }
+
+actual fun defaultBiometricAuthenticator(): BiometricAuthenticator = NoopBiometricAuthenticator

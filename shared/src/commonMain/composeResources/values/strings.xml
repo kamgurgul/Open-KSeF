@@ -23,7 +23,16 @@
     <string name="login_token_label">Authorization token</string>
     <string name="login_environment_label">Environment</string>
     <string name="login_remember_credentials">Remember credentials</string>
+    <string name="login_require_biometrics">Unlock with biometrics</string>
     <string name="login_sign_in">Sign in</string>
+
+    <!-- Biometric unlock -->
+    <string name="biometric_lock_title">App locked</string>
+    <string name="biometric_lock_description">Confirm your identity to sign in with the remembered credentials</string>
+    <string name="biometric_unlock">Unlock</string>
+    <string name="biometric_use_credentials">Sign in with token</string>
+    <string name="biometric_prompt_title">Unlock Open KSeF</string>
+    <string name="biometric_prompt_subtitle">Confirm your identity to sign in</string>
 
     <!-- Invoice list -->
     <string name="invoices_title">Invoices</string>
@@ -103,6 +112,8 @@
     <string name="error_nip_invalid">NIP must be 10 digits</string>
     <string name="error_token_required">Token is required</string>
     <string name="error_login_failed">Login failed</string>
+    <string name="error_biometric_failed">Biometric authentication failed</string>
+    <string name="error_biometric_unavailable">Biometric authentication is not available on this device</string>
     <string name="error_load_invoices">Failed to load invoices</string>
     <string name="error_load_invoice">Failed to load invoice</string>
     <string name="error_required">Required</string>
