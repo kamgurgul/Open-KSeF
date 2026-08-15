@@ -22,11 +22,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.kgurgul.openksef.common.BiometricIcon
 import openksef.shared.generated.resources.Res
 import openksef.shared.generated.resources.biometric_lock_description
 import openksef.shared.generated.resources.biometric_lock_title
@@ -60,12 +58,7 @@ fun BiometricLockContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(
-            imageVector = Icons.Default.Fingerprint,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(96.dp),
-        )
+        BiometricIcon(size = 96.dp, tint = MaterialTheme.colorScheme.primary)
 
         Text(
             text = stringResource(Res.string.biometric_lock_title),

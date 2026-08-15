@@ -22,6 +22,7 @@ import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
 import platform.Foundation.NSData
 import platform.Foundation.create
+import platform.posix.memcpy
 
 /** Copies this byte array into an [NSData] instance. */
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
@@ -31,3 +32,13 @@ internal fun ByteArray.toNSData(): NSData =
     } else {
         usePinned { pinned -> NSData.create(bytes = pinned.addressOf(0), length = size.toULong()) }
     }
+
+/** Copies this [NSData] into a byte array. */
+@OptIn(ExperimentalForeignApi::class)
+internal fun NSData.toByteArray(): ByteArray {
+    val size = length.toInt()
+    if (size == 0) return ByteArray(0)
+    return ByteArray(size).apply {
+        usePinned { pinned -> memcpy(pinned.addressOf(0), this@toByteArray.bytes, length) }
+    }
+}
