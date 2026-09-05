@@ -38,7 +38,7 @@ tink = "1.23.0"
 tink-android = "1.23.0"
 ksef-fop = "1.2.31"
 ktfmt = "0.64"
-spotless = "8.10.1"
+spotless = "8.10.2"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
