@@ -36,7 +36,7 @@ profileinstaller = "1.4.1"
 uiautomator = "2.4.0"
 tink = "1.23.0"
 tink-android = "1.23.0"
-ksef-fop = "1.2.31"
+ksef-fop = "1.2.32"
 ktfmt = "0.64"
 spotless = "8.10.2"
 
