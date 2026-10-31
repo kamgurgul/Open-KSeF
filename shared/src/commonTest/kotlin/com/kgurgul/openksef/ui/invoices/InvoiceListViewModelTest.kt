@@ -41,11 +41,6 @@ import io.ktor.http.contentType
 import io.ktor.http.headersOf
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -55,6 +50,12 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.serialization.json.Json
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class InvoiceListViewModelTest {
@@ -132,6 +133,44 @@ class InvoiceListViewModelTest {
         viewModel.onSearchQueryChanged("")
         val cleared = viewModel.uiState.first { it.searchQuery.isEmpty() }
         assertEquals(2, cleared.displayedInvoices.size)
+    }
+
+    @Test
+    fun onLoadNextPage_accumulatesTotalCount() = runTest {
+        var invoiceCallCount = 0
+        val viewModel =
+            createViewModelWithRouter(refreshToken = null) { path ->
+                if (path.endsWith("/invoices/query/metadata")) {
+                    invoiceCallCount++
+                    val body =
+                        if (invoiceCallCount == 1) {
+                            """{
+                            "hasMore": true, "isTruncated": false,
+                            "invoices": [
+                                ${invoiceJson("KSEF-001", "FV/001", "Alpha", "Beta")},
+                                ${invoiceJson("KSEF-002", "FV/002", "Gamma", "Delta")}
+                            ]
+                        }"""
+                        } else {
+                            """{
+                            "hasMore": false, "isTruncated": false,
+                            "invoices": [${invoiceJson("KSEF-003", "FV/003", "Alpha", "Beta")}]
+                        }"""
+                        }
+                    Pair(HttpStatusCode.OK, body)
+                } else {
+                    Pair(HttpStatusCode.NotFound, "{}")
+                }
+            }
+
+        val firstPage = viewModel.uiState.first { it.invoices.size == 2 && !it.isLoading }
+        assertEquals(2, firstPage.totalCount)
+        assertTrue(firstPage.hasMore)
+
+        viewModel.onLoadNextPage()
+        val secondPage = viewModel.uiState.first { it.invoices.size == 3 && !it.isLoading }
+        assertEquals(3, secondPage.totalCount)
+        assertFalse(secondPage.hasMore)
     }
 
     @Test

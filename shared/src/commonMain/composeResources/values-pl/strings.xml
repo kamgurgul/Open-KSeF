@@ -39,6 +39,12 @@
     <string name="invoices_tab_issued">Wystawione</string>
     <string name="invoices_tab_received">Otrzymane</string>
     <string name="invoices_date_range">Zakres dat</string>
+    <plurals name="invoices_count">
+        <item quantity="one">%1$s faktura</item>
+        <item quantity="few">%1$s faktury</item>
+        <item quantity="many">%1$s faktur</item>
+        <item quantity="other">%1$s faktury</item>
+    </plurals>
     <string name="invoices_filter_placeholder">Filtruj faktury</string>
     <string name="invoices_empty_filtered_title">Brak wyników</string>
     <string name="invoices_empty_title">Brak faktur</string>

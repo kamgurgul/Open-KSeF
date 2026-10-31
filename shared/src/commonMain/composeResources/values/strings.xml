@@ -39,6 +39,10 @@
     <string name="invoices_tab_issued">Issued</string>
     <string name="invoices_tab_received">Received</string>
     <string name="invoices_date_range">Date range</string>
+    <plurals name="invoices_count">
+        <item quantity="one">%1$s invoice</item>
+        <item quantity="other">%1$s invoices</item>
+    </plurals>
     <string name="invoices_filter_placeholder">Filter invoices</string>
     <string name="invoices_empty_filtered_title">No results</string>
     <string name="invoices_empty_title">No invoices</string>

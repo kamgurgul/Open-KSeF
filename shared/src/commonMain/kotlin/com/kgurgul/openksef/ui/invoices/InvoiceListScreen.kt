@@ -18,7 +18,20 @@ package com.kgurgul.openksef.ui.invoices
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -32,9 +45,37 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -48,7 +89,6 @@ import com.kgurgul.openksef.common.asString
 import com.kgurgul.openksef.domain.date.DateFormatter
 import com.kgurgul.openksef.domain.model.InvoiceSubjectType
 import com.kgurgul.openksef.ui.components.InvoiceCard
-import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
@@ -64,6 +104,7 @@ import openksef.shared.generated.resources.action_refresh
 import openksef.shared.generated.resources.action_search
 import openksef.shared.generated.resources.action_send_invoice
 import openksef.shared.generated.resources.action_settings
+import openksef.shared.generated.resources.invoices_count
 import openksef.shared.generated.resources.invoices_date_range
 import openksef.shared.generated.resources.invoices_empty_description
 import openksef.shared.generated.resources.invoices_empty_filtered_description
@@ -73,7 +114,9 @@ import openksef.shared.generated.resources.invoices_filter_placeholder
 import openksef.shared.generated.resources.invoices_tab_issued
 import openksef.shared.generated.resources.invoices_tab_received
 import openksef.shared.generated.resources.invoices_title
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Instant
 
 @Composable
 fun InvoiceListScreen(
@@ -309,6 +352,25 @@ fun InvoiceListScreen(
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
+                        }
+                        if (uiState.invoices.isNotEmpty() || !uiState.isLoading) {
+                            val countText =
+                                if (uiState.hasMore) {
+                                    "${uiState.totalCount}+"
+                                } else {
+                                    uiState.totalCount.toString()
+                                }
+                            Text(
+                                text =
+                                    pluralStringResource(
+                                        Res.plurals.invoices_count,
+                                        uiState.totalCount,
+                                        countText,
+                                    ),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp),
+                            )
                         }
                         Icon(
                             imageVector =
