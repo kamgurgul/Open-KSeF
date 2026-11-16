@@ -52,6 +52,7 @@ import com.kgurgul.openksef.domain.result.DeleteInvoiceTemplateInteractor
 import com.kgurgul.openksef.domain.result.GetInvoiceInteractor
 import com.kgurgul.openksef.domain.result.GetInvoicesInteractor
 import com.kgurgul.openksef.domain.result.GetSavedCredentialsInteractor
+import com.kgurgul.openksef.domain.result.GetSessionEnvironmentInteractor
 import com.kgurgul.openksef.domain.result.GetSessionNipInteractor
 import com.kgurgul.openksef.domain.result.InitSessionInteractor
 import com.kgurgul.openksef.domain.result.IsBiometricAvailableInteractor
@@ -66,6 +67,7 @@ import com.kgurgul.openksef.ui.login.LoginViewModel
 import com.kgurgul.openksef.ui.main.MainViewModel
 import com.kgurgul.openksef.ui.sendinvoice.SendInvoiceViewModel
 import com.kgurgul.openksef.ui.settings.SellerConfigViewModel
+import com.kgurgul.openksef.ui.settings.SettingsViewModel
 import kotlinx.serialization.json.Json
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
@@ -82,6 +84,8 @@ val appModule = module {
             isLenient = true
             prettyPrint = false
             encodeDefaults = true
+            // Optional request fields are omitted instead of being sent as explicit nulls.
+            explicitNulls = false
         }
     }
     single { defaultSecureTokenStorage() }
@@ -128,6 +132,7 @@ val appModule = module {
     factoryOf(::SaveInvoiceTemplateInteractor)
     factoryOf(::DeleteInvoiceTemplateInteractor)
     factoryOf(::GetSessionNipInteractor)
+    factoryOf(::GetSessionEnvironmentInteractor)
     factoryOf(::IsBiometricAvailableInteractor)
     factoryOf(::AuthenticateBiometricInteractor)
 
@@ -138,4 +143,5 @@ val appModule = module {
     viewModel { params -> InvoiceDetailViewModel(params.get(), get(), get(), get(), get()) }
     viewModelOf(::SendInvoiceViewModel)
     viewModelOf(::SellerConfigViewModel)
+    viewModelOf(::SettingsViewModel)
 }

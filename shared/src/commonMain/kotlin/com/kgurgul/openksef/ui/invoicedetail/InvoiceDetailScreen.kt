@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.*
@@ -39,8 +38,8 @@ import com.kgurgul.openksef.common.PlatformHorizontalScrollbar
 import com.kgurgul.openksef.common.PlatformVerticalScrollbar
 import com.kgurgul.openksef.common.UiText
 import com.kgurgul.openksef.common.asString
+import com.kgurgul.openksef.ui.components.BackNavigationIconButton
 import openksef.shared.generated.resources.Res
-import openksef.shared.generated.resources.action_back
 import openksef.shared.generated.resources.action_download_pdf
 import openksef.shared.generated.resources.action_export_pdf
 import openksef.shared.generated.resources.action_retry
@@ -112,12 +111,7 @@ fun InvoiceDetailScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(Res.string.action_back),
-                        )
-                    }
+                    BackNavigationIconButton(onClick = onNavigateBack)
                 },
                 colors =
                     TopAppBarDefaults.topAppBarColors(

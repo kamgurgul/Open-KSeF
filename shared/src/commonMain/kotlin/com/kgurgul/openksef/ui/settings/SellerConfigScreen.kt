@@ -23,12 +23,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -44,8 +40,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kgurgul.openksef.common.ObserveAsEvents
+import com.kgurgul.openksef.ui.components.BackNavigationIconButton
 import openksef.shared.generated.resources.Res
-import openksef.shared.generated.resources.action_back
 import openksef.shared.generated.resources.seller_config_address
 import openksef.shared.generated.resources.seller_config_name
 import openksef.shared.generated.resources.seller_config_save
@@ -90,12 +86,7 @@ fun SellerConfigScreen(
             TopAppBar(
                 title = { Text(stringResource(Res.string.settings_seller_info)) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(Res.string.action_back),
-                        )
-                    }
+                    BackNavigationIconButton(onClick = onNavigateBack)
                 },
                 colors =
                     TopAppBarDefaults.topAppBarColors(

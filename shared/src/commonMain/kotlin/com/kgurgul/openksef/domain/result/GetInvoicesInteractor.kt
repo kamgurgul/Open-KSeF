@@ -35,7 +35,7 @@ class GetInvoicesInteractor(
             dateFrom = params.dateFrom,
             dateTo = params.dateTo,
             pageSize = params.pageSize,
-            pageOffset = params.pageOffset,
+            pageIndex = params.pageIndex,
             subjectType = params.subjectType,
         )
 
@@ -43,7 +43,8 @@ class GetInvoicesInteractor(
         val dateFrom: String,
         val dateTo: String,
         val pageSize: Int,
-        val pageOffset: Int,
+        /** Zero-based index of the page. */
+        val pageIndex: Int,
         val subjectType: InvoiceSubjectType,
     )
 }

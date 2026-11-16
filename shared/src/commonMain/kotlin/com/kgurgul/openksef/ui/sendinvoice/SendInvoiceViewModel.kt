@@ -19,6 +19,7 @@ package com.kgurgul.openksef.ui.sendinvoice
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kgurgul.openksef.common.UiText
+import com.kgurgul.openksef.common.toUiText
 import com.kgurgul.openksef.domain.invoice.InvoiceBuilder
 import com.kgurgul.openksef.domain.invoice.InvoiceData
 import com.kgurgul.openksef.domain.invoice.InvoiceLineItem
@@ -336,9 +337,7 @@ class SendInvoiceViewModel(
                     formState.update {
                         it.copy(
                             isLoading = false,
-                            error =
-                                e.message?.let { msg -> UiText.Raw(msg) }
-                                    ?: UiText.Resource(Res.string.error_send_invoice),
+                            error = e.toUiText(Res.string.error_send_invoice),
                         )
                     }
                 }

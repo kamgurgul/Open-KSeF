@@ -30,17 +30,23 @@ import io.ktor.client.request.get
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.TextContent
 import io.ktor.http.contentType
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import okio.FileSystem
 
 class KsefApiClientTest {
@@ -49,6 +55,7 @@ class KsefApiClientTest {
         ignoreUnknownKeys = true
         isLenient = true
         encodeDefaults = true
+        explicitNulls = false
     }
 
     private val jsonHeaders =
@@ -205,6 +212,176 @@ class KsefApiClientTest {
             assertNull(sessionHolder.accessToken)
             assertEquals(Unit, sessionEventBus.sessionExpired.first())
         }
+
+    private fun buildClient(engine: MockEngine): Pair<HttpClient, SessionHolder> {
+        val sessionHolder = SessionHolder().apply { update(accessToken = "access-token-abc") }
+        val client =
+            KsefApiClient.create(
+                sessionHolder = sessionHolder,
+                json = json,
+                sessionEventBus = SessionEventBus(),
+                tokenStore = buildTokenStore(),
+                authenticator = KsefAuthenticator(buildPlainClient(engine), FakeCrypto),
+                engine = engine,
+            )
+        return client to sessionHolder
+    }
+
+    @Test
+    fun requests_askForProblemDetailsErrors() = runTest {
+        var errorFormat: String? = null
+        val engine = MockEngine { request ->
+            errorFormat = request.headers["X-Error-Format"]
+            respond(content = "{}", status = HttpStatusCode.OK, headers = jsonHeaders)
+        }
+        val (client, sessionHolder) = buildClient(engine)
+
+        client.get("${sessionHolder.baseUrl}/protected")
+
+        assertEquals("problem-details", errorFormat)
+    }
+
+    @Test
+    fun errorResponse_isMappedToKsefApiException() = runTest {
+        val engine = MockEngine { _ ->
+            respond(
+                content =
+                    """{"title":"Bad Request","status":400,"detail":"Żądanie jest nieprawidłowe.","errors":[{"code":21164,"description":"Faktura o podanym identyfikatorze nie istnieje.","details":["Nie znaleziono."]}]}""",
+                status = HttpStatusCode.BadRequest,
+                headers = headersOf(HttpHeaders.ContentType, "application/problem+json"),
+            )
+        }
+        val (client, sessionHolder) = buildClient(engine)
+
+        val exception =
+            assertFailsWith<KsefApiException> {
+                KsefApi(client).apply { baseUrl = sessionHolder.baseUrl }.getInvoice("KSEF-1")
+            }
+
+        assertEquals(400, exception.statusCode)
+        assertEquals(listOf(21164), exception.errorCodes)
+        assertEquals(
+            "Faktura o podanym identyfikatorze nie istnieje: Nie znaleziono.",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun rateLimit_withShortRetryAfter_isRetried() = runTest {
+        var calls = 0
+        val engine = MockEngine { _ ->
+            calls++
+            if (calls == 1) {
+                respond(
+                    content = """{"title":"Too Many Requests","status":429,"detail":"Limit"}""",
+                    status = HttpStatusCode.TooManyRequests,
+                    headers =
+                        headersOf(
+                            HttpHeaders.ContentType to listOf("application/problem+json"),
+                            HttpHeaders.RetryAfter to listOf("1"),
+                        ),
+                )
+            } else {
+                respond(content = "{}", status = HttpStatusCode.OK, headers = jsonHeaders)
+            }
+        }
+        val (client, sessionHolder) = buildClient(engine)
+
+        val response = client.get("${sessionHolder.baseUrl}/protected")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(2, calls)
+    }
+
+    @Test
+    fun rateLimit_withLongRetryAfter_failsWithRetryAfter() = runTest {
+        var calls = 0
+        val engine = MockEngine { _ ->
+            calls++
+            respond(
+                content = """{"title":"Too Many Requests","status":429,"detail":"Limit"}""",
+                status = HttpStatusCode.TooManyRequests,
+                headers =
+                    headersOf(
+                        HttpHeaders.ContentType to listOf("application/problem+json"),
+                        HttpHeaders.RetryAfter to listOf("1800"),
+                    ),
+            )
+        }
+        val (client, sessionHolder) = buildClient(engine)
+
+        val exception =
+            assertFailsWith<KsefApiException> { client.get("${sessionHolder.baseUrl}/protected") }
+
+        assertTrue(exception.isRateLimited)
+        assertEquals(1800, exception.retryAfterSeconds)
+        assertEquals(1, calls)
+    }
+
+    @Test
+    fun authenticate_sendsPublicKeyIdAndReportsFailureStatus() = runTest {
+        var tokenRequestBody = ""
+        val engine = MockEngine { request ->
+            val path = request.url.encodedPath
+            when {
+                path.endsWith("/security/public-key-certificates") ->
+                    respond(
+                        content =
+                            """[{"certificate":"AAAA","certificateId":"cert-1","publicKeyId":"key-1","validFrom":"2024-01-01T00:00:00Z","validTo":"2099-01-01T00:00:00Z","usage":["KsefTokenEncryption"]}]""",
+                        status = HttpStatusCode.OK,
+                        headers = jsonHeaders,
+                    )
+
+                path.endsWith("/auth/challenge") ->
+                    respond(
+                        content =
+                            """{"challenge":"abc123","timestamp":"2024-01-01T00:00:00Z","timestampMs":1704067200000,"clientIp":"127.0.0.1"}""",
+                        status = HttpStatusCode.OK,
+                        headers = jsonHeaders,
+                    )
+
+                path.endsWith("/auth/ksef-token") -> {
+                    tokenRequestBody = (request.body as TextContent).text
+                    respond(
+                        content =
+                            """{"referenceNumber":"ref-123","authenticationToken":{"token":"auth-token-xyz","validUntil":"2024-01-01T01:00:00Z"}}""",
+                        status = HttpStatusCode.Accepted,
+                        headers = jsonHeaders,
+                    )
+                }
+
+                else ->
+                    respond(
+                        content =
+                            """{"startDate":"2024-01-01T00:00:00Z","authenticationMethodInfo":{"category":"Token","code":"Token","displayName":"Token"},"status":{"code":450,"description":"Uwierzytelnianie zakończone niepowodzeniem z powodu błędnego tokenu","details":["Nieprawidłowy token"]}}""",
+                        status = HttpStatusCode.OK,
+                        headers = jsonHeaders,
+                    )
+            }
+        }
+        val authenticator = KsefAuthenticator(buildPlainClient(engine), FakeCrypto)
+
+        val exception =
+            assertFailsWith<KsefAuthenticationException> {
+                authenticator.authenticate("https://ksef.test/v2", "1234567890", "token")
+            }
+
+        assertEquals(450, exception.statusCode)
+        assertEquals(
+            "Uwierzytelnianie zakończone niepowodzeniem z powodu błędnego tokenu: " +
+                    "Nieprawidłowy token",
+            exception.message,
+        )
+        val body = json.decodeFromString<JsonObject>(tokenRequestBody)
+        assertEquals("key-1", body["publicKeyId"]?.jsonPrimitive?.content)
+        assertEquals("abc123", body["challenge"]?.jsonPrimitive?.content)
+        assertEquals(
+            "Nip",
+            body.getValue("contextIdentifier").jsonObject["type"]?.jsonPrimitive?.content,
+        )
+        // Optional fields are omitted rather than sent as null.
+        assertFalse("authorizationPolicy" in body)
+    }
 
     private class InMemorySecureTokenStorage : SecureTokenStorage {
         private var token: String? = null

@@ -37,6 +37,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.Url
 import io.ktor.http.contentType
 import io.ktor.http.headersOf
 import io.ktor.http.isSuccess
@@ -46,6 +47,8 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -138,8 +141,16 @@ class InvoiceListViewModelTest {
     @Test
     fun onLoadNextPage_accumulatesTotalCount() = runTest {
         var invoiceCallCount = 0
+        val requestedPages = mutableListOf<String?>()
         val viewModel =
-            createViewModelWithRouter(refreshToken = null) { path ->
+            createViewModelWithRouter(
+                refreshToken = null,
+                onRequest = { url ->
+                    if (url.encodedPath.endsWith("/invoices/query/metadata")) {
+                        requestedPages += url.parameters["pageOffset"]
+                    }
+                },
+            ) { path ->
                 if (path.endsWith("/invoices/query/metadata")) {
                     invoiceCallCount++
                     val body =
@@ -171,6 +182,69 @@ class InvoiceListViewModelTest {
         val secondPage = viewModel.uiState.first { it.invoices.size == 3 && !it.isLoading }
         assertEquals(3, secondPage.totalCount)
         assertFalse(secondPage.hasMore)
+        // The API takes the index of the page, not the offset of the first record.
+        assertEquals(listOf<String?>("0", "1"), requestedPages)
+
+        // Nothing more to load: a further request must not be sent.
+        viewModel.onLoadNextPage()
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(2, invoiceCallCount)
+    }
+
+    @Test
+    fun onLoadNextPage_truncatedResult_doesNotRequestFurtherPages() = runTest {
+        var invoiceCallCount = 0
+        val viewModel =
+            createViewModelWithRouter(refreshToken = null) { path ->
+                if (path.endsWith("/invoices/query/metadata")) {
+                    invoiceCallCount++
+                    Pair(
+                        HttpStatusCode.OK,
+                        """{"hasMore": true, "isTruncated": true,
+                            "invoices": [${invoiceJson("KSEF-001", "FV/001", "Alpha", "Beta")}]}""",
+                    )
+                } else {
+                    Pair(HttpStatusCode.NotFound, "{}")
+                }
+            }
+
+        val state = viewModel.uiState.first { it.invoices.size == 1 && !it.isLoading }
+        assertTrue(state.isTruncated)
+        assertFalse(state.canLoadMore)
+
+        viewModel.onLoadNextPage()
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, invoiceCallCount)
+    }
+
+    @Test
+    fun onSearchClicked_rangeLongerThanApiLimit_showsErrorWithoutRequest() = runTest {
+        var invoiceCallCount = 0
+        val viewModel =
+            createViewModelWithRouter(refreshToken = null) { _ ->
+                invoiceCallCount++
+                Pair(HttpStatusCode.OK, emptyListResponse)
+            }
+        viewModel.uiState.first { it.dateFrom.isNotBlank() && !it.isLoading }
+        assertEquals(1, invoiceCallCount)
+
+        viewModel.onDateFromChanged("2026-01-01")
+        viewModel.onDateToChanged("2026-04-11") // 101 days
+        viewModel.onSearchClicked()
+
+        assertTrue(viewModel.events.first() is InvoiceListEvent.ShowError)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, invoiceCallCount)
+    }
+
+    @Test
+    fun validateDateRange_checksOrderAndLength() {
+        assertNull(InvoiceListViewModel.validateDateRange("2026-01-01", "2026-01-01"))
+        // 100 days inclusive is the longest range the API accepts.
+        assertNull(InvoiceListViewModel.validateDateRange("2026-01-01", "2026-04-10"))
+        assertNotNull(InvoiceListViewModel.validateDateRange("2026-01-01", "2026-04-11"))
+        assertNotNull(InvoiceListViewModel.validateDateRange("2026-02-01", "2026-01-01"))
+        assertNotNull(InvoiceListViewModel.validateDateRange("", "2026-01-01"))
     }
 
     @Test
@@ -270,9 +344,11 @@ class InvoiceListViewModelTest {
 
     private fun createViewModelWithRouter(
         refreshToken: String?,
+        onRequest: (Url) -> Unit = {},
         router: (String) -> Pair<HttpStatusCode, String>,
     ): InvoiceListViewModel {
         val engine = MockEngine { request ->
+            onRequest(request.url)
             val (status, body) = router(request.url.encodedPath)
             val ct =
                 if (status.isSuccess()) ContentType.Application.Json.toString()

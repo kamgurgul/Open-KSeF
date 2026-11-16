@@ -29,6 +29,7 @@ import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 
 class KsefApi(private val client: HttpClient) {
@@ -136,21 +137,37 @@ class KsefApi(private val client: HttpClient) {
 
     /** GET /invoices/ksef/{ksefNumber} — downloads the invoice XML by its KSeF number. */
     suspend fun getInvoice(ksefNumber: String): String =
-        client.get("$baseUrl/invoices/ksef/$ksefNumber").bodyAsText()
+        client
+            .get("$baseUrl/invoices/ksef/$ksefNumber") {
+                header(HttpHeaders.Accept, ContentType.Application.Xml.toString())
+            }
+            .bodyAsText()
 
-    /** POST /invoices/query/metadata — searches invoice metadata. */
+    /**
+     * POST /invoices/query/metadata — searches invoice metadata.
+     *
+     * @param pageOffset zero-based index of the page (not of the record) to return
+     * @param pageSize number of records per page, 10..250
+     * @param sortOrder `Asc` or `Desc`; applied to the date selected by `dateRange.dateType`
+     */
     suspend fun queryInvoiceMetadata(
         filters: InvoiceQueryFilters,
         pageOffset: Int = 0,
-        pageSize: Int = 10,
+        pageSize: Int = MIN_PAGE_SIZE,
         sortOrder: String = "Desc",
     ): QueryInvoicesMetadataResponse =
         client
             .post("$baseUrl/invoices/query/metadata") {
                 parameter("pageOffset", pageOffset)
-                parameter("pageSize", pageSize)
+                parameter("pageSize", pageSize.coerceIn(MIN_PAGE_SIZE, MAX_PAGE_SIZE))
                 parameter("sortOrder", sortOrder)
                 setBody(filters)
             }
             .body()
+
+    companion object {
+        /** Page size limits of POST /invoices/query/metadata. */
+        const val MIN_PAGE_SIZE = 10
+        const val MAX_PAGE_SIZE = 250
+    }
 }

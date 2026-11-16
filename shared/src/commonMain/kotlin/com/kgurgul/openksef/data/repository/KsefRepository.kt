@@ -16,6 +16,7 @@
 
 package com.kgurgul.openksef.data.repository
 
+import com.kgurgul.openksef.common.Constants.DEFAULT_CURRENCY_CODE
 import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefAuthenticator
@@ -24,9 +25,16 @@ import com.kgurgul.openksef.data.remote.model.*
 import com.kgurgul.openksef.data.remote.pickCertificate
 import com.kgurgul.openksef.domain.model.*
 import com.kgurgul.openksef.domain.money.Money
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.plus
 import org.kotlincrypto.hash.sha2.SHA256
 
 class KsefRepository(
@@ -65,9 +73,7 @@ class KsefRepository(
     }
 
     suspend fun closeSession(): Result<Unit> = runCatching {
-        sessionHolder.onlineSessionReferenceNumber?.let {
-            runCatching { api.closeOnlineSession(it) }
-        }
+        sessionHolder.onlineSessionReferenceNumber?.let { closeOnlineSessionQuietly(it) }
         runCatching { api.logoutCurrentSession() }
         sessionHolder.clear()
         api.clearTokenCache()
@@ -83,7 +89,9 @@ class KsefRepository(
      *
      * The upload only returns 202 Accepted; processing (schema validation, duplicate check, KSeF
      * number assignment) is asynchronous, so the invoice status is polled until it reaches a
-     * terminal state and a rejection surfaces as a failed [Result].
+     * terminal state and a rejection surfaces as a failed [Result]. Once the invoice reached a
+     * terminal state the session is closed, which lets KSeF finish it and generate the UPO instead
+     * of keeping it open until it expires.
      */
     @OptIn(ExperimentalEncodingApi::class)
     suspend fun sendInvoice(invoiceXml: String): Result<SendInvoiceResult> = runCatching {
@@ -107,7 +115,17 @@ class KsefRepository(
                     ),
             )
 
-        val status = waitForInvoiceProcessing(sessionRef, response.referenceNumber)
+        val status =
+            try {
+                waitForInvoiceProcessing(sessionRef, response.referenceNumber)
+            } catch (e: InvoiceProcessingTimeoutException) {
+                // Still being processed: leave the session open so the invoice is not cancelled.
+                throw e
+            } catch (e: Exception) {
+                closeOnlineSessionQuietly(sessionRef)
+                throw e
+            }
+        closeOnlineSessionQuietly(sessionRef)
 
         SendInvoiceResult(
             referenceNumber = response.referenceNumber,
@@ -130,16 +148,24 @@ class KsefRepository(
             when {
                 response.status.code == INVOICE_STATUS_SUCCESS -> return response
                 response.status.code < INVOICE_STATUS_SUCCESS -> delay(INVOICE_POLL_DELAY_MS)
-                else -> {
-                    val details = response.status.details.orEmpty().joinToString(" ")
-                    error(
-                        "Invoice rejected: ${response.status.description}" +
-                            if (details.isBlank()) "" else " $details"
-                    )
-                }
+                else -> throw InvoiceRejectedException(response.status)
             }
         }
-        error("Timed out waiting for invoice processing")
+        throw InvoiceProcessingTimeoutException()
+    }
+
+    /** Closes an online session, ignoring failures (it expires on its own anyway). */
+    private suspend fun closeOnlineSessionQuietly(sessionReferenceNumber: String) {
+        try {
+            api.closeOnlineSession(sessionReferenceNumber)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Best effort only.
+        }
+        if (sessionHolder.onlineSessionReferenceNumber == sessionReferenceNumber) {
+            sessionHolder.update(onlineSessionReferenceNumber = null)
+        }
     }
 
     /**
@@ -163,6 +189,7 @@ class KsefRepository(
                         EncryptionInfo(
                             encryptedSymmetricKey = encryptedSymmetricKey,
                             initializationVector = Base64.encode(iv),
+                            publicKeyId = certificate.publicKeyId,
                         ),
                 )
             )
@@ -175,29 +202,46 @@ class KsefRepository(
             api.getSessionStatus(referenceNumber)
         }
 
+    /**
+     * Queries one page of invoice metadata, newest first.
+     *
+     * @param dateFrom first day (inclusive, `yyyy-MM-dd`) of the invoicing-date range
+     * @param dateTo last day (inclusive, `yyyy-MM-dd`) of the invoicing-date range; the API accepts
+     *   ranges of up to [MAX_DATE_RANGE_DAYS] days
+     * @param pageIndex zero-based index of the page
+     * @param timeZone zone in which [dateFrom] and [dateTo] are interpreted
+     */
     suspend fun getInvoices(
         dateFrom: String,
         dateTo: String,
-        pageSize: Int = 10,
-        pageOffset: Int = 0,
+        pageSize: Int = KsefApi.MIN_PAGE_SIZE,
+        pageIndex: Int = 0,
         subjectType: InvoiceSubjectType = InvoiceSubjectType.ISSUED,
+        timeZone: TimeZone = TimeZone.currentSystemDefault(),
     ): Result<InvoiceListResult> = runCatching {
+        // Day boundaries are taken in the given time zone and sent as UTC instants. Sending
+        // "T00:00:00Z" directly would shift the range by the zone offset and drop the invoices
+        // accepted around midnight.
+        val from = LocalDate.parse(dateFrom).atStartOfDayIn(timeZone)
+        val to =
+            LocalDate.parse(dateTo).plus(1, DateTimeUnit.DAY).atStartOfDayIn(timeZone) -
+                    1.milliseconds
         val filters =
             InvoiceQueryFilters(
                 subjectType = subjectType.apiValue,
                 dateRange =
                     InvoiceQueryDateRange(
                         dateType = "Invoicing",
-                        from = "${dateFrom}T00:00:00Z",
-                        to = "${dateTo}T23:59:59Z",
+                        from = from.toString(),
+                        to = to.toString(),
                     ),
             )
-        val response = api.queryInvoiceMetadata(filters, pageOffset, pageSize)
+        val response = api.queryInvoiceMetadata(filters, pageIndex, pageSize)
 
         InvoiceListResult(
             items = response.invoices.map { it.toSummary() },
-            totalCount = response.invoices.size,
             hasMore = response.hasMore,
+            isTruncated = response.isTruncated,
         )
     }
 
@@ -226,14 +270,20 @@ class KsefRepository(
             invoicingDate = invoicingDate,
             sellerNip = seller.nip ?: "",
             sellerName = seller.name ?: "",
-            buyerNip = buyer.identifier?.value ?: buyer.nip ?: "",
+            buyerNip = buyer.identifier?.value ?: "",
             buyerName = buyer.name ?: "",
             net = Money.fromDouble(netAmount),
             vat = Money.fromDouble(vatAmount),
             gross = Money.fromDouble(grossAmount),
+            issueDate = issueDate,
+            currency = currency.ifBlank { DEFAULT_CURRENCY_CODE },
+            kind = InvoiceKind.fromApiValue(invoiceType),
         )
 
     companion object {
+        /** Longest date range accepted by POST /invoices/query/metadata. */
+        const val MAX_DATE_RANGE_DAYS = 100
+
         private const val INVOICE_STATUS_SUCCESS = 200
         private const val MAX_INVOICE_POLL_ATTEMPTS = 60
         private const val INVOICE_POLL_DELAY_MS = 1_000L
@@ -248,3 +298,37 @@ class KsefRepository(
             FormCode(systemCode = "FA (3)", schemaVersion = "1-0E", value = "FA")
     }
 }
+
+/**
+ * KSeF finished processing a sent invoice with a status other than success (see the status table of
+ * `GET /sessions/{referenceNumber}/invoices/{invoiceReferenceNumber}`), e.g. 440 - duplicate, 450 -
+ * semantic validation error.
+ *
+ * @property originalKsefNumber for a duplicate (440): KSeF number of the invoice sent before
+ */
+class InvoiceRejectedException(
+    val statusCode: Int,
+    val description: String,
+    val details: List<String> = emptyList(),
+    val originalKsefNumber: String? = null,
+) :
+    Exception(
+        buildString {
+            append(description.ifBlank { "Invoice rejected ($statusCode)" })
+            val detailsText = details.filter { it.isNotBlank() }.joinToString(separator = " ")
+            if (detailsText.isNotEmpty()) append(": ").append(detailsText)
+            if (originalKsefNumber != null) append(" (").append(originalKsefNumber).append(")")
+        }
+    ) {
+    constructor(
+        status: InvoiceStatusInfo
+    ) : this(
+        statusCode = status.code,
+        description = status.description,
+        details = status.details.orEmpty(),
+        originalKsefNumber = status.extensions?.get("originalKsefNumber"),
+    )
+}
+
+/** The invoice was accepted for processing but did not reach a terminal state in time. */
+class InvoiceProcessingTimeoutException : Exception("Timed out waiting for invoice processing")

@@ -104,9 +104,17 @@
     <string name="invoice_card_vat">VAT</string>
     <string name="invoice_card_gross">Brutto</string>
     <string name="amount_pln">%1$s PLN</string>
+    <string name="amount_with_currency">%1$s %2$s</string>
+    <string name="invoice_kind_correction">Korekta</string>
+    <string name="invoice_kind_advance">Zaliczkowa</string>
+    <string name="invoice_kind_settlement">Rozliczeniowa</string>
+    <string name="invoice_kind_simplified">Uproszczona</string>
+    <string name="invoices_truncated">KSeF zwraca najwyżej 10 000 faktur na zapytanie. Zawęź zakres dat, aby zobaczyć pozostałe.</string>
 
     <!-- Settings -->
     <string name="settings_title">Ustawienia</string>
+    <string name="settings_account">Zalogowane konto</string>
+    <string name="settings_value_unknown">Nieznane</string>
     <string name="settings_seller_info">Dane sprzedawcy</string>
     <string name="settings_seller_info_description">Nazwa i adres uzupełniane na nowych fakturach</string>
     <string name="seller_config_name">Nazwa sprzedawcy</string>
@@ -121,6 +129,10 @@
     <string name="error_biometric_failed">Uwierzytelnianie biometryczne nie powiodło się</string>
     <string name="error_biometric_unavailable">Uwierzytelnianie biometryczne jest niedostępne na tym urządzeniu</string>
     <string name="error_load_invoices">Błąd pobierania faktur</string>
+    <string name="error_date_range_invalid">Data początkowa nie może być późniejsza niż końcowa</string>
+    <string name="error_date_range_too_long">KSeF pozwala na zakres dat do %1$d dni</string>
+    <string name="error_rate_limited">Osiągnięto limit żądań KSeF. Spróbuj ponownie później.</string>
+    <string name="error_rate_limited_retry_after">Osiągnięto limit żądań KSeF. Spróbuj ponownie za %1$d s.</string>
     <string name="error_load_invoice">Błąd pobierania faktury</string>
     <string name="error_required">Wymagane</string>
     <string name="error_items_required">Dodaj min. 1 pozycję</string>

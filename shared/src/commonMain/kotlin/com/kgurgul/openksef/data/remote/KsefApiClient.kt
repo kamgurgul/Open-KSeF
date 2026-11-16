@@ -27,17 +27,10 @@ import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.plugins.auth.providers.bearer
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.defaultRequest
-import io.ktor.client.plugins.logging.LogLevel
-import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.header
 import io.ktor.client.request.post
-import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
-import io.ktor.http.contentType
 import io.ktor.http.isSuccess
-import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 
@@ -52,9 +45,7 @@ object KsefApiClient {
         engine: HttpClientEngine? = null,
     ): HttpClient {
         val config: HttpClientConfig<*>.() -> Unit = {
-            expectSuccess = true
-            install(ContentNegotiation) { json(json, contentType = ContentType.Any) }
-            install(Logging) { level = LogLevel.HEADERS }
+            installKsefDefaults(json)
             install(Auth) {
                 bearer {
                     loadTokens {
@@ -72,7 +63,6 @@ object KsefApiClient {
                                     client.post("${sessionHolder.baseUrl}/auth/token/refresh") {
                                         markAsRefreshTokenRequest()
                                         header(HttpHeaders.Authorization, "Bearer $refreshToken")
-                                        contentType(ContentType.Application.Json)
                                     }
                                 if (response.status.isSuccess()) {
                                     val tokens = response.body<AuthenticationTokenRefreshResponse>()
@@ -90,7 +80,6 @@ object KsefApiClient {
                     }
                 }
             }
-            defaultRequest { contentType(ContentType.Application.Json) }
         }
         return if (engine != null) HttpClient(engine, config) else HttpClient(config)
     }

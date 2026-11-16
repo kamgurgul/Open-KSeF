@@ -67,6 +67,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -115,6 +116,7 @@ import openksef.shared.generated.resources.invoices_filter_placeholder
 import openksef.shared.generated.resources.invoices_tab_issued
 import openksef.shared.generated.resources.invoices_tab_received
 import openksef.shared.generated.resources.invoices_title
+import openksef.shared.generated.resources.invoices_truncated
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -183,11 +185,17 @@ fun InvoiceListScreen(
     var showDateToPicker by remember { mutableStateOf(false) }
     var filtersExpanded by rememberSaveable { mutableStateOf(false) }
 
-    val shouldLoadMore by remember {
+    // Request the next page when the end of the list gets close. The state is keyed on the values
+    // read from uiState, otherwise the derived state would keep using the first snapshot.
+    val displayedCount = uiState.displayedInvoices.size
+    // Paging is paused while the local filter is active: a short filtered list would otherwise
+    // pull every remaining page and exhaust the (low) KSeF limit of metadata queries.
+    val canLoadMore = uiState.canLoadMore && !uiState.isLoading && uiState.searchQuery.isBlank()
+    val shouldLoadMore by
+    remember(displayedCount, canLoadMore) {
         derivedStateOf {
             val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisibleItem >= uiState.invoices.size - 3 &&
-                uiState.invoices.size < uiState.totalCount
+            canLoadMore && lastVisibleItem >= displayedCount - LOAD_MORE_THRESHOLD
         }
     }
 
@@ -496,7 +504,11 @@ fun InvoiceListScreen(
                     }
                 }
             } else {
-                Box(modifier = Modifier.fillMaxSize()) {
+                PullToRefreshBox(
+                    isRefreshing = uiState.isRefreshing,
+                    onRefresh = onRefreshClick,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
@@ -519,8 +531,20 @@ fun InvoiceListScreen(
                             )
                         }
 
-                        if (uiState.isLoading) {
-                            item {
+                        if (uiState.isTruncated && uiState.hasMore) {
+                            item(key = "truncated") {
+                                Text(
+                                    text = stringResource(Res.string.invoices_truncated),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                )
+                            }
+                        }
+
+                        if (uiState.isLoading && !uiState.isRefreshing) {
+                            item(key = "loading") {
                                 Box(
                                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                                     contentAlignment = Alignment.Center,
@@ -536,6 +560,9 @@ fun InvoiceListScreen(
         }
     }
 }
+
+/** The next page is requested when this many items (or fewer) remain below the viewport. */
+private const val LOAD_MORE_THRESHOLD = 10
 
 private fun String.toEpochMillis(): Long? = runCatching {
     LocalDate.parse(this).atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()

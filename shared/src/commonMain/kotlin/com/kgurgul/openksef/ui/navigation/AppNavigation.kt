@@ -38,6 +38,7 @@ import com.kgurgul.openksef.ui.sendinvoice.SendInvoiceViewModel
 import com.kgurgul.openksef.ui.settings.SellerConfigScreen
 import com.kgurgul.openksef.ui.settings.SellerConfigViewModel
 import com.kgurgul.openksef.ui.settings.SettingsScreen
+import com.kgurgul.openksef.ui.settings.SettingsViewModel
 import kotlinx.serialization.Serializable
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -129,7 +130,9 @@ fun AppNavigation() {
                 }
 
                 entry<SettingsKey> {
+                    val viewModel = koinViewModel<SettingsViewModel>()
                     SettingsScreen(
+                        viewModel = viewModel,
                         onNavigateBack = { backStack.removeLastOrNull() },
                         onSellerConfigClick = { backStack.add(SellerConfigKey) },
                     )

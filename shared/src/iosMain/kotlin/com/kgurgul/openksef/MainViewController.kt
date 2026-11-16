@@ -16,11 +16,32 @@
 
 package com.kgurgul.openksef
 
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
 import com.kgurgul.openksef.di.appModule
+import com.kgurgul.openksef.ui.navigation.IosNativeNavigation
+import com.kgurgul.openksef.ui.navigation.IosNativeNavigationRenderer
+import com.kgurgul.openksef.ui.navigation.LocalNativeNavigation
 import org.koin.core.context.startKoin
 
-fun MainViewController(): platform.UIKit.UIViewController {
+/**
+ * @param nativeNavigationRenderer renderer of the native navigation elements (Liquid Glass) or null
+ *   when all navigation elements should be drawn by Compose
+ */
+fun MainViewController(
+    nativeNavigationRenderer: IosNativeNavigationRenderer?
+): platform.UIKit.UIViewController {
     startKoin { modules(appModule) }
-    return ComposeUIViewController { App() }
+    return ComposeUIViewController {
+        val nativeNavigation =
+            remember(nativeNavigationRenderer) {
+                nativeNavigationRenderer?.let(::IosNativeNavigation)
+            }
+        val darkTheme = isSystemInDarkTheme()
+        LaunchedEffect(nativeNavigation, darkTheme) { nativeNavigation?.setDarkTheme(darkTheme) }
+        CompositionLocalProvider(LocalNativeNavigation provides nativeNavigation) { App() }
+    }
 }

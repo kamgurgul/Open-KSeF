@@ -20,6 +20,8 @@ import com.kgurgul.openksef.data.SessionHolder
 import com.kgurgul.openksef.data.remote.KsefApi
 import com.kgurgul.openksef.data.remote.KsefAuthenticator
 import com.kgurgul.openksef.data.remote.KsefCrypto
+import com.kgurgul.openksef.domain.model.InvoiceKind
+import com.kgurgul.openksef.domain.model.InvoiceSubjectType
 import com.kgurgul.openksef.domain.money.Money
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -35,16 +37,26 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.Url
+import io.ktor.http.content.TextContent
 import io.ktor.http.contentType
 import io.ktor.http.headersOf
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.TimeZone
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 class KsefRepositoryTest {
 
@@ -276,11 +288,104 @@ class KsefRepositoryTest {
         )
         val invoiceList = result.getOrNull()
         assertNotNull(invoiceList)
-        assertEquals(1, invoiceList.totalCount)
+        assertEquals(1, invoiceList.items.size)
+        assertFalse(invoiceList.hasMore)
         val invoice = invoiceList.items.first()
         assertEquals("KSEF-REF-001", invoice.ksefReferenceNumber)
         assertEquals("1111111111", invoice.sellerNip)
+        assertEquals("2222222222", invoice.buyerNip)
         assertEquals(Money.fromMajorUnits(1000), invoice.net)
+        assertEquals("2024-01-15", invoice.issueDate)
+        assertEquals("PLN", invoice.currency)
+        assertEquals(InvoiceKind.STANDARD, invoice.kind)
+    }
+
+    @Test
+    fun getInvoices_sendsPageIndexAndLocalDayBoundsAsUtc() = runTest {
+        var requestUrl: Url? = null
+        var requestBody = ""
+        val engine = MockEngine { request ->
+            requestUrl = request.url
+            requestBody = (request.body as TextContent).text
+            respond(
+                content = """{"hasMore": true, "isTruncated": true, "invoices": []}""",
+                status = HttpStatusCode.OK,
+                headers = jsonHeaders,
+            )
+        }
+        val sessionHolder = SessionHolder().apply { update(accessToken = "active-token") }
+        val client = buildTestClient(engine, sessionHolder)
+        val repository =
+            KsefRepository(
+                KsefApi(client),
+                sessionHolder,
+                FakeCrypto,
+                KsefAuthenticator(client, FakeCrypto),
+            )
+
+        val result =
+            repository.getInvoices(
+                dateFrom = "2026-01-01",
+                dateTo = "2026-01-31",
+                pageSize = 100,
+                pageIndex = 2,
+                subjectType = InvoiceSubjectType.RECEIVED,
+                timeZone = TimeZone.of("Europe/Warsaw"),
+            )
+
+        assertTrue(result.isSuccess, "Unexpected failure: ${result.exceptionOrNull()?.message}")
+        assertTrue(result.getOrThrow().hasMore)
+        assertTrue(result.getOrThrow().isTruncated)
+        // pageOffset is the index of the page, not of the first record.
+        assertEquals("2", requestUrl?.parameters?.get("pageOffset"))
+        assertEquals("100", requestUrl?.parameters?.get("pageSize"))
+        assertEquals("Desc", requestUrl?.parameters?.get("sortOrder"))
+        val body = json.decodeFromString<JsonObject>(requestBody)
+        assertEquals("Subject2", body["subjectType"]?.jsonPrimitive?.content)
+        val dateRange = body.getValue("dateRange").jsonObject
+        assertEquals("Invoicing", dateRange["dateType"]?.jsonPrimitive?.content)
+        // Midnight in Warsaw (UTC+1 in January) expressed in UTC.
+        assertEquals(
+            Instant.parse("2025-12-31T23:00:00Z"),
+            Instant.parse(dateRange.getValue("from").jsonPrimitive.content),
+        )
+        assertEquals(
+            Instant.parse("2026-01-31T22:59:59.999Z"),
+            Instant.parse(dateRange.getValue("to").jsonPrimitive.content),
+        )
+    }
+
+    @Test
+    fun getInvoices_mapsForeignCurrencyCorrection() = runTest {
+        val responseBody =
+            """{"hasMore": false, "isTruncated": false, "invoices": [{
+                "ksefNumber": "KSEF-REF-002", "invoiceNumber": "KOR/1", "issueDate": "2026-02-01",
+                "invoicingDate": "2026-02-02T10:00:00Z",
+                "seller": {"nip": "1111111111"},
+                "buyer": {"identifier": {"type": "None"}},
+                "netAmount": -10.5, "grossAmount": -12.92, "vatAmount": -10.2,
+                "currency": "EUR", "invoiceType": "Kor"
+            }]}"""
+        val engine = MockEngine { _ ->
+            respond(content = responseBody, status = HttpStatusCode.OK, headers = jsonHeaders)
+        }
+        val sessionHolder = SessionHolder().apply { update(accessToken = "active-token") }
+        val client = buildTestClient(engine, sessionHolder)
+        val repository =
+            KsefRepository(
+                KsefApi(client),
+                sessionHolder,
+                FakeCrypto,
+                KsefAuthenticator(client, FakeCrypto),
+            )
+
+        val invoice = repository.getInvoices("2026-02-01", "2026-02-28").getOrThrow().items.single()
+
+        assertEquals("EUR", invoice.currency)
+        assertEquals(InvoiceKind.CORRECTION, invoice.kind)
+        assertEquals("", invoice.buyerNip)
+        assertEquals("", invoice.buyerName)
+        assertEquals(Money.fromMinorUnits(-1292), invoice.gross)
     }
 
     /**
@@ -289,7 +394,8 @@ class KsefRepositoryTest {
      */
     private fun sendInvoiceEngine(
         vararg invoiceStatusResponses: String,
-        onOpenSession: () -> Unit = {},
+        onOpenSession: (String) -> Unit = {},
+        onCloseSession: () -> Unit = {},
     ): MockEngine {
         var statusCallCount = 0
         return MockEngine { request ->
@@ -298,19 +404,24 @@ class KsefRepositoryTest {
                 path.endsWith("/security/public-key-certificates") ->
                     respond(
                         content =
-                            """[{"certificate":"AAAA","validFrom":"2024-01-01T00:00:00Z","validTo":"2099-01-01T00:00:00Z","usage":["SymmetricKeyEncryption"]}]""",
+                            """[{"certificate":"AAAA","certificateId":"cert-1","publicKeyId":"key-1","validFrom":"2024-01-01T00:00:00Z","validTo":"2099-01-01T00:00:00Z","usage":["SymmetricKeyEncryption"]}]""",
                         status = HttpStatusCode.OK,
                         headers = jsonHeaders,
                     )
 
                 path.endsWith("/sessions/online") -> {
-                    onOpenSession()
+                    onOpenSession((request.body as TextContent).text)
                     respond(
                         content =
                             """{"referenceNumber":"session-ref","validUntil":"2099-01-01T00:00:00Z"}""",
-                        status = HttpStatusCode.OK,
+                        status = HttpStatusCode.Created,
                         headers = jsonHeaders,
                     )
+                }
+
+                path.endsWith("/sessions/online/session-ref/close") -> {
+                    onCloseSession()
+                    respond(content = "", status = HttpStatusCode.NoContent)
                 }
 
                 path.endsWith("/sessions/online/session-ref/invoices") ->
@@ -338,11 +449,13 @@ class KsefRepositoryTest {
 
     @Test
     fun sendInvoice_opensOnlineSessionThenReturnsKsefNumber() = runTest {
-        var openSessionCalled = false
+        var openSessionBody: String? = null
+        var closeSessionCalled = false
         val engine =
             sendInvoiceEngine(
                 """{"referenceNumber":"INV-REF-001","ksefNumber":"1111111111-20240115-ABCDEF-12","status":{"code":200,"description":"Sukces"}}""",
-                onOpenSession = { openSessionCalled = true },
+                onOpenSession = { openSessionBody = it },
+                onCloseSession = { closeSessionCalled = true },
             )
         val sessionHolder = SessionHolder().apply { update(accessToken = "active-token") }
         val client = buildTestClient(engine, sessionHolder)
@@ -356,8 +469,18 @@ class KsefRepositoryTest {
             result.isSuccess,
             "Expected success but got: ${result.exceptionOrNull()?.message}",
         )
-        assertTrue(openSessionCalled, "Expected an online session to be opened before sending")
-        assertEquals("session-ref", sessionHolder.onlineSessionReferenceNumber)
+        val openSession = json.decodeFromString<JsonObject>(assertNotNull(openSessionBody))
+        assertEquals(
+            "FA (3)",
+            openSession.getValue("formCode").jsonObject["systemCode"]?.jsonPrimitive?.content,
+        )
+        // The key selector of the certificate used for encryption is echoed back to KSeF.
+        assertEquals(
+            "key-1",
+            openSession.getValue("encryption").jsonObject["publicKeyId"]?.jsonPrimitive?.content,
+        )
+        assertTrue(closeSessionCalled, "Expected the online session to be closed after sending")
+        assertNull(sessionHolder.onlineSessionReferenceNumber)
         val sendResult = result.getOrNull()
         assertNotNull(sendResult)
         assertEquals("INV-REF-001", sendResult.referenceNumber)
@@ -389,9 +512,11 @@ class KsefRepositoryTest {
 
     @Test
     fun sendInvoice_rejectedInvoice_returnsErrorWithDescription() = runTest {
+        var closeSessionCalled = false
         val engine =
             sendInvoiceEngine(
-                """{"referenceNumber":"INV-REF-001","status":{"code":440,"description":"Duplikat faktury","details":["Faktura o numerze KSeF: X została już przesłana"]}}"""
+                """{"referenceNumber":"INV-REF-001","status":{"code":440,"description":"Duplikat faktury","details":["Faktura o numerze KSeF: X została już przesłana"],"extensions":{"originalSessionReferenceNumber":"old-session","originalKsefNumber":"1111111111-20240101-AAAAAA-01"}}}""",
+                onCloseSession = { closeSessionCalled = true },
             )
         val sessionHolder = SessionHolder().apply { update(accessToken = "active-token") }
         val client = buildTestClient(engine, sessionHolder)
@@ -404,5 +529,9 @@ class KsefRepositoryTest {
         assertTrue(result.isFailure)
         val message = result.exceptionOrNull()?.message.orEmpty()
         assertTrue(message.contains("Duplikat faktury"), "Unexpected message: $message")
+        val exception = assertIs<InvoiceRejectedException>(result.exceptionOrNull())
+        assertEquals(440, exception.statusCode)
+        assertEquals("1111111111-20240101-AAAAAA-01", exception.originalKsefNumber)
+        assertTrue(closeSessionCalled, "Expected the online session to be closed after rejection")
     }
 }

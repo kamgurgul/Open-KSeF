@@ -102,9 +102,17 @@
     <string name="invoice_card_vat">VAT</string>
     <string name="invoice_card_gross">Gross</string>
     <string name="amount_pln">%1$s PLN</string>
+    <string name="amount_with_currency">%1$s %2$s</string>
+    <string name="invoice_kind_correction">Correction</string>
+    <string name="invoice_kind_advance">Advance</string>
+    <string name="invoice_kind_settlement">Settlement</string>
+    <string name="invoice_kind_simplified">Simplified</string>
+    <string name="invoices_truncated">KSeF returns at most 10,000 invoices per query. Narrow the date range to see the rest.</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
+    <string name="settings_account">Signed-in account</string>
+    <string name="settings_value_unknown">Unknown</string>
     <string name="settings_seller_info">Seller information</string>
     <string name="settings_seller_info_description">Name and address pre-filled on new invoices</string>
     <string name="seller_config_name">Seller name</string>
@@ -119,6 +127,10 @@
     <string name="error_biometric_failed">Biometric authentication failed</string>
     <string name="error_biometric_unavailable">Biometric authentication is not available on this device</string>
     <string name="error_load_invoices">Failed to load invoices</string>
+    <string name="error_date_range_invalid">The start date must not be later than the end date</string>
+    <string name="error_date_range_too_long">KSeF allows a date range of up to %1$d days</string>
+    <string name="error_rate_limited">KSeF request limit reached. Try again later.</string>
+    <string name="error_rate_limited_retry_after">KSeF request limit reached. Try again in %1$d s.</string>
     <string name="error_load_invoice">Failed to load invoice</string>
     <string name="error_required">Required</string>
     <string name="error_items_required">Add at least 1 item</string>

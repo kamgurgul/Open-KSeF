@@ -20,6 +20,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kgurgul.openksef.common.KsefLogger
 import com.kgurgul.openksef.common.UiText
+import com.kgurgul.openksef.common.toUiText
 import com.kgurgul.openksef.domain.biometric.BiometricPromptText
 import com.kgurgul.openksef.domain.biometric.BiometricResult
 import com.kgurgul.openksef.domain.invoke
@@ -220,9 +221,7 @@ class LoginViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error =
-                                e.message?.let { msg -> UiText.Raw(msg) }
-                                    ?: UiText.Resource(Res.string.error_login_failed),
+                            error = e.toUiText(Res.string.error_login_failed),
                         )
                     }
                 }

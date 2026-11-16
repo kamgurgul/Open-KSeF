@@ -30,7 +30,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.kgurgul.openksef.common.Constants.DEFAULT_CURRENCY_CODE
 import com.kgurgul.openksef.domain.date.DateFormatter
+import com.kgurgul.openksef.domain.model.InvoiceKind
 import com.kgurgul.openksef.domain.model.InvoiceSummary
 import com.kgurgul.openksef.ui.theme.Blue100
 import com.kgurgul.openksef.ui.theme.Blue600
@@ -45,12 +47,17 @@ import com.kgurgul.openksef.ui.theme.WarningContainer
 import com.kgurgul.openksef.ui.theme.jetBrainsMonoFamily
 import com.kgurgul.openksef.ui.theme.spaceGroteskFamily
 import openksef.shared.generated.resources.Res
-import openksef.shared.generated.resources.amount_pln
+import openksef.shared.generated.resources.amount_with_currency
 import openksef.shared.generated.resources.invoice_card_buyer
 import openksef.shared.generated.resources.invoice_card_gross
 import openksef.shared.generated.resources.invoice_card_net
 import openksef.shared.generated.resources.invoice_card_seller
 import openksef.shared.generated.resources.invoice_card_vat
+import openksef.shared.generated.resources.invoice_kind_advance
+import openksef.shared.generated.resources.invoice_kind_correction
+import openksef.shared.generated.resources.invoice_kind_settlement
+import openksef.shared.generated.resources.invoice_kind_simplified
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -95,12 +102,22 @@ fun InvoiceCard(invoice: InvoiceSummary, onClick: () -> Unit, modifier: Modifier
                 InvoiceAvatar(invoice.sellerName.ifBlank { invoice.sellerNip })
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = invoice.invoiceNumber.ifBlank { invoice.ksefReferenceNumber },
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = invoice.invoiceNumber.ifBlank { invoice.ksefReferenceNumber },
+                            style = MaterialTheme.typography.titleSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        invoice.kind.labelResource()?.let { label ->
+                            Spacer(modifier = Modifier.width(8.dp))
+                            InvoiceKindBadge(
+                                text = stringResource(label),
+                                isCorrection = invoice.kind == InvoiceKind.CORRECTION,
+                            )
+                        }
+                    }
                     Text(
                         text =
                             stringResource(
@@ -126,7 +143,8 @@ fun InvoiceCard(invoice: InvoiceSummary, onClick: () -> Unit, modifier: Modifier
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = DateFormatter.format(invoice.invoicingDate),
+                    text =
+                        DateFormatter.format(invoice.issueDate.ifBlank { invoice.invoicingDate }),
                     style =
                         MaterialTheme.typography.labelSmall.copy(
                             fontFamily = jetBrainsMonoFamily()
@@ -145,16 +163,20 @@ fun InvoiceCard(invoice: InvoiceSummary, onClick: () -> Unit, modifier: Modifier
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 AmountColumn(
-                    stringResource(Res.string.invoice_card_net),
-                    invoice.net.toFormattedString(),
+                    label = stringResource(Res.string.invoice_card_net),
+                    value = invoice.net.toFormattedString(),
+                    currency = invoice.currency,
                 )
+                // KSeF always reports the VAT total in PLN, whatever the invoice currency is.
                 AmountColumn(
-                    stringResource(Res.string.invoice_card_vat),
-                    invoice.vat.toFormattedString(),
+                    label = stringResource(Res.string.invoice_card_vat),
+                    value = invoice.vat.toFormattedString(),
+                    currency = DEFAULT_CURRENCY_CODE,
                 )
                 AmountColumn(
                     label = stringResource(Res.string.invoice_card_gross),
                     value = invoice.gross.toFormattedString(),
+                    currency = invoice.currency,
                     emphasized = true,
                 )
             }
@@ -162,8 +184,42 @@ fun InvoiceCard(invoice: InvoiceSummary, onClick: () -> Unit, modifier: Modifier
     }
 }
 
+private fun InvoiceKind.labelResource(): StringResource? =
+    when (this) {
+        InvoiceKind.STANDARD -> null
+        InvoiceKind.CORRECTION -> Res.string.invoice_kind_correction
+        InvoiceKind.ADVANCE -> Res.string.invoice_kind_advance
+        InvoiceKind.SETTLEMENT -> Res.string.invoice_kind_settlement
+        InvoiceKind.SIMPLIFIED -> Res.string.invoice_kind_simplified
+    }
+
 @Composable
-private fun AmountColumn(label: String, value: String, emphasized: Boolean = false) {
+private fun InvoiceKindBadge(text: String, isCorrection: Boolean) {
+    val container =
+        if (isCorrection) MaterialTheme.colorScheme.errorContainer
+        else MaterialTheme.colorScheme.secondaryContainer
+    val content =
+        if (isCorrection) MaterialTheme.colorScheme.onErrorContainer
+        else MaterialTheme.colorScheme.onSecondaryContainer
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = content,
+        maxLines = 1,
+        modifier =
+            Modifier.clip(RoundedCornerShape(6.dp))
+                .background(container)
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+    )
+}
+
+@Composable
+private fun AmountColumn(
+    label: String,
+    value: String,
+    currency: String,
+    emphasized: Boolean = false,
+) {
     Column {
         Text(
             text = label,
@@ -171,7 +227,7 @@ private fun AmountColumn(label: String, value: String, emphasized: Boolean = fal
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            text = stringResource(Res.string.amount_pln, value),
+            text = stringResource(Res.string.amount_with_currency, value, currency),
             style =
                 MaterialTheme.typography.bodyMedium.copy(
                     fontFamily = jetBrainsMonoFamily(),

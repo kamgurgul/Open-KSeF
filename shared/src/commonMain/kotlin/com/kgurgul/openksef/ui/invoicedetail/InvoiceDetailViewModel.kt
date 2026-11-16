@@ -19,6 +19,7 @@ package com.kgurgul.openksef.ui.invoicedetail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kgurgul.openksef.common.UiText
+import com.kgurgul.openksef.common.toUiText
 import com.kgurgul.openksef.domain.pdf.InvoicePdfExporter
 import com.kgurgul.openksef.domain.pdf.InvoicePdfSharer
 import com.kgurgul.openksef.domain.pdf.KsefWebPdfRenderer
@@ -208,10 +209,7 @@ class InvoiceDetailViewModel(
                     invoiceLoad.value = InvoiceLoad(isLoading = false)
                     pdfState.value = PdfState(isError = webPdfRenderer.isSupported)
                     eventChannel.send(
-                        InvoiceDetailEvent.ShowError(
-                            e.message?.let { UiText.Raw(it) }
-                                ?: UiText.Resource(Res.string.error_load_invoice)
-                        )
+                        InvoiceDetailEvent.ShowError(e.toUiText(Res.string.error_load_invoice))
                     )
                 }
         }

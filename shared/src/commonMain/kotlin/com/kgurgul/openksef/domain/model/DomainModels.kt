@@ -16,11 +16,12 @@
 
 package com.kgurgul.openksef.domain.model
 
+import com.kgurgul.openksef.common.Constants.DEFAULT_CURRENCY_CODE
 import com.kgurgul.openksef.domain.money.Money
 
 enum class KsefEnvironment(val baseUrl: String) {
     TEST("https://api-test.ksef.mf.gov.pl/v2"),
-    DEMO("https://api-ksef-demo.mf.gov.pl/v2"),
+    DEMO("https://api-demo.ksef.mf.gov.pl/v2"),
     PRODUCTION("https://api.ksef.mf.gov.pl/v2"),
 }
 
@@ -37,12 +38,49 @@ data class InvoiceSummary(
     val net: Money,
     val vat: Money,
     val gross: Money,
+    /** Issue date (`yyyy-MM-dd`) printed on the invoice. */
+    val issueDate: String = "",
+    /** ISO 4217 code of the currency of [net] and [gross]; [vat] is always expressed in PLN. */
+    val currency: String = DEFAULT_CURRENCY_CODE,
+    val kind: InvoiceKind = InvoiceKind.STANDARD,
 )
 
+/** Kind of an invoice, derived from the KSeF `invoiceType`. */
+enum class InvoiceKind {
+    STANDARD,
+    ADVANCE,
+    SETTLEMENT,
+    SIMPLIFIED,
+    CORRECTION;
+
+    companion object {
+        fun fromApiValue(invoiceType: String?): InvoiceKind =
+            when (invoiceType) {
+                "Kor",
+                "KorZal",
+                "KorRoz",
+                "KorPef",
+                "KorVatRr" -> CORRECTION
+
+                "Zal" -> ADVANCE
+                "Roz" -> SETTLEMENT
+                "Upr" -> SIMPLIFIED
+                else -> STANDARD
+            }
+    }
+}
+
+/**
+ * One page of invoices.
+ *
+ * @property hasMore true when a further page exists
+ * @property isTruncated true when KSeF reached its limit of 10 000 records for one query, so
+ *   further pages cannot be requested without narrowing the date range
+ */
 data class InvoiceListResult(
     val items: List<InvoiceSummary>,
-    val totalCount: Int,
     val hasMore: Boolean,
+    val isTruncated: Boolean = false,
 )
 
 enum class InvoiceSubjectType(val apiValue: String) {

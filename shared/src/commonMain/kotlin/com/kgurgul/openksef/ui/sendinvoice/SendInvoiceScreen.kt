@@ -21,7 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
@@ -35,10 +34,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kgurgul.openksef.common.asString
 import com.kgurgul.openksef.domain.invoice.InvoiceTemplate
 import com.kgurgul.openksef.domain.money.Money
+import com.kgurgul.openksef.ui.components.BackNavigationIconButton
 import com.kgurgul.openksef.ui.components.LoadingOverlay
 import com.kgurgul.openksef.ui.components.SectionHeader
 import openksef.shared.generated.resources.Res
-import openksef.shared.generated.resources.action_back
 import openksef.shared.generated.resources.action_cancel
 import openksef.shared.generated.resources.action_delete
 import openksef.shared.generated.resources.action_ok
@@ -186,12 +185,7 @@ fun SendInvoiceScreen(
             TopAppBar(
                 title = { Text(stringResource(Res.string.send_invoice_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(Res.string.action_back),
-                        )
-                    }
+                    BackNavigationIconButton(onClick = onNavigateBack)
                 },
                 colors =
                     TopAppBarDefaults.topAppBarColors(

@@ -25,18 +25,11 @@ import com.kgurgul.openksef.data.remote.model.InitTokenAuthenticationRequest
 import com.kgurgul.openksef.data.remote.model.PublicKeyCertificate
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.defaultRequest
-import io.ktor.client.plugins.logging.LogLevel
-import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
-import io.ktor.http.contentType
-import io.ktor.serialization.kotlinx.json.json
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.time.Clock
@@ -92,6 +85,7 @@ class KsefAuthenticator(private val client: HttpClient, private val crypto: Ksef
                             contextIdentifier =
                                 AuthenticationContextIdentifier(type = "Nip", value = nip),
                             encryptedToken = encryptedToken,
+                            publicKeyId = certificate.publicKeyId,
                         )
                     )
                 }
@@ -132,12 +126,17 @@ class KsefAuthenticator(private val client: HttpClient, private val crypto: Ksef
 
                 AUTH_STATUS_IN_PROGRESS -> delay(AUTH_POLL_DELAY_MS)
                 else ->
-                    error(
-                        "Authentication failed: ${status.status.code} ${status.status.description}"
+                    throw KsefAuthenticationException(
+                        statusCode = status.status.code,
+                        description = status.status.description,
+                        details = status.status.details.orEmpty(),
                     )
             }
         }
-        error("Timed out waiting for authentication to complete")
+        throw KsefAuthenticationException(
+            statusCode = AUTH_STATUS_IN_PROGRESS,
+            description = "Timed out waiting for authentication to complete",
+        )
     }
 
     companion object {
@@ -151,17 +150,28 @@ class KsefAuthenticator(private val client: HttpClient, private val crypto: Ksef
         /** Builds the authenticator on its own plain HTTP client (no `Auth` plugin). */
         fun create(json: Json, crypto: KsefCrypto): KsefAuthenticator =
             KsefAuthenticator(
-                client =
-                    HttpClient {
-                        expectSuccess = true
-                        install(ContentNegotiation) { json(json, contentType = ContentType.Any) }
-                        install(Logging) { level = LogLevel.HEADERS }
-                        defaultRequest { contentType(ContentType.Application.Json) }
-                    },
+                client = HttpClient { installKsefDefaults(json) },
                 crypto = crypto,
             )
     }
 }
+
+/**
+ * The authentication operation finished with a status other than success (see the status table of
+ * `GET /auth/{referenceNumber}`), e.g. 450 - invalid token, 415 - no permissions assigned.
+ */
+class KsefAuthenticationException(
+    val statusCode: Int,
+    val description: String,
+    val details: List<String> = emptyList(),
+) :
+    Exception(
+        buildString {
+            append(description.ifBlank { "Authentication failed ($statusCode)" })
+            val detailsText = details.filter { it.isNotBlank() }.joinToString(separator = " ")
+            if (detailsText.isNotEmpty()) append(": ").append(detailsText)
+        }
+    )
 
 /**
  * Picks a certificate with the given [usage] that is valid now, falling back to any certificate
