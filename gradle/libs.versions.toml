@@ -1,11 +1,11 @@
 [versions]
-agp = "9.5.1"
+agp = "9.5.2"
 android-compileSdk = "37"
 android-minSdk = "24"
 android-targetSdk = "37"
 androidx-activity = "1.13.0"
 androidx-appcompat = "1.8.0"
-androidx-biometric = "1.4.0-beta01"
+androidx-biometric = "1.4.0-rc01"
 androidx-core = "1.19.1"
 androidx-core-splashscreen = "1.2.0"
 androidx-espresso = "3.7.0"
@@ -38,7 +38,7 @@ tink = "1.24.0"
 tink-android = "1.24.0"
 ksef-fop = "1.2.34"
 ktfmt = "0.64"
-spotless = "8.11.0"
+spotless = "8.12.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
