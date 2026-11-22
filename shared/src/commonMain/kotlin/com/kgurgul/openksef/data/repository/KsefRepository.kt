@@ -225,7 +225,7 @@ class KsefRepository(
         val from = LocalDate.parse(dateFrom).atStartOfDayIn(timeZone)
         val to =
             LocalDate.parse(dateTo).plus(1, DateTimeUnit.DAY).atStartOfDayIn(timeZone) -
-                    1.milliseconds
+                1.milliseconds
         val filters =
             InvoiceQueryFilters(
                 subjectType = subjectType.apiValue,

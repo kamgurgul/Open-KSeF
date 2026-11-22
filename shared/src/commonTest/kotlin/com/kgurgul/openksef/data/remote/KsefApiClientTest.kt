@@ -369,7 +369,7 @@ class KsefApiClientTest {
         assertEquals(450, exception.statusCode)
         assertEquals(
             "Uwierzytelnianie zakończone niepowodzeniem z powodu błędnego tokenu: " +
-                    "Nieprawidłowy token",
+                "Nieprawidłowy token",
             exception.message,
         )
         val body = json.decodeFromString<JsonObject>(tokenRequestBody)

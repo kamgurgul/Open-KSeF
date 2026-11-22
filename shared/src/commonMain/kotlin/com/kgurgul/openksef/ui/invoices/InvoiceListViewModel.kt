@@ -138,7 +138,7 @@ class InvoiceListViewModel(
                         val known = it.invoices.mapTo(HashSet()) { i -> i.ksefReferenceNumber }
                         val invoices =
                             it.invoices +
-                                    result.items.filter { i -> known.add(i.ksefReferenceNumber) }
+                                result.items.filter { i -> known.add(i.ksefReferenceNumber) }
                         it.copy(
                             invoices = invoices,
                             totalCount = invoices.size,

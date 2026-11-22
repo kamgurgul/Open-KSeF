@@ -44,7 +44,7 @@ class KsefApiExceptionTest {
         assertEquals(listOf(21405, 21157), exception.errorCodes)
         assertEquals(
             "Błąd walidacji danych wejściowych: Wskazany kod formularza nie jest wspierany.\n" +
-                    "Nieprawidłowy rozmiar części pakietu.",
+                "Nieprawidłowy rozmiar części pakietu.",
             exception.message,
         )
         assertEquals("https://x/y", exception.url)
@@ -83,7 +83,7 @@ class KsefApiExceptionTest {
         assertEquals(listOf(21164), exception.errorCodes)
         assertEquals(
             "Faktura o podanym identyfikatorze nie istnieje: " +
-                    "Faktura o numerze KSeF X nie została znaleziona.",
+                "Faktura o numerze KSeF X nie została znaleziona.",
             exception.message,
         )
     }

@@ -61,7 +61,7 @@ internal fun HttpClientConfig<*>.installKsefDefaults(json: Json) {
         retryOnExceptionIf { _, _ -> false }
         retryIf(maxRetries = MAX_RATE_LIMIT_RETRIES) { _, response ->
             response.status == HttpStatusCode.TooManyRequests &&
-                    (response.retryAfterSeconds() ?: 1) <= MAX_AUTO_RETRY_AFTER_SECONDS
+                (response.retryAfterSeconds() ?: 1) <= MAX_AUTO_RETRY_AFTER_SECONDS
         }
         delayMillis(respectRetryAfterHeader = true) { DEFAULT_RETRY_DELAY_MS }
     }

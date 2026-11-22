@@ -65,8 +65,7 @@ data class InitTokenAuthenticationRequest(
     val authorizationPolicy: AuthorizationPolicy? = null,
 )
 
-@Serializable
-data class AuthorizationPolicy(val allowedIps: AllowedIps? = null)
+@Serializable data class AuthorizationPolicy(val allowedIps: AllowedIps? = null)
 
 @Serializable
 data class AllowedIps(
@@ -186,8 +185,7 @@ data class UpoPageResponse(
     val downloadUrlExpirationDate: String? = null,
 )
 
-@Serializable
-data class UpoResponse(val pages: List<UpoPageResponse> = emptyList())
+@Serializable data class UpoResponse(val pages: List<UpoPageResponse> = emptyList())
 
 @Serializable
 data class SessionStatusResponse(
@@ -241,8 +239,7 @@ data class InvoiceQueryFilters(
 /** Identifier of a buyer or a third subject; [type] is `Nip`, `VatUe`, `Other`, `None`, ... */
 @Serializable data class InvoiceMetadataIdentifier(val type: String, val value: String? = null)
 
-@Serializable
-data class InvoiceMetadataSeller(val nip: String? = null, val name: String? = null)
+@Serializable data class InvoiceMetadataSeller(val nip: String? = null, val name: String? = null)
 
 @Serializable
 data class InvoiceMetadataBuyer(

@@ -192,12 +192,12 @@ fun InvoiceListScreen(
     // pull every remaining page and exhaust the (low) KSeF limit of metadata queries.
     val canLoadMore = uiState.canLoadMore && !uiState.isLoading && uiState.searchQuery.isBlank()
     val shouldLoadMore by
-    remember(displayedCount, canLoadMore) {
-        derivedStateOf {
-            val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            canLoadMore && lastVisibleItem >= displayedCount - LOAD_MORE_THRESHOLD
+        remember(displayedCount, canLoadMore) {
+            derivedStateOf {
+                val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                canLoadMore && lastVisibleItem >= displayedCount - LOAD_MORE_THRESHOLD
+            }
         }
-    }
 
     LaunchedEffect(shouldLoadMore) {
         if (shouldLoadMore) {
