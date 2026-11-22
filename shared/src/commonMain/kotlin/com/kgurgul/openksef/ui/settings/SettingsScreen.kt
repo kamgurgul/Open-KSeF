@@ -27,21 +27,19 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Store
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kgurgul.openksef.ui.components.BackNavigationIconButton
+import com.kgurgul.openksef.ui.components.PrimaryTopAppBar
 import com.kgurgul.openksef.ui.components.SectionHeader
 import com.kgurgul.openksef.ui.theme.jetBrainsMonoFamily
 import openksef.shared.generated.resources.Res
@@ -68,7 +66,6 @@ fun SettingsScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     uiState: SettingsUiState,
@@ -77,15 +74,9 @@ fun SettingsScreen(
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(Res.string.settings_title)) },
+            PrimaryTopAppBar(
+                title = stringResource(Res.string.settings_title),
                 navigationIcon = { BackNavigationIconButton(onClick = onNavigateBack) },
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
             )
         }
     ) { padding ->

@@ -36,6 +36,7 @@ import com.kgurgul.openksef.domain.invoice.InvoiceTemplate
 import com.kgurgul.openksef.domain.money.Money
 import com.kgurgul.openksef.ui.components.BackNavigationIconButton
 import com.kgurgul.openksef.ui.components.LoadingOverlay
+import com.kgurgul.openksef.ui.components.PrimaryTopAppBar
 import com.kgurgul.openksef.ui.components.SectionHeader
 import openksef.shared.generated.resources.Res
 import openksef.shared.generated.resources.action_cancel
@@ -182,17 +183,9 @@ fun SendInvoiceScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(Res.string.send_invoice_title)) },
-                navigationIcon = {
-                    BackNavigationIconButton(onClick = onNavigateBack)
-                },
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
+            PrimaryTopAppBar(
+                title = stringResource(Res.string.send_invoice_title),
+                navigationIcon = { BackNavigationIconButton(onClick = onNavigateBack) },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },

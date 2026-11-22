@@ -44,8 +44,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
+import com.kgurgul.openksef.ui.navigation.LocalIsInSystemNavigationBar
 import com.kgurgul.openksef.ui.navigation.LocalNativeNavigation
+import com.kgurgul.openksef.ui.navigation.NativeNavigation
 import com.kgurgul.openksef.ui.navigation.NativeNavigationButtonType
+import com.kgurgul.openksef.ui.navigation.isTopEntry
 import openksef.shared.generated.resources.Res
 import openksef.shared.generated.resources.action_back
 import org.jetbrains.compose.resources.stringResource
@@ -64,7 +67,10 @@ fun BackNavigationIconButton(onClick: () -> Unit, modifier: Modifier = Modifier)
 /**
  * Icon button used for navigation actions like back or close. When the platform provides native
  * navigation elements (Liquid Glass on iOS 26+) only the space is reserved and the button is
- * rendered by the platform above the Compose content. Must be used inside a navigation entry.
+ * rendered by the platform above the Compose content. Placed in a top app bar shown in the system
+ * navigation bar, or while the platform lays its bars out down a side of the window, e.g. on iPhone
+ * Duo, the button is shown in the system navigation bar and takes no space where it's placed. Must
+ * be used inside a navigation entry.
  */
 @Composable
 fun NavigationIconButton(
@@ -87,71 +93,106 @@ fun NavigationIconButton(
                 tint = tint,
             )
         }
-    } else {
-        val id = remember { "navigationButton${nextNativeButtonId++}" }
-        val density = LocalDensity.current
-        val currentOnClick by rememberUpdatedState(onClick)
-        // Fade the native button together with the screen it belongs to
-        val navTransitionAlpha =
-            LocalNavAnimatedContentScope.current.transition.animateFloat(
-                label = "nativeButtonAlpha"
-            ) { state ->
-                if (state == EnterExitState.Visible) 1f else 0f
-            }
-        var boundsInWindow by remember { mutableStateOf<DpRect?>(null) }
-        var clipAlpha by remember { mutableFloatStateOf(1f) }
-        val alpha = (navTransitionAlpha.value * clipAlpha).coerceIn(0f, 1f)
-        val currentType by rememberUpdatedState(type)
-        val currentContentDescription by rememberUpdatedState(contentDescription)
+        return
+    }
 
-        DisposableEffect(nativeNavigation, id) { onDispose { nativeNavigation.removeButton(id) } }
-        LaunchedEffect(nativeNavigation, id, type, contentDescription, boundsInWindow, alpha) {
-            val bounds = boundsInWindow ?: return@LaunchedEffect
-            nativeNavigation.setButton(
+    val id = remember { "navigationButton${nextNativeButtonId++}" }
+    val currentOnClick by rememberUpdatedState(onClick)
+    // Keyed on the id only, so switching between the two kinds of buttons doesn't remove the new
+    // one.
+    DisposableEffect(nativeNavigation, id) { onDispose { nativeNavigation.removeButton(id) } }
+    if (LocalIsInSystemNavigationBar.current || nativeNavigation.insets.areBarsVertical) {
+        val isTop = isTopEntry()
+        LaunchedEffect(nativeNavigation, id, type, contentDescription, isTop) {
+            nativeNavigation.setNavigationBarButton(
                 id = id,
                 type = type,
                 contentDescription = contentDescription,
-                boundsInWindow = bounds,
-                alpha = alpha,
+                isTop = isTop,
                 onClick = { currentOnClick() },
             )
         }
-        Box(
-            modifier =
-                modifier.size(NativeButtonSize).onGloballyPositioned { coordinates ->
-                    if (coordinates.isAttached) {
-                        val position = coordinates.positionInWindow()
-                        val size = coordinates.size
-                        val clippedBounds = coordinates.boundsInWindow()
-                        val newClipAlpha =
-                            if (size.width > 0) {
-                                (clippedBounds.width / size.width).coerceIn(0f, 1f)
-                            } else {
-                                0f
-                            }
-                        val newBounds =
-                            with(density) {
-                                DpRect(
-                                    left = position.x.toDp(),
-                                    top = position.y.toDp(),
-                                    right = (position.x + size.width).toDp(),
-                                    bottom = (position.y + size.height).toDp(),
-                                )
-                            }
-                        boundsInWindow = newBounds
-                        clipAlpha = newClipAlpha
-                        nativeNavigation.setButton(
-                            id = id,
-                            type = currentType,
-                            contentDescription = currentContentDescription,
-                            boundsInWindow = newBounds,
-                            alpha = (navTransitionAlpha.value * newClipAlpha).coerceIn(0f, 1f),
-                            onClick = { currentOnClick() },
-                        )
-                    }
-                }
+    } else {
+        FloatingNativeButton(
+            nativeNavigation = nativeNavigation,
+            id = id,
+            type = type,
+            contentDescription = contentDescription,
+            onClick = { currentOnClick() },
+            modifier = modifier,
         )
     }
+}
+
+/** Reserves the space of the button, which the platform renders above it. */
+@Composable
+private fun FloatingNativeButton(
+    nativeNavigation: NativeNavigation,
+    id: String,
+    type: NativeNavigationButtonType,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier,
+) {
+    val density = LocalDensity.current
+    // Fade the native button together with the screen it belongs to
+    val navTransitionAlpha =
+        LocalNavAnimatedContentScope.current.transition.animateFloat(label = "nativeButtonAlpha") {
+            state ->
+            if (state == EnterExitState.Visible) 1f else 0f
+        }
+    var boundsInWindow by remember { mutableStateOf<DpRect?>(null) }
+    var clipAlpha by remember { mutableFloatStateOf(1f) }
+    val alpha = (navTransitionAlpha.value * clipAlpha).coerceIn(0f, 1f)
+    val currentType by rememberUpdatedState(type)
+    val currentContentDescription by rememberUpdatedState(contentDescription)
+
+    LaunchedEffect(nativeNavigation, id, type, contentDescription, boundsInWindow, alpha) {
+        val bounds = boundsInWindow ?: return@LaunchedEffect
+        nativeNavigation.setButton(
+            id = id,
+            type = type,
+            contentDescription = contentDescription,
+            boundsInWindow = bounds,
+            alpha = alpha,
+            onClick = onClick,
+        )
+    }
+    Box(
+        modifier =
+            modifier.size(NativeButtonSize).onGloballyPositioned { coordinates ->
+                if (coordinates.isAttached) {
+                    val position = coordinates.positionInWindow()
+                    val size = coordinates.size
+                    val clippedBounds = coordinates.boundsInWindow()
+                    val newClipAlpha =
+                        if (size.width > 0) {
+                            (clippedBounds.width / size.width).coerceIn(0f, 1f)
+                        } else {
+                            0f
+                        }
+                    val newBounds =
+                        with(density) {
+                            DpRect(
+                                left = position.x.toDp(),
+                                top = position.y.toDp(),
+                                right = (position.x + size.width).toDp(),
+                                bottom = (position.y + size.height).toDp(),
+                            )
+                        }
+                    boundsInWindow = newBounds
+                    clipAlpha = newClipAlpha
+                    nativeNavigation.setButton(
+                        id = id,
+                        type = currentType,
+                        contentDescription = currentContentDescription,
+                        boundsInWindow = newBounds,
+                        alpha = (navTransitionAlpha.value * newClipAlpha).coerceIn(0f, 1f),
+                        onClick = onClick,
+                    )
+                }
+            }
+    )
 }
 
 private val NativeButtonSize = 48.dp

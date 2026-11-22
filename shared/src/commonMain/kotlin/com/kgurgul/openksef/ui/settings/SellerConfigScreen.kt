@@ -24,15 +24,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -41,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kgurgul.openksef.common.ObserveAsEvents
 import com.kgurgul.openksef.ui.components.BackNavigationIconButton
+import com.kgurgul.openksef.ui.components.PrimaryTopAppBar
 import openksef.shared.generated.resources.Res
 import openksef.shared.generated.resources.seller_config_address
 import openksef.shared.generated.resources.seller_config_name
@@ -71,7 +68,6 @@ fun SellerConfigScreen(viewModel: SellerConfigViewModel, onNavigateBack: () -> U
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SellerConfigScreen(
     uiState: SellerConfigUiState,
@@ -83,17 +79,9 @@ fun SellerConfigScreen(
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(Res.string.settings_seller_info)) },
-                navigationIcon = {
-                    BackNavigationIconButton(onClick = onNavigateBack)
-                },
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
+            PrimaryTopAppBar(
+                title = stringResource(Res.string.settings_seller_info),
+                navigationIcon = { BackNavigationIconButton(onClick = onNavigateBack) },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },

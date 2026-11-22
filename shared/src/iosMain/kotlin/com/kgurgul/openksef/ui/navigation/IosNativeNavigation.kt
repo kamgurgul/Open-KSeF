@@ -16,7 +16,23 @@
 
 package com.kgurgul.openksef.ui.navigation
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.DpRect
+import androidx.compose.ui.unit.dp
+
+/**
+ * Where the system navigation bar is, see [NativeNavigationInsets]. In points.
+ *
+ * @param areBarsVertical whether UIKit lays the bars out down a side of the window, e.g. on iPhone
+ *   Duo
+ * @param navigationBarBottom bottom of the system navigation bar while it runs along the top,
+ *   `null` otherwise
+ */
+data class IosNativeBarsInsets(val areBarsVertical: Boolean, val navigationBarBottom: Double?)
 
 /**
  * Implemented by the iOS app. Renders navigation elements using UIKit components (Liquid Glass)
@@ -25,6 +41,9 @@ import androidx.compose.ui.unit.DpRect
 interface IosNativeNavigationRenderer {
 
     fun setDarkTheme(isDarkTheme: Boolean)
+
+    /** [listener] receives where the bars are, whenever it changes. */
+    fun setOnBarsInsetsChangedListener(listener: (IosNativeBarsInsets) -> Unit)
 
     fun setButton(
         id: String,
@@ -38,11 +57,44 @@ interface IosNativeNavigationRenderer {
         onClick: () -> Unit,
     )
 
+    /**
+     * Shows the button in the system navigation bar, see [NativeNavigation.setNavigationBarButton].
+     */
+    fun setNavigationBarButton(
+        id: String,
+        systemImageName: String,
+        accessibilityLabel: String,
+        isTop: Boolean,
+        onClick: () -> Unit,
+    )
+
     fun removeButton(id: String)
+
+    /**
+     * Shows the title in the system navigation bar, see [NativeNavigation.setNavigationBarTitle].
+     *
+     * @param titleColorArgb sRGB color of the title packed as ARGB
+     */
+    fun setNavigationBarTitle(id: String, title: String, titleColorArgb: Int, isTop: Boolean)
+
+    fun removeNavigationBarTitle(id: String)
 }
 
 /** Bridge between Compose and [IosNativeNavigationRenderer]. */
 class IosNativeNavigation(private val renderer: IosNativeNavigationRenderer) : NativeNavigation {
+
+    override var insets: NativeNavigationInsets by mutableStateOf(NativeNavigationInsets())
+        private set
+
+    init {
+        renderer.setOnBarsInsetsChangedListener {
+            insets =
+                NativeNavigationInsets(
+                    areBarsVertical = it.areBarsVertical,
+                    navigationBarBottom = it.navigationBarBottom?.dp,
+                )
+        }
+    }
 
     fun setDarkTheme(isDarkTheme: Boolean) {
         renderer.setDarkTheme(isDarkTheme)
@@ -58,12 +110,7 @@ class IosNativeNavigation(private val renderer: IosNativeNavigationRenderer) : N
     ) {
         renderer.setButton(
             id = id,
-            // SF Symbols
-            systemImageName =
-                when (type) {
-                    NativeNavigationButtonType.BACK -> "chevron.backward"
-                    NativeNavigationButtonType.CLOSE -> "xmark"
-                },
+            systemImageName = type.systemImageName,
             accessibilityLabel = contentDescription,
             x = boundsInWindow.left.value.toDouble(),
             y = boundsInWindow.top.value.toDouble(),
@@ -74,7 +121,49 @@ class IosNativeNavigation(private val renderer: IosNativeNavigationRenderer) : N
         )
     }
 
+    override fun setNavigationBarButton(
+        id: String,
+        type: NativeNavigationButtonType,
+        contentDescription: String,
+        isTop: Boolean,
+        onClick: () -> Unit,
+    ) {
+        renderer.setNavigationBarButton(
+            id = id,
+            systemImageName = type.systemImageName,
+            accessibilityLabel = contentDescription,
+            isTop = isTop,
+            onClick = onClick,
+        )
+    }
+
     override fun removeButton(id: String) {
         renderer.removeButton(id)
     }
+
+    override fun setNavigationBarTitle(
+        id: String,
+        title: String,
+        titleColor: Color,
+        isTop: Boolean,
+    ) {
+        renderer.setNavigationBarTitle(
+            id = id,
+            title = title,
+            titleColorArgb = titleColor.toArgb(),
+            isTop = isTop,
+        )
+    }
+
+    override fun removeNavigationBarTitle(id: String) {
+        renderer.removeNavigationBarTitle(id)
+    }
+
+    /** SF Symbols */
+    private val NativeNavigationButtonType.systemImageName: String
+        get() =
+            when (this) {
+                NativeNavigationButtonType.BACK -> "chevron.backward"
+                NativeNavigationButtonType.CLOSE -> "xmark"
+            }
 }

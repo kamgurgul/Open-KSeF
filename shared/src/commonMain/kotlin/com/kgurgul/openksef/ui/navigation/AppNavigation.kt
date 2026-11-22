@@ -16,12 +16,24 @@
 
 package com.kgurgul.openksef.ui.navigation
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberDecoratedNavEntries
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.kgurgul.openksef.common.ObserveAsEvents
@@ -75,76 +87,115 @@ fun AppNavigation() {
         }
     }
 
-    NavDisplay(
-        backStack = backStack,
-        onBack = { backStack.removeLastOrNull() },
-        entryDecorators =
-            listOf(
-                rememberSaveableStateHolderNavEntryDecorator(),
-                rememberViewModelStoreNavEntryDecorator(),
-            ),
-        entryProvider =
-            entryProvider {
-                entry<LoginKey> { key ->
-                    val viewModel = koinViewModel<LoginViewModel> { parametersOf(key.autoLogin) }
-                    LoginScreen(
-                        viewModel = viewModel,
-                        onLoginSuccess = {
-                            backStack.clear()
-                            backStack.add(InvoiceListKey)
-                        },
-                    )
-                }
+    val entries =
+        rememberDecoratedNavEntries(
+            backStack = backStack,
+            entryDecorators =
+                listOf(
+                    rememberSaveableStateHolderNavEntryDecorator(),
+                    rememberViewModelStoreNavEntryDecorator(),
+                    remember { navEntryKeyNavEntryDecorator() },
+                ),
+            entryProvider =
+                entryProvider {
+                    entry<LoginKey> { key ->
+                        val viewModel =
+                            koinViewModel<LoginViewModel> { parametersOf(key.autoLogin) }
+                        LoginScreen(
+                            viewModel = viewModel,
+                            onLoginSuccess = {
+                                backStack.clear()
+                                backStack.add(InvoiceListKey)
+                            },
+                        )
+                    }
 
-                entry<InvoiceListKey> {
-                    val viewModel = koinViewModel<InvoiceListViewModel>()
-                    InvoiceListScreen(
-                        viewModel = viewModel,
-                        onInvoiceClick = { ksefRef -> backStack.add(InvoiceDetailKey(ksefRef)) },
-                        onSendInvoiceClick = { backStack.add(SendInvoiceKey) },
-                        onSettingsClick = { backStack.add(SettingsKey) },
-                        onLoggedOut = {
-                            backStack.clear()
-                            backStack.add(LoginKey())
-                        },
-                    )
-                }
+                    entry<InvoiceListKey> {
+                        val viewModel = koinViewModel<InvoiceListViewModel>()
+                        InvoiceListScreen(
+                            viewModel = viewModel,
+                            onInvoiceClick = { ksefRef ->
+                                backStack.add(InvoiceDetailKey(ksefRef))
+                            },
+                            onSendInvoiceClick = { backStack.add(SendInvoiceKey) },
+                            onSettingsClick = { backStack.add(SettingsKey) },
+                            onLoggedOut = {
+                                backStack.clear()
+                                backStack.add(LoginKey())
+                            },
+                        )
+                    }
 
-                entry<InvoiceDetailKey> { key ->
-                    val viewModel =
-                        koinViewModel<InvoiceDetailViewModel>(key = key.ksefRef) {
-                            parametersOf(key.ksefRef)
-                        }
-                    InvoiceDetailScreen(
-                        viewModel = viewModel,
-                        onNavigateBack = { backStack.removeLastOrNull() },
-                    )
-                }
+                    entry<InvoiceDetailKey> { key ->
+                        val viewModel =
+                            koinViewModel<InvoiceDetailViewModel>(key = key.ksefRef) {
+                                parametersOf(key.ksefRef)
+                            }
+                        InvoiceDetailScreen(
+                            viewModel = viewModel,
+                            onNavigateBack = { backStack.removeLastOrNull() },
+                        )
+                    }
 
-                entry<SendInvoiceKey> {
-                    val viewModel = koinViewModel<SendInvoiceViewModel>()
-                    SendInvoiceScreen(
-                        viewModel = viewModel,
-                        onNavigateBack = { backStack.removeLastOrNull() },
-                    )
-                }
+                    entry<SendInvoiceKey> {
+                        val viewModel = koinViewModel<SendInvoiceViewModel>()
+                        SendInvoiceScreen(
+                            viewModel = viewModel,
+                            onNavigateBack = { backStack.removeLastOrNull() },
+                        )
+                    }
 
-                entry<SettingsKey> {
-                    val viewModel = koinViewModel<SettingsViewModel>()
-                    SettingsScreen(
-                        viewModel = viewModel,
-                        onNavigateBack = { backStack.removeLastOrNull() },
-                        onSellerConfigClick = { backStack.add(SellerConfigKey) },
-                    )
-                }
+                    entry<SettingsKey> {
+                        val viewModel = koinViewModel<SettingsViewModel>()
+                        SettingsScreen(
+                            viewModel = viewModel,
+                            onNavigateBack = { backStack.removeLastOrNull() },
+                            onSellerConfigClick = { backStack.add(SellerConfigKey) },
+                        )
+                    }
 
-                entry<SellerConfigKey> {
-                    val viewModel = koinViewModel<SellerConfigViewModel>()
-                    SellerConfigScreen(
-                        viewModel = viewModel,
-                        onNavigateBack = { backStack.removeLastOrNull() },
-                    )
-                }
-            },
-    )
+                    entry<SellerConfigKey> {
+                        val viewModel = koinViewModel<SellerConfigViewModel>()
+                        SellerConfigScreen(
+                            viewModel = viewModel,
+                            onNavigateBack = { backStack.removeLastOrNull() },
+                        )
+                    }
+                },
+        )
+
+    NativeNavigationContainer {
+        CompositionLocalProvider(LocalTopEntryKey provides entries.lastOrNull()?.contentKey) {
+            NavDisplay(
+                entries = entries,
+                modifier = Modifier.fillMaxSize().fullScreenBackGesture(),
+                onBack = { backStack.removeLastOrNull() },
+            )
+        }
+    }
+}
+
+/**
+ * While the platform lays its bars out down a side of the window, e.g. on iPhone Duo, the screens
+ * keep clear of the safe area at the sides, so nothing of them is drawn behind the bars.
+ */
+@Composable
+private fun NativeNavigationContainer(content: @Composable () -> Unit) {
+    val areBarsVertical = LocalNativeNavigation.current?.insets?.areBarsVertical == true
+    Box(
+        modifier =
+            Modifier.fillMaxSize()
+                .then(
+                    if (areBarsVertical) {
+                        Modifier.background(MaterialTheme.colorScheme.background)
+                            .windowInsetsPadding(
+                                WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)
+                            )
+                    } else {
+                        Modifier
+                    }
+                )
+    ) {
+        content()
+    }
 }
