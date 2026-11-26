@@ -27,10 +27,26 @@ class RoomSellerConfigRepository(private val dao: SellerConfigDao) : SellerConfi
 
     override val config: Flow<SellerConfig?> =
         dao.get().map { entity ->
-            entity?.let { SellerConfig(name = it.name, address = it.address) }
+            entity?.let {
+                SellerConfig(
+                    name = it.name,
+                    address = it.address,
+                    bankAccount = it.bankAccount,
+                    bankSwift = it.bankSwift,
+                    bankName = it.bankName,
+                )
+            }
         }
 
     override suspend fun save(config: SellerConfig) {
-        dao.upsert(SellerConfigEntity(name = config.name, address = config.address))
+        dao.upsert(
+            SellerConfigEntity(
+                name = config.name,
+                address = config.address,
+                bankAccount = config.bankAccount,
+                bankSwift = config.bankSwift,
+                bankName = config.bankName,
+            )
+        )
     }
 }

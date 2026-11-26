@@ -25,6 +25,8 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -92,6 +94,84 @@ class SellerConfigViewModelTest {
         val saved = repository.config.first()
         assertEquals(SellerConfig(name = "ACME", address = "ul. Testowa 1"), saved)
         assertEquals(SellerConfigEvent.Saved, viewModel.events.first())
+    }
+
+    @Test
+    fun uiState_prefillsBankAccount() = runTest {
+        val repository =
+            FakeSellerConfigRepository(
+                SellerConfig(
+                    name = "ACME",
+                    bankAccount = "61 1090 1014 0000 0712 1981 2874",
+                    bankSwift = "WBKPPLPP",
+                    bankName = "Santander",
+                )
+            )
+        val viewModel = createViewModel(repository)
+
+        val state = viewModel.uiState.first { it.name.isNotEmpty() }
+
+        assertEquals("61 1090 1014 0000 0712 1981 2874", state.bankAccount)
+        assertEquals("WBKPPLPP", state.bankSwift)
+        assertEquals("Santander", state.bankName)
+    }
+
+    @Test
+    fun onSaveClicked_persistsBankAccountWithNormalizedSwift() = runTest {
+        val repository = FakeSellerConfigRepository()
+        val viewModel = createViewModel(repository)
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onNameChanged("ACME")
+        viewModel.onBankAccountChanged(" 61 1090 1014 0000 0712 1981 2874 ")
+        viewModel.onBankSwiftChanged("wbkp plpp")
+        viewModel.onBankNameChanged(" Santander ")
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.onSaveClicked()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val saved = repository.config.first()
+        assertEquals("61 1090 1014 0000 0712 1981 2874", saved?.bankAccount)
+        assertEquals("WBKPPLPP", saved?.bankSwift)
+        assertEquals("Santander", saved?.bankName)
+        assertEquals(SellerConfigEvent.Saved, viewModel.events.first())
+    }
+
+    @Test
+    fun onSaveClicked_invalidBankData_setsErrorsAndSkipsSaving() = runTest {
+        val repository = FakeSellerConfigRepository()
+        val viewModel = createViewModel(repository)
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onBankAccountChanged("61 1090 1014 0000 0712 1981 2875")
+        viewModel.onBankSwiftChanged("BPKO")
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.onSaveClicked()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertNotNull(state.bankAccountError)
+        assertNotNull(state.bankSwiftError)
+        assertNull(repository.config.first())
+    }
+
+    @Test
+    fun onBankAccountChanged_clearsBankAccountError() = runTest {
+        val viewModel = createViewModel(FakeSellerConfigRepository())
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.onBankAccountChanged("123")
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.onSaveClicked()
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertNotNull(viewModel.uiState.value.bankAccountError)
+
+        viewModel.onBankAccountChanged("61 1090 1014 0000 0712 1981 2874")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.bankAccountError)
     }
 
     private fun createViewModel(repository: SellerConfigRepository): SellerConfigViewModel {

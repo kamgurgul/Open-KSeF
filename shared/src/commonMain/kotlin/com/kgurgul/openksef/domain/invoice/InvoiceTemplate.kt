@@ -23,7 +23,10 @@ import kotlinx.serialization.Serializable
 data class InvoiceTemplate(
     val id: String,
     val name: String,
+    val buyerIdType: BuyerIdType = BuyerIdType.NIP,
     val buyerNip: String = "",
+    val buyerEuCountryCode: String = "",
+    val buyerEuVatNumber: String = "",
     val buyerName: String = "",
     val buyerAddress: String = "",
     val items: List<InvoiceTemplateItem> = emptyList(),
@@ -35,5 +38,5 @@ data class InvoiceTemplateItem(
     val quantity: String,
     val unit: String,
     val unitPrice: String,
-    val vatRate: Int,
+    val vatRate: VatRate = VatRate.DEFAULT,
 )

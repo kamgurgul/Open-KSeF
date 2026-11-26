@@ -16,5 +16,16 @@
 
 package com.kgurgul.openksef.domain.invoice
 
-/** The user's own seller details, used to pre-fill the seller section of new invoices. */
-data class SellerConfig(val name: String = "", val address: String = "")
+/**
+ * The user's own seller details, used to pre-fill the seller section of new invoices.
+ *
+ * @property bankAccount The account number buyers pay to, as typed (it may contain spaces).
+ * @property bankSwift The optional SWIFT/BIC code, needed for payments from abroad.
+ */
+data class SellerConfig(
+    val name: String = "",
+    val address: String = "",
+    val bankAccount: String = "",
+    val bankSwift: String = "",
+    val bankName: String = "",
+)

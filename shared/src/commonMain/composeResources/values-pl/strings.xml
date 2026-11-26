@@ -96,6 +96,34 @@
     <string name="send_invoice_template_none">Brak zapisanych szablonów</string>
     <string name="send_invoice_save_template">Zapisz jako szablon</string>
     <string name="send_invoice_template_name">Nazwa szablonu</string>
+    <string name="send_invoice_buyer_type_nip">NIP (Polska)</string>
+    <string name="send_invoice_buyer_type_eu">VAT-UE (UE)</string>
+    <string name="send_invoice_buyer_country">Kraj</string>
+    <string name="send_invoice_buyer_eu_vat">Numer VAT-UE</string>
+    <string name="send_invoice_reverse_charge">Odwrotne obciążenie</string>
+    <string name="send_invoice_reverse_charge_hint">Podatek rozlicza nabywca, np. usługi dla firmy spoza UE (np I)</string>
+    <string name="send_invoice_reverse_charge_required">Wymagane przy stawce np II / oo</string>
+    <string name="send_invoice_payment">Płatność</string>
+    <string name="send_invoice_payment_method">Forma płatności</string>
+    <string name="send_invoice_payment_date">Data zapłaty (RRRR-MM-DD)</string>
+    <string name="send_invoice_paid_amount">Kwota zapłacona</string>
+    <string name="send_invoice_due_date">Termin płatności (RRRR-MM-DD, opcjonalnie)</string>
+    <string name="payment_status_unpaid">Niezapłacona</string>
+    <string name="payment_status_paid">Zapłacona</string>
+    <string name="payment_status_partially_paid">Częściowo</string>
+    <string name="payment_method_cash">Gotówka</string>
+    <string name="payment_method_card">Karta</string>
+    <string name="payment_method_voucher">Bon</string>
+    <string name="payment_method_cheque">Czek</string>
+    <string name="payment_method_credit">Kredyt</string>
+    <string name="payment_method_transfer">Przelew</string>
+    <string name="payment_method_mobile">Płatność mobilna</string>
+    <string name="vat_rate_zero_domestic">Dostawa krajowa</string>
+    <string name="vat_rate_zero_intra_eu">Wewnątrzwspólnotowa dostawa towarów (WDT)</string>
+    <string name="vat_rate_zero_export">Eksport towarów</string>
+    <string name="vat_rate_np_i">Niepodlegające opodatkowaniu w kraju, np. usługi dla firmy spoza UE</string>
+    <string name="vat_rate_np_ii">Niepodlegające opodatkowaniu w kraju: usługi dla firmy z UE (art. 100 ust. 1 pkt 4)</string>
+    <string name="vat_rate_oo">Odwrotne obciążenie (krajowe)</string>
 
     <!-- Invoice card -->
     <string name="invoice_card_seller">Sprzedawca: %1$s</string>
@@ -116,11 +144,15 @@
     <string name="settings_account">Zalogowane konto</string>
     <string name="settings_value_unknown">Nieznane</string>
     <string name="settings_seller_info">Dane sprzedawcy</string>
-    <string name="settings_seller_info_description">Nazwa i adres uzupełniane na nowych fakturach</string>
+    <string name="settings_seller_info_description">Nazwa, adres i rachunek bankowy uzupełniane na nowych fakturach</string>
     <string name="seller_config_name">Nazwa sprzedawcy</string>
     <string name="seller_config_address">Adres sprzedawcy</string>
     <string name="seller_config_save">Zapisz</string>
     <string name="seller_config_saved">Zapisano dane sprzedawcy</string>
+    <string name="bank_account_section">Rachunek bankowy</string>
+    <string name="bank_account_number">Numer rachunku (NRB/IBAN)</string>
+    <string name="bank_swift">SWIFT/BIC (opcjonalnie)</string>
+    <string name="bank_name">Nazwa banku (opcjonalnie)</string>
 
     <!-- Errors -->
     <string name="error_nip_invalid">NIP musi mieć 10 cyfr</string>
@@ -139,6 +171,10 @@
     <string name="error_issue_date_invalid">Podaj datę w formacie RRRR-MM-DD</string>
     <string name="error_form_invalid">Nie można wysłać faktury — popraw zaznaczone pola</string>
     <string name="error_send_invoice">Błąd wysyłania faktury</string>
+    <string name="error_eu_vat_invalid">Podaj do 12 liter lub cyfr</string>
+    <string name="error_bank_account_invalid">Podaj poprawny numer rachunku</string>
+    <string name="error_swift_invalid">Podaj kod SWIFT/BIC (8 lub 11 znaków)</string>
+    <string name="error_paid_amount_invalid">Podaj kwotę większą od 0 i mniejszą od kwoty brutto</string>
     <string name="error_export_pdf">Nie udało się wyeksportować PDF</string>
     <string name="error_render_pdf">Nie udało się wygenerować PDF</string>
 </resources>

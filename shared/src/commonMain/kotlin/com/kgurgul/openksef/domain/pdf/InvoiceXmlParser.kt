@@ -95,7 +95,10 @@ object InvoiceXmlParser {
         val taxId =
             identity?.childText("NIP")
                 ?: identity?.childText("NrID")
-                ?: identity?.childText("NrVatUE")
+                // An EU VAT number is shown with its country prefix, e.g. IE6388047V.
+                ?: identity?.childText("NrVatUE")?.let {
+                    identity.childText("KodUE").orEmpty() + it
+                }
                 ?: ""
         val address = node?.child("Adres")
         val addressLine =

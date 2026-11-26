@@ -16,6 +16,7 @@
 
 package com.kgurgul.openksef.data.local.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverter
@@ -30,9 +31,17 @@ data class InvoiceTemplateEntity(
     val buyerName: String,
     val buyerAddress: String,
     val items: List<InvoiceTemplateItem>,
+    // Added in database version 2; the defaults let the auto-migration fill existing rows.
+    /** [com.kgurgul.openksef.domain.invoice.BuyerIdType] name. */
+    @ColumnInfo(defaultValue = "NIP") val buyerIdType: String,
+    @ColumnInfo(defaultValue = "") val buyerEuCountryCode: String,
+    @ColumnInfo(defaultValue = "") val buyerEuVatNumber: String,
 )
 
-/** Stores the line items of a template as a JSON column. */
+/**
+ * Stores the line items of a template as a JSON column. Rows written before database version 2 hold
+ * the VAT rate as a number, which [com.kgurgul.openksef.domain.invoice.VatRate] still decodes.
+ */
 class InvoiceTemplateItemConverter {
 
     @TypeConverter

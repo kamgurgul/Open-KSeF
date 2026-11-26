@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
@@ -33,12 +34,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kgurgul.openksef.common.ObserveAsEvents
+import com.kgurgul.openksef.common.asString
 import com.kgurgul.openksef.ui.components.BackNavigationIconButton
 import com.kgurgul.openksef.ui.components.PrimaryTopAppBar
+import com.kgurgul.openksef.ui.components.SectionHeader
 import openksef.shared.generated.resources.Res
+import openksef.shared.generated.resources.bank_account_number
+import openksef.shared.generated.resources.bank_account_section
+import openksef.shared.generated.resources.bank_name
+import openksef.shared.generated.resources.bank_swift
 import openksef.shared.generated.resources.seller_config_address
 import openksef.shared.generated.resources.seller_config_name
 import openksef.shared.generated.resources.seller_config_save
@@ -63,6 +71,9 @@ fun SellerConfigScreen(viewModel: SellerConfigViewModel, onNavigateBack: () -> U
         onNavigateBack = onNavigateBack,
         onNameChanged = viewModel::onNameChanged,
         onAddressChanged = viewModel::onAddressChanged,
+        onBankAccountChanged = viewModel::onBankAccountChanged,
+        onBankSwiftChanged = viewModel::onBankSwiftChanged,
+        onBankNameChanged = viewModel::onBankNameChanged,
         onSaveClicked = viewModel::onSaveClicked,
         snackbarHostState = snackbarHostState,
     )
@@ -74,6 +85,9 @@ fun SellerConfigScreen(
     onNavigateBack: () -> Unit,
     onNameChanged: (String) -> Unit,
     onAddressChanged: (String) -> Unit,
+    onBankAccountChanged: (String) -> Unit,
+    onBankSwiftChanged: (String) -> Unit,
+    onBankNameChanged: (String) -> Unit,
     onSaveClicked: () -> Unit,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
@@ -105,6 +119,39 @@ fun SellerConfigScreen(
                 value = uiState.address,
                 onValueChange = onAddressChanged,
                 label = { Text(stringResource(Res.string.seller_config_address)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            SectionHeader(stringResource(Res.string.bank_account_section))
+            OutlinedTextField(
+                value = uiState.bankAccount,
+                onValueChange = onBankAccountChanged,
+                label = { Text(stringResource(Res.string.bank_account_number)) },
+                isError = uiState.bankAccountError != null,
+                supportingText = uiState.bankAccountError?.let { { Text(it.asString()) } },
+                keyboardOptions =
+                    KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedTextField(
+                value = uiState.bankSwift,
+                onValueChange = onBankSwiftChanged,
+                label = { Text(stringResource(Res.string.bank_swift)) },
+                isError = uiState.bankSwiftError != null,
+                supportingText = uiState.bankSwiftError?.let { { Text(it.asString()) } },
+                keyboardOptions =
+                    KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedTextField(
+                value = uiState.bankName,
+                onValueChange = onBankNameChanged,
+                label = { Text(stringResource(Res.string.bank_name)) },
+                singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(modifier = Modifier.height(24.dp))

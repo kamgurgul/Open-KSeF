@@ -18,6 +18,7 @@ package com.kgurgul.openksef.data.repository
 
 import com.kgurgul.openksef.data.local.db.InvoiceTemplateDao
 import com.kgurgul.openksef.data.local.db.InvoiceTemplateEntity
+import com.kgurgul.openksef.domain.invoice.BuyerIdType
 import com.kgurgul.openksef.domain.invoice.InvoiceTemplate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -41,7 +42,11 @@ class RoomInvoiceTemplateRepository(private val dao: InvoiceTemplateDao) :
         InvoiceTemplate(
             id = id,
             name = name,
+            buyerIdType =
+                BuyerIdType.entries.firstOrNull { it.name == buyerIdType } ?: BuyerIdType.NIP,
             buyerNip = buyerNip,
+            buyerEuCountryCode = buyerEuCountryCode,
+            buyerEuVatNumber = buyerEuVatNumber,
             buyerName = buyerName,
             buyerAddress = buyerAddress,
             items = items,
@@ -55,5 +60,8 @@ class RoomInvoiceTemplateRepository(private val dao: InvoiceTemplateDao) :
             buyerName = buyerName,
             buyerAddress = buyerAddress,
             items = items,
+            buyerIdType = buyerIdType.name,
+            buyerEuCountryCode = buyerEuCountryCode,
+            buyerEuVatNumber = buyerEuVatNumber,
         )
 }

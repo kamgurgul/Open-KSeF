@@ -24,8 +24,11 @@ import com.kgurgul.openksef.data.remote.KsefCrypto
 import com.kgurgul.openksef.data.repository.InvoiceTemplateRepository
 import com.kgurgul.openksef.data.repository.KsefRepository
 import com.kgurgul.openksef.data.repository.SellerConfigRepository
+import com.kgurgul.openksef.domain.invoice.BuyerIdType
 import com.kgurgul.openksef.domain.invoice.InvoiceTemplate
+import com.kgurgul.openksef.domain.invoice.PaymentMethod
 import com.kgurgul.openksef.domain.invoice.SellerConfig
+import com.kgurgul.openksef.domain.invoice.VatRate
 import com.kgurgul.openksef.domain.money.Money
 import com.kgurgul.openksef.domain.observable.InvoiceTemplatesObservable
 import com.kgurgul.openksef.domain.observable.SellerConfigObservable
@@ -36,6 +39,7 @@ import com.kgurgul.openksef.domain.result.SendInvoiceInteractor
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.engine.mock.toByteArray
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.http.ContentType
@@ -44,12 +48,15 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -63,11 +70,16 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SendInvoiceViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
+
+    /** The invoice XML the view model sent to the mocked KSeF API, if any. */
+    private var sentXml: String? = null
 
     @BeforeTest
     fun setup() {
@@ -226,7 +238,12 @@ class SendInvoiceViewModelTest {
         collectUiState(viewModel)
 
         val item =
-            InvoiceLineItemUi(description = "Test", quantity = "2", unitPrice = "100", vatRate = 23)
+            InvoiceLineItemUi(
+                description = "Test",
+                quantity = "2",
+                unitPrice = "100",
+                vatRate = VatRate.RATE_23,
+            )
         viewModel.updateItem(0, item)
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -350,10 +367,329 @@ class SendInvoiceViewModelTest {
         assertEquals("kg", viewModel.uiState.value.items[0].unit)
     }
 
+    @Test
+    fun initialState_prefillsBankAccountFromSellerConfig() = runTest {
+        val viewModel = createViewModel(SELLER_WITH_BANK)
+        collectUiState(viewModel)
+
+        val state = viewModel.uiState.value
+        assertEquals(PaymentMethod.TRANSFER, state.paymentMethod)
+        assertEquals("61 1090 1014 0000 0712 1981 2874", state.bankAccount)
+        assertEquals("wbkpplpp", state.bankSwift)
+        assertEquals("Santander", state.bankName)
+    }
+
+    @Test
+    fun send_transfer_writesNormalizedSellerBankAccount() = runTest {
+        val viewModel = createViewModel(SELLER_WITH_BANK)
+        collectUiState(viewModel)
+        fillValidDomesticForm(viewModel)
+
+        viewModel.send()
+        viewModel.uiState.first { it.isSent || it.error != null }
+
+        val xml = assertNotNull(sentXml)
+        assertTrue(xml.contains("<FormaPlatnosci>6</FormaPlatnosci>"), xml)
+        assertTrue(xml.contains("<NrRB>61109010140000071219812874</NrRB>"), xml)
+        assertTrue(xml.contains("<SWIFT>WBKPPLPP</SWIFT>"), xml)
+        assertTrue(xml.contains("<NazwaBanku>Santander</NazwaBanku>"), xml)
+        assertFalse(xml.contains("<Zaplacono>"), xml)
+    }
+
+    @Test
+    fun send_cashPayment_omitsBankAccount() = runTest {
+        val viewModel = createViewModel(SELLER_WITH_BANK)
+        collectUiState(viewModel)
+        fillValidDomesticForm(viewModel)
+        viewModel.onPaymentMethodChanged(PaymentMethod.CASH)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.send()
+        viewModel.uiState.first { it.isSent || it.error != null }
+
+        val xml = assertNotNull(sentXml)
+        assertTrue(xml.contains("<FormaPlatnosci>1</FormaPlatnosci>"), xml)
+        assertFalse(xml.contains("<RachunekBankowy>"), xml)
+    }
+
+    @Test
+    fun send_invalidBankAccount_setsValidationError() = runTest {
+        val viewModel = createViewModel(SELLER_WITH_BANK)
+        collectUiState(viewModel)
+        fillValidDomesticForm(viewModel)
+        viewModel.onBankAccountChanged("61 1090 1014 0000 0712 1981 2875")
+        viewModel.onBankSwiftChanged("BPKO")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.send()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val errors = viewModel.uiState.value.validationErrors
+        assertTrue(errors.containsKey(SendInvoiceViewModel.FIELD_BANK_ACCOUNT))
+        assertTrue(errors.containsKey(SendInvoiceViewModel.FIELD_BANK_SWIFT))
+        assertNull(sentXml)
+    }
+
+    @Test
+    fun updateItem_npIIRate_requiresReverseCharge() = runTest {
+        val viewModel = createViewModel()
+        collectUiState(viewModel)
+        assertFalse(viewModel.uiState.value.isReverseChargeRequired)
+
+        viewModel.updateItem(
+            0,
+            InvoiceLineItemUi(
+                description = "Google AdMob",
+                unitPrice = "307.10",
+                vatRate = VatRate.NOT_SUBJECT_EU_SERVICES,
+            ),
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.isReverseChargeRequired)
+        // np II is out of scope of Polish VAT, so gross equals net.
+        assertEquals(Money.fromMajorUnits(307, 10), state.items[0].grossValue)
+    }
+
+    @Test
+    fun send_euBuyerWithNpIIService_sendsReverseChargeInvoice() = runTest {
+        val viewModel = createViewModel(SELLER_WITH_BANK)
+        collectUiState(viewModel)
+
+        viewModel.onBuyerIdTypeChanged(BuyerIdType.EU_VAT)
+        viewModel.onBuyerEuCountryChanged("IE")
+        viewModel.onBuyerEuVatNumberChanged("IE 6388047V")
+        viewModel.onBuyerNameChanged("Google Ireland Limited")
+        viewModel.onBuyerAddressChanged("Gordon House, Barrow Street, Dublin 4")
+        viewModel.onInvoiceNumberChanged("FV/10/2026")
+        viewModel.onIssueDateChanged("2026-10-21")
+        viewModel.updateItem(
+            0,
+            InvoiceLineItemUi(
+                description = "Google AdMob",
+                unitPrice = "307,10",
+                vatRate = VatRate.NOT_SUBJECT_EU_SERVICES,
+            ),
+        )
+        viewModel.onPaymentStatusChanged(PaymentStatusOption.PAID)
+        viewModel.onDueDateChanged("2026-10-21")
+        testDispatcher.scheduler.advanceUntilIdle()
+        // The payment date defaults to the issue date.
+        assertEquals("2026-10-21", viewModel.uiState.value.paymentDate)
+
+        viewModel.send()
+        val state = viewModel.uiState.first { it.isSent || it.error != null }
+
+        assertTrue(state.isSent, "Expected isSent, errors: ${state.validationErrors}")
+        val xml = assertNotNull(sentXml)
+        assertTrue(xml.contains("<KodUE>IE</KodUE>"), xml)
+        assertTrue(xml.contains("<NrVatUE>6388047V</NrVatUE>"), xml)
+        assertTrue(xml.contains("<KodKraju>IE</KodKraju>"), xml)
+        assertTrue(xml.contains("<P_12>np II</P_12>"), xml)
+        assertTrue(xml.contains("<P_13_9>307.10</P_13_9>"), xml)
+        assertTrue(xml.contains("<P_15>307.10</P_15>"), xml)
+        assertTrue(xml.contains("<P_18>1</P_18>"), xml)
+        assertTrue(xml.contains("<Zaplacono>1</Zaplacono>"), xml)
+        assertTrue(xml.contains("<DataZaplaty>2026-10-21</DataZaplaty>"), xml)
+        assertTrue(xml.contains("<Termin>2026-10-21</Termin>"), xml)
+        assertTrue(xml.contains("<FormaPlatnosci>6</FormaPlatnosci>"), xml)
+    }
+
+    @Test
+    fun send_reverseChargeToggle_setsP18ForNpIRate() = runTest {
+        val viewModel = createViewModel(SELLER_WITH_BANK)
+        collectUiState(viewModel)
+        fillValidDomesticForm(viewModel)
+        viewModel.updateItem(
+            0,
+            InvoiceLineItemUi(
+                description = "Consulting",
+                unitPrice = "100",
+                vatRate = VatRate.NOT_SUBJECT_ABROAD,
+            ),
+        )
+        viewModel.onReverseChargeChanged(true)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.send()
+        viewModel.uiState.first { it.isSent || it.error != null }
+
+        val xml = assertNotNull(sentXml)
+        assertTrue(xml.contains("<P_13_8>100.00</P_13_8>"), xml)
+        assertTrue(xml.contains("<P_18>1</P_18>"), xml)
+    }
+
+    @Test
+    fun send_euBuyerWithoutCountryAndWithInvalidNumber_setsValidationErrors() = runTest {
+        val viewModel = createViewModel()
+        collectUiState(viewModel)
+
+        viewModel.onBuyerIdTypeChanged(BuyerIdType.EU_VAT)
+        viewModel.onBuyerEuVatNumberChanged("1234567890123")
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.send()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val errors = viewModel.uiState.value.validationErrors
+        assertTrue(errors.containsKey(SendInvoiceViewModel.FIELD_BUYER_EU_COUNTRY))
+        assertTrue(errors.containsKey(SendInvoiceViewModel.FIELD_BUYER_EU_VAT))
+        assertFalse(errors.containsKey(SendInvoiceViewModel.FIELD_BUYER_NIP))
+    }
+
+    @Test
+    fun onBuyerIdTypeChanged_clearsBuyerIdErrors() = runTest {
+        val viewModel = createViewModel()
+        collectUiState(viewModel)
+        viewModel.send()
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.validationErrors.containsKey("buyerNip"))
+
+        viewModel.onBuyerIdTypeChanged(BuyerIdType.EU_VAT)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.validationErrors.containsKey("buyerNip"))
+    }
+
+    @Test
+    fun send_partialPayment_writesPaidAmount() = runTest {
+        val viewModel = createViewModel(SELLER_WITH_BANK)
+        collectUiState(viewModel)
+        fillValidDomesticForm(viewModel)
+        viewModel.onPaymentStatusChanged(PaymentStatusOption.PARTIALLY_PAID)
+        viewModel.onPaidAmountChanged("50,50")
+        viewModel.onPaymentDateChanged("2026-11-20")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.send()
+        val state = viewModel.uiState.first { it.isSent || it.error != null }
+
+        assertTrue(state.isSent, "Expected isSent, errors: ${state.validationErrors}")
+        val xml = assertNotNull(sentXml)
+        assertTrue(xml.contains("<ZnacznikZaplatyCzesciowej>1</ZnacznikZaplatyCzesciowej>"), xml)
+        assertTrue(xml.contains("<KwotaZaplatyCzesciowej>50.50</KwotaZaplatyCzesciowej>"), xml)
+        assertTrue(xml.contains("<DataZaplatyCzesciowej>2026-11-20</DataZaplatyCzesciowej>"), xml)
+    }
+
+    @Test
+    fun send_partialPaymentNotBelowGross_setsValidationError() = runTest {
+        val viewModel = createViewModel(SELLER_WITH_BANK)
+        collectUiState(viewModel)
+        // Gross = 100 * 1.23 = 123.
+        fillValidDomesticForm(viewModel)
+        viewModel.onPaymentStatusChanged(PaymentStatusOption.PARTIALLY_PAID)
+
+        for (amount in listOf("123", "200", "0", "abc")) {
+            viewModel.onPaidAmountChanged(amount)
+            testDispatcher.scheduler.advanceUntilIdle()
+            viewModel.send()
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertTrue(
+                viewModel.uiState.value.validationErrors.containsKey(
+                    SendInvoiceViewModel.FIELD_PAID_AMOUNT
+                ),
+                "Expected an error for $amount",
+            )
+        }
+        assertNull(sentXml)
+    }
+
+    @Test
+    fun send_paidWithInvalidDates_setsValidationErrors() = runTest {
+        val viewModel = createViewModel(SELLER_WITH_BANK)
+        collectUiState(viewModel)
+        fillValidDomesticForm(viewModel)
+        viewModel.onPaymentStatusChanged(PaymentStatusOption.PAID)
+        viewModel.onPaymentDateChanged("21.10.2026")
+        viewModel.onDueDateChanged("tomorrow")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.send()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val errors = viewModel.uiState.value.validationErrors
+        assertTrue(errors.containsKey(SendInvoiceViewModel.FIELD_PAYMENT_DATE))
+        assertTrue(errors.containsKey(SendInvoiceViewModel.FIELD_DUE_DATE))
+    }
+
+    @Test
+    fun onPaymentStatusChanged_keepsUserPaymentDate() = runTest {
+        val viewModel = createViewModel()
+        collectUiState(viewModel)
+        viewModel.onPaymentDateChanged("2026-01-05")
+
+        viewModel.onPaymentStatusChanged(PaymentStatusOption.PAID)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("2026-01-05", viewModel.uiState.value.paymentDate)
+    }
+
+    @Test
+    fun onTemplateSelected_restoresVatRateAndEuBuyer() = runTest {
+        val viewModel = createViewModel()
+        collectUiState(viewModel)
+        viewModel.onBuyerIdTypeChanged(BuyerIdType.EU_VAT)
+        viewModel.onBuyerEuCountryChanged("IE")
+        viewModel.onBuyerEuVatNumberChanged("6388047V")
+        viewModel.onBuyerNameChanged("Google Ireland Limited")
+        viewModel.updateItem(
+            0,
+            InvoiceLineItemUi(
+                description = "Google AdMob",
+                unitPrice = "100",
+                vatRate = VatRate.NOT_SUBJECT_EU_SERVICES,
+            ),
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.onSaveTemplate("AdMob")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Reset the form, then re-apply the saved template.
+        viewModel.onBuyerIdTypeChanged(BuyerIdType.NIP)
+        viewModel.updateItem(0, InvoiceLineItemUi())
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.onTemplateSelected(viewModel.uiState.value.templates.first())
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(BuyerIdType.EU_VAT, state.buyerIdType)
+        assertEquals("IE", state.buyerEuCountryCode)
+        assertEquals("6388047V", state.buyerEuVatNumber)
+        assertEquals(VatRate.NOT_SUBJECT_EU_SERVICES, state.items[0].vatRate)
+        assertEquals(Money.fromMajorUnits(100), state.items[0].grossValue)
+        assertTrue(state.isReverseChargeRequired)
+    }
+
+    /** Fills a valid domestic invoice: one 23% item of 100 net. */
+    private fun fillValidDomesticForm(viewModel: SendInvoiceViewModel) {
+        viewModel.onBuyerNipChanged("2222222222")
+        viewModel.onBuyerNameChanged("Firma XYZ")
+        viewModel.onInvoiceNumberChanged("FV/2026/001")
+        viewModel.onIssueDateChanged("2026-11-20")
+        viewModel.updateItem(
+            0,
+            InvoiceLineItemUi(description = "Usługa", quantity = "1", unitPrice = "100"),
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+    }
+
     /** Keeps [SendInvoiceViewModel.uiState] hot for `value` reads and runs pending init work. */
     private fun TestScope.collectUiState(viewModel: SendInvoiceViewModel) {
         backgroundScope.launch { viewModel.uiState.collect {} }
         testDispatcher.scheduler.advanceUntilIdle()
+    }
+
+    /** Recovers the invoice XML from a send request; the fake crypto leaves it unencrypted. */
+    @OptIn(ExperimentalEncodingApi::class)
+    private fun decodeSentInvoice(requestBody: String): String {
+        val content =
+            Json.parseToJsonElement(requestBody)
+                .jsonObject
+                .getValue("encryptedInvoiceContent")
+                .jsonPrimitive
+                .content
+        return Base64.decode(content).decodeToString()
     }
 
     private fun createViewModel(sellerConfig: SellerConfig? = null): SendInvoiceViewModel {
@@ -378,12 +714,14 @@ class SendInvoiceViewModelTest {
                         headers = jsonHeaders,
                     )
 
-                path.endsWith("/sessions/online/session-ref/invoices") ->
+                path.endsWith("/sessions/online/session-ref/invoices") -> {
+                    sentXml = decodeSentInvoice(request.body.toByteArray().decodeToString())
                     respond(
                         content = """{"referenceNumber":"R-001"}""",
                         status = HttpStatusCode.Accepted,
                         headers = jsonHeaders,
                     )
+                }
 
                 path.endsWith("/sessions/session-ref/invoices/R-001") ->
                     respond(
@@ -448,6 +786,17 @@ class SendInvoiceViewModelTest {
             deleteInvoiceTemplateInteractor =
                 DeleteInvoiceTemplateInteractor(dispatchers, templateRepository),
         )
+    }
+
+    private companion object {
+        val SELLER_WITH_BANK =
+            SellerConfig(
+                name = "ACME Sp. z o.o.",
+                address = "ul. Testowa 1",
+                bankAccount = "61 1090 1014 0000 0712 1981 2874",
+                bankSwift = "wbkpplpp",
+                bankName = "Santander",
+            )
     }
 
     private class FakeInvoiceTemplateRepository : InvoiceTemplateRepository {

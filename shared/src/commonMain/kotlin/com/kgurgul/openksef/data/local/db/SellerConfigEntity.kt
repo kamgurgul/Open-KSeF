@@ -16,6 +16,7 @@
 
 package com.kgurgul.openksef.data.local.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -28,6 +29,10 @@ data class SellerConfigEntity(
     @PrimaryKey val id: Int = SINGLE_ROW_ID,
     val name: String,
     val address: String,
+    // Added in database version 2; the defaults let the auto-migration fill existing rows.
+    @ColumnInfo(defaultValue = "") val bankAccount: String,
+    @ColumnInfo(defaultValue = "") val bankSwift: String,
+    @ColumnInfo(defaultValue = "") val bankName: String,
 ) {
     companion object {
         const val SINGLE_ROW_ID = 0

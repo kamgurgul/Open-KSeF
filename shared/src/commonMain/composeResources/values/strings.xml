@@ -94,6 +94,34 @@
     <string name="send_invoice_template_none">No templates saved</string>
     <string name="send_invoice_save_template">Save as template</string>
     <string name="send_invoice_template_name">Template name</string>
+    <string name="send_invoice_buyer_type_nip">NIP (Poland)</string>
+    <string name="send_invoice_buyer_type_eu">VAT-UE (EU)</string>
+    <string name="send_invoice_buyer_country">Country</string>
+    <string name="send_invoice_buyer_eu_vat">EU VAT number</string>
+    <string name="send_invoice_reverse_charge">Reverse charge</string>
+    <string name="send_invoice_reverse_charge_hint">The buyer settles the VAT, e.g. services for a non-EU business (np I)</string>
+    <string name="send_invoice_reverse_charge_required">Required by the np II / oo rate</string>
+    <string name="send_invoice_payment">Payment</string>
+    <string name="send_invoice_payment_method">Payment method</string>
+    <string name="send_invoice_payment_date">Payment date (YYYY-MM-DD)</string>
+    <string name="send_invoice_paid_amount">Amount paid</string>
+    <string name="send_invoice_due_date">Due date (YYYY-MM-DD, optional)</string>
+    <string name="payment_status_unpaid">Unpaid</string>
+    <string name="payment_status_paid">Paid</string>
+    <string name="payment_status_partially_paid">Partly paid</string>
+    <string name="payment_method_cash">Cash</string>
+    <string name="payment_method_card">Card</string>
+    <string name="payment_method_voucher">Voucher</string>
+    <string name="payment_method_cheque">Cheque</string>
+    <string name="payment_method_credit">Credit</string>
+    <string name="payment_method_transfer">Bank transfer</string>
+    <string name="payment_method_mobile">Mobile payment</string>
+    <string name="vat_rate_zero_domestic">Domestic supply</string>
+    <string name="vat_rate_zero_intra_eu">Intra-EU supply of goods (WDT)</string>
+    <string name="vat_rate_zero_export">Export of goods</string>
+    <string name="vat_rate_np_i">Not subject to Polish VAT: supply abroad, e.g. services for a non-EU business</string>
+    <string name="vat_rate_np_ii">Not subject to Polish VAT: services for an EU business (art. 100 ust. 1 pkt 4)</string>
+    <string name="vat_rate_oo">Domestic reverse charge</string>
 
     <!-- Invoice card -->
     <string name="invoice_card_seller">Seller: %1$s</string>
@@ -114,11 +142,15 @@
     <string name="settings_account">Signed-in account</string>
     <string name="settings_value_unknown">Unknown</string>
     <string name="settings_seller_info">Seller information</string>
-    <string name="settings_seller_info_description">Name and address pre-filled on new invoices</string>
+    <string name="settings_seller_info_description">Name, address and bank account pre-filled on new invoices</string>
     <string name="seller_config_name">Seller name</string>
     <string name="seller_config_address">Seller address</string>
     <string name="seller_config_save">Save</string>
     <string name="seller_config_saved">Seller information saved</string>
+    <string name="bank_account_section">Bank account</string>
+    <string name="bank_account_number">Account number (NRB/IBAN)</string>
+    <string name="bank_swift">SWIFT/BIC (optional)</string>
+    <string name="bank_name">Bank name (optional)</string>
 
     <!-- Errors -->
     <string name="error_nip_invalid">NIP must be 10 digits</string>
@@ -137,6 +169,10 @@
     <string name="error_issue_date_invalid">Enter the date in YYYY-MM-DD format</string>
     <string name="error_form_invalid">Cannot send the invoice — correct the highlighted fields</string>
     <string name="error_send_invoice">Failed to send invoice</string>
+    <string name="error_eu_vat_invalid">Enter up to 12 letters or digits</string>
+    <string name="error_bank_account_invalid">Enter a valid account number</string>
+    <string name="error_swift_invalid">Enter an 8 or 11 character SWIFT/BIC code</string>
+    <string name="error_paid_amount_invalid">Enter an amount above 0 and below the gross total</string>
     <string name="error_export_pdf">Failed to export PDF</string>
     <string name="error_render_pdf">Failed to render PDF</string>
 </resources>
