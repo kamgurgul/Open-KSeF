@@ -57,7 +57,7 @@ data class InvoicePayment(
     val isEmpty: Boolean
         get() =
             status == PaymentStatus.Unpaid &&
-                    dueDate.isBlank() &&
-                    method == null &&
-                    bankAccount == null
+                dueDate.isBlank() &&
+                method == null &&
+                bankAccount == null
 }

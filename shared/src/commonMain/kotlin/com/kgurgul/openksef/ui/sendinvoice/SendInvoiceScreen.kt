@@ -350,7 +350,7 @@ fun SendInvoiceScreen(
                                 onSelected = onBuyerEuCountryChanged,
                                 error =
                                     uiState.validationErrors[
-                                        SendInvoiceViewModel.FIELD_BUYER_EU_COUNTRY],
+                                            SendInvoiceViewModel.FIELD_BUYER_EU_COUNTRY],
                                 modifier = Modifier.weight(0.4f),
                             )
                             FormTextField(
@@ -359,7 +359,7 @@ fun SendInvoiceScreen(
                                 label = stringResource(Res.string.send_invoice_buyer_eu_vat),
                                 error =
                                     uiState.validationErrors[
-                                        SendInvoiceViewModel.FIELD_BUYER_EU_VAT],
+                                            SendInvoiceViewModel.FIELD_BUYER_EU_VAT],
                                 keyboardOptions =
                                     KeyboardOptions(
                                         capitalization = KeyboardCapitalization.Characters

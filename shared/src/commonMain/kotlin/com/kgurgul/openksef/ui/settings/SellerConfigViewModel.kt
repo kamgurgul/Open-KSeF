@@ -108,7 +108,7 @@ class SellerConfigViewModel(
                 bankAccount =
                     UiText.Resource(Res.string.error_bank_account_invalid).takeIf {
                         state.bankAccount.isNotBlank() &&
-                                !BankAccount.isValidNumber(state.bankAccount)
+                            !BankAccount.isValidNumber(state.bankAccount)
                     },
                 bankSwift =
                     UiText.Resource(Res.string.error_swift_invalid).takeIf {

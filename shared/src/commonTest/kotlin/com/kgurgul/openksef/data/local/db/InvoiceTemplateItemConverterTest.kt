@@ -30,7 +30,7 @@ class InvoiceTemplateItemConverterTest {
     fun toItems_readsRowsWrittenBeforeRateCodes() {
         val legacy =
             """[{"description":"Usługa","quantity":"1","unit":"szt.","unitPrice":"100","vatRate":8},""" +
-                    """{"description":"Zero","quantity":"2","unit":"kg","unitPrice":"5","vatRate":0}]"""
+                """{"description":"Zero","quantity":"2","unit":"kg","unitPrice":"5","vatRate":0}]"""
 
         val items = converter.toItems(legacy)
 
